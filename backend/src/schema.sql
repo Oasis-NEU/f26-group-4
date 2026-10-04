@@ -1,0 +1,14 @@
+-- The database's tables. The server runs this file every time it starts.
+-- Tables that already exist are skipped, so after changing one, delete
+-- backend/app.db and restart the server to rebuild it (this erases your local data).
+
+-- Template for new tables. Copy it below, delete the -- at the start of each line, and rename it:
+-- CREATE TABLE IF NOT EXISTS template_items (
+--   id TEXT PRIMARY KEY,                      -- unique ID (the route creates it)
+--   name TEXT NOT NULL,                       -- text, required
+--   rating REAL,                              -- decimal number, can be NULL (empty)
+--   isVerified INTEGER NOT NULL DEFAULT 0,    -- true/false: SQLite stores these as 1/0
+--   createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP -- date and time, filled in automatically
+-- );
+-- A column can also point at a row in another table, e.g. `authorId TEXT REFERENCES users (id)`
+-- (that table must also be in this file, or adding rows fails with "no such table").
