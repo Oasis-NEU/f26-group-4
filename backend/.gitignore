@@ -1,5 +1,0 @@
-node_modules/
-
-# The SQLite database: everyone has their own local copy
-*.db
-*.db-*
