@@ -10,7 +10,7 @@ export type review = {
   id: string; // text; for identification purposes
   profileName: string; // the name of the user who wrote the review
   placeID: string; // the ID of the place being reviewed so that it can be linked ; but I don't know how to do that yet
-  rating: number; // max 5
+  rating: 1 | 2 | 3 | 4 | 5; // max 5
   placeType: string; // e.g. "cafe", "excursion", "sport", etc
   reviewText?: string; // the written review
   isVerified: boolean; // `true` or `false`
