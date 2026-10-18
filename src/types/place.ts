@@ -7,7 +7,8 @@
 import { review } from "./review";
 
 export type place = {
-  id: string; // text
+  id: string; // text // for database? 
+  name: string; // text
   averageRating: number; // the number would need to be maxed at 5, but I don't know how to do that yet
   friendsRating?: number; // same as above, but this is the average rating of the user's friends
   isVerified: boolean; // `true` or `false`
@@ -20,8 +21,10 @@ export type place = {
   country: string; // ^
   website?: string; // e.g. the reservation link for a restaurant, or the booking link for an excursion
   directions: string; // would open in maps, but this may need to become its own component (?)
-  mediaType: 'photo' | 'video'; // how to have multiple media? and captions per piece of media?
+  media: 'photo' | 'video'; // how to have multiple media? and captions per piece of media?
+  coverImage: 'photo'; // the cover image for the place, I'm not sure how this would be selected 
   description?: string; // optional field (the ? means it can be left out; aka can be left undefined)
   reviews?: review[]; // 
+  proximity: number; // how far away the place is from the user, in meters
   // A field can also be another type, e.g. `author: User;` (import `User` at the top of the file first)
 };
