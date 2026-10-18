@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 // Imports the Post type from types.ts
-import type { Post } from "../types";
+import type { Post } from "../../types";
 
 // Imports MediaPost and PlaceTag components
 import MediaPost from "./MediaPost";

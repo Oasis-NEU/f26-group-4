@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 // Imports the Media type from the types file
-import type { Media } from "../types";
+import type { Media } from "../../types";
 
 // Information the MediaPost component recieves
 type MediaPostProps = {
