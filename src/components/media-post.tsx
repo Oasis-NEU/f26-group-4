@@ -3,6 +3,8 @@ import { useState } from "react";
 
 // Imports the Media type from the types file
 import type { Media } from "../../types";
+import {Button, Text, View} from "react-native";
+import {Image} from "expo-image";
 
 // Information the MediaPost component recieves
 type MediaPostProps = {
@@ -32,38 +34,36 @@ export default function MediaPost({
 
     return (
         //Container for the images and navigation buttons
-        <div className="media-post">
+        <View>
 
             {/* Displays the currently selected image */}
-            <img
-            src={media[currentIndex].imgURL}
-            alt={media[currentIndex].caption}
-            width={300}
+            <Image
+                source={media[currentIndex].imgURL}
+                alt={media[currentIndex].caption}
+                style={{width: 300, height: 300}}
             />
 
             {/* Displays the caption for the current image*/}
-            <p>{media[currentIndex].caption}</p>
+            <Text>{media[currentIndex].caption}</Text>
 
             {/* Only shows navigation if there are multiple images */}
             {media.length > 1 && (
-                <div>
+                <View>
 
                     {/* Button to display the previous image */}
-                    <button type="button" onClick={previousImage}>
-                        Previous
-                    </button>
+                    <Button onPress={previousImage} title={"Previous"}>
+                    </Button>
 
                     {/* Displays the current image number and total*/}
-                    <span>
+                    <Text>
                         {currentIndex + 1} / {media.length}
-                    </span>
+                    </Text>
 
                     {/* Button to display the next image */}
-                    <button type="button" onClick={nextImage}>
-                        Next
-                    </button>
-                    </div>
+                    <Button onPress={nextImage} title={"Next"}>
+                    </Button>
+                    </View>
             )}
-        </div>
+        </View>
     );
 }

@@ -5,8 +5,8 @@ import { useState } from "react";
 import type { Post } from "../../types";
 
 // Imports MediaPost and PlaceTag components
-import MediaPost from "./MediaPost";
-import PlaceTag from "./PlaceTag";
+import MediaPost from "./media-post";
+import PlaceTag from "./place-tag";
 
 // Information that FeedItem receives
 type FeedItemProps = {

@@ -1,11 +1,12 @@
 import { Link } from 'expo-router';
 import { Text, View, StyleSheet } from 'react-native';
+import {PlaceDetails} from "@/app/place";
+import {mockPlace} from "@/types/place";
 
 export default function Index() {
   return (
     <View style={styles.container}>
-      <Text>Edit src/app/index.tsx to edit this screen.</Text>
-      <Link href="/login">Go to login</Link>
+      <PlaceDetails place={mockPlace} />
     </View>
   );
 }

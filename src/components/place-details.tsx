@@ -33,7 +33,7 @@ export function PlaceDetails({place}: PlaceDetailsProps) { //Add later: MediaPos
       <Text>{place.city}, {place.country}</Text>
       {/* not sure how to display MediaPost */}
       {/* also not sure how to display the buttons (SaveButton, ShareButton, BackButton, AddReview) */}
-      <text>{place.description}</text>
+      <Text>{place.description}</Text>
     </View>
   );
 }

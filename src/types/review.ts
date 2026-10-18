@@ -4,7 +4,7 @@
 // 3. Replace the example fields with the data your type needs
 // 4. Use it anywhere: import { Place } from '@/types/place';
 
-import { profileName } from ""; // type has not been created yet
+import {Media} from "../../types"; // type has not been created yet
 
 export type Review = {
     id: string; // text; for identification purposes
@@ -19,7 +19,7 @@ export type Review = {
     city: string; // for display purposes, and so we can filter by city; this should generate based on the location of the place, but I'm not sure how to do that yet
     country: string; // ^
     website?: string; // e.g. the reservation link for a restaurant, or the booking link for an excursion
-    mediaType?: 'photo' | 'video'; // how to do captions per piece of media? and multiple media?
+    media: Media[]
     // tagFriends: string[];
     // visitDate: string; // would have to have an option to keep it private
 };
