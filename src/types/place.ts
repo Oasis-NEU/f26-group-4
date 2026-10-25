@@ -12,6 +12,7 @@ export type Place = {
     name: string; // text
     averageRating: number; // the number would need to be maxed at 5, but I don't know how to do that yet
     friendsRating?: number; // same as above, but this is the average rating of the user's friends
+    algorithmRating?: number; // this number would be the recommendation of an algorithm based on the user's preferences, but I don't know how to do that yet
     isVerified: boolean; // `true` or `false`
     suitedFor: string[]; // a list of strings e.g. "solo", "adventure", "skiiers", etc
     placeType: string; // e.g. "cafe", "excursion", "sport", etc

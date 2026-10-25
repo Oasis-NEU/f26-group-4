@@ -1,4 +1,4 @@
-import { place } from '@/types/place';
+import { Place } from '@/types/place';
 import { StyleSheet, Text, View } from 'react-native';
 
 // Template for new components. Don't edit this file; copy it:
@@ -8,7 +8,7 @@ import { StyleSheet, Text, View } from 'react-native';
 // 4. Use it in a screen: import { FeedItem } from '@/components/feed-item';
 
 type PlaceDetailsProps = {
-  place: place; // the place type
+  place: Place; // the place type
   /* MediaPost: MediaPost; // the MediaPost type (needs to be defined)
   SaveButton: SaveButton; // is this built into the operating system? if not, we need to define it
   ShareButton: ShareButton; //is this built into the operating system? if not, we need to define it
