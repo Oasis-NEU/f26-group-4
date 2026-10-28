@@ -1,16 +1,15 @@
-import {Place} from '@/types/place';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {Image} from "expo-image";
-import {useState} from "react";
 import MediaPost from "@/components/media-post";
+import { Place } from '@/types/place';
+import { Image } from "expo-image";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type PlaceDetailsProps = {
     place: Place; // the place type
-    /* MediaPost: MediaPost; // the MediaPost type (needs to be defined)
-    SaveButton: SaveButton; // is this built into the operating system? if not, we need to define it
-    ShareButton: ShareButton; //is this built into the operating system? if not, we need to define it
-    BackButton: BackButton; // is this built into the operating system? if not, we need to define it
-    AddReview: AddReview; // the AddReview type (needs to be defined) */
+   // SaveButton: SaveButton; // is this built into the operating system? if not, we need to define it
+   // ShareButton: ShareButton; //is this built into the operating system? if not, we need to define it
+   // BackButton: BackButton; // is this built into the operating system? if not, we need to define it
+   // AddReview: AddReview; // the AddReview type (needs to be defined) */
 };
 
 // We haven't yet discussed when components' data comes from its parent and when it comes from a "useContext" hook
