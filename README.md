@@ -28,8 +28,16 @@ If your phone can't connect (common on campus Wi-Fi), start with `npx expo start
 ```
 src/
   app/                       Screens. Every file in here is a page (file-based routing)
-    _layout.tsx              Wraps every screen; navigation (stack, tabs) is set up here
-    index.tsx                The first screen
+    _layout.tsx              Wraps every screen; lists the pages that open on top of the tabs
+    (tabs)/                  The pages in the bottom tab bar
+      _layout.tsx            The tab bar: which tabs there are, their titles and icons
+      index.tsx              Feed tab (the first screen)
+      search.tsx             Search tab
+      map.tsx                Map tab
+      profile.tsx            Profile tab
+    place/[id].tsx           A place's page, e.g. /place/place_001
+    login.tsx                Log in page
+    create-account.tsx       Create account page
   components/                Reusable pieces that screens are built from
     template-component.tsx   Copy this to make a new component
   types/                     What the app's data looks like, e.g. a Place or an Upload
@@ -43,17 +51,23 @@ app.json                     App config: name, icons, splash screen
 
 Only screens and `_layout.tsx` files go in `src/app/`. Everything else goes elsewhere in `src/`; add folders as you need them, e.g. `src/hooks/` for custom hooks.
 
+## Building your page
+
+Each tab already has a placeholder page in `src/app/(tabs)/`. Open yours, replace the placeholder text with your page, and build it from the components listed in the comment at the top of the file.
+
 ## Adding a screen
 
-Create a file in `src/app/`. Its path becomes the route:
+Create a file in `src/app/`. Its path becomes the route. Folder names in parentheses, like `(tabs)`, group files without changing the route:
 
-| File in `src/app/` | Route        |
-| ------------------ | ------------ |
-| `index.tsx`        | `/`          |
-| `profile.tsx`      | `/profile`   |
-| `place/[id].tsx`   | `/place/123` |
+| File in `src/app/`     | Route        |
+| ---------------------- | ------------ |
+| `(tabs)/index.tsx`     | `/`          |
+| `(tabs)/profile.tsx`   | `/profile`   |
+| `place/[id].tsx`       | `/place/123` |
 
-Link to it with `<Link href="/profile">` from `expo-router`. See the [Expo Router docs](https://docs.expo.dev/router/introduction/).
+Link to it with `<Link href="/profile">` from `expo-router`. A screen outside `(tabs)/` opens on top of the tab bar with a back button; set its header title in `src/app/_layout.tsx`. See the [Expo Router docs](https://docs.expo.dev/router/introduction/).
+
+To add a tab, put the file in `src/app/(tabs)/` and add a `Tabs.Screen` for it in `src/app/(tabs)/_layout.tsx`. Keep it to 5 tabs or fewer so they fit on a phone.
 
 ## Adding a component
 
