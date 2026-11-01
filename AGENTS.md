@@ -29,6 +29,10 @@ Run lint and typecheck before declaring any task done.
 - Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
 - Docs: https://docs.expo.dev/router/introduction.md
 
+## Data, auth & Supabase
+
+Before writing code that loads or saves data, signs people in, or touches Supabase, read `docs/data-layer.md`. It sets where state lives (React Query hooks over `src/services/`, context only for the session), the service and hook names to build against, and which phase is already built.
+
 ## Building with EAS
 
 Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.

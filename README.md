@@ -101,6 +101,8 @@ const places = await getPlaces();
 
 When Supabase is set up, only the insides of the service functions change. Screens keep calling `getPlaces()` the same way.
 
+Screens are moving to hooks in `src/hooks/` (e.g. `usePlaces()`), which call the services and keep every screen in sync. [docs/data-layer.md](docs/data-layer.md) has the rules, the function and hook names to use, and the Supabase plan.
+
 ## Installing packages
 
 Use `npx expo install <package>` instead of `npm install <package>`. It picks the version that works with our Expo SDK. Don't run `npm audit fix --force`; it can install versions that break Expo.
