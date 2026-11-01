@@ -7,6 +7,7 @@ export default function RootLayout() {
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="place/[id]" options={{ title: 'Place' }} />
+      <Stack.Screen name="upload" options={{ title: 'Upload', presentation: 'modal' }} />
       <Stack.Screen name="login" options={{ title: 'Log in' }} />
       <Stack.Screen name="create-account" options={{ title: 'Create account' }} />
     </Stack>
