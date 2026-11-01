@@ -80,6 +80,8 @@ export const mockPlaces: Place[] = [
         media: [{ type: 'photo', url: '' }],
       },
     ],
+    latitude: 45.0110,
+    longitude: 6.1220,
     proximity: 12400,
   },
   {
@@ -144,6 +146,8 @@ export const mockPlaces: Place[] = [
         media: [{ type: 'photo', url: '' }],
       },
     ],
+    latitude: 46.2093,
+    longitude: 6.1490,
     proximity: 3100,
   },
   {
@@ -211,6 +215,8 @@ export const mockPlaces: Place[] = [
         media: [{ type: 'photo', url: '' }],
       },
     ],
+    latitude: 43.7735,
+    longitude: 11.2440,
     proximity: 540,
   },
   {
@@ -275,6 +281,8 @@ export const mockPlaces: Place[] = [
         media: [{ type: 'photo', url: '' }],
       },
     ],
+    latitude: 43.7637,
+    longitude: 11.2582,
     proximity: 1200,
   },
   {
@@ -339,14 +347,40 @@ export const mockPlaces: Place[] = [
         media: [{ type: 'photo', url: '' }],
       },
     ],
+    latitude: 52.5320,
+    longitude: 13.3830,
     proximity: 7600,
   },
 ];
 
-// Every place.
-export async function getPlaces(): Promise<Place[]> {
-  return mockRequest(mockPlaces);
+export type PlaceFilters = {
+  query?: string; // matches the place name or city
+  placeTypes?: string[]; // empty or missing means any type
+  suitedFor?: string[]; // empty or missing means any; a place matches if it has at least one
+};
+
+// Places that match the filters, in mock order. With no filters, every place.
+export async function getPlaces(filters: PlaceFilters = {}): Promise<Place[]> {
+  const query = filters.query?.trim().toLowerCase() ?? '';
+  const matches = mockPlaces.filter((place) => {
+    if (query && !place.name.toLowerCase().includes(query) && !place.city.toLowerCase().includes(query)) {
+      return false;
+    }
+    if (filters.placeTypes?.length && !filters.placeTypes.includes(place.placeType)) {
+      return false;
+    }
+    if (filters.suitedFor?.length && !place.suitedFor.some((tag) => filters.suitedFor!.includes(tag))) {
+      return false;
+    }
+    return true;
+  });
+  return mockRequest(matches);
 }
+
+// Every place type and suited-for tag that exists, used to build the filter options.
+// Built from the mock places (a Set drops the repeats) so they stay in sync with the data.
+export const PLACE_TYPES = [...new Set(mockPlaces.map((place) => place.placeType))];
+export const SUITED_FOR = [...new Set(mockPlaces.flatMap((place) => place.suitedFor))];
 
 // One place by its id, or null if there isn't one with that id.
 export async function getPlace(id: string): Promise<Place | null> {
@@ -355,4 +389,14 @@ export async function getPlace(id: string): Promise<Place | null> {
     return mockRequest(null);
   }
   return mockRequest(found);
+}
+
+// Flips the saved state of a place and returns the new value.
+// TODO: replace with savePlace/unsavePlace once they exist (see the NOT BUILT YET note in
+// src/services/collections.ts), since saved-or-not belongs in collections, not on the place.
+export async function toggleBookmark(placeId: string): Promise<boolean> {
+  const place = mockPlaces.find((p) => p.id === placeId);
+  if (!place) return mockRequest(false);
+  place.bookmark = !place.bookmark;
+  return mockRequest(place.bookmark);
 }

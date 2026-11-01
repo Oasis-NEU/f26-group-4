@@ -1,24 +1,44 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-type RatingStarsProps = {
-  // The selected rating. Zero means nothing selected.
-  rating: number;
+// Shows a rating out of 5 as stars, with the number next to them.
+// Used on place cards, the Map preview and Place details.
+// Pass `onChange` to turn it into a picker instead, so people can tap 1-5 (used on Upload).
 
-  // Gives the selected number back to the page.
+type RatingStarsProps = {
+  rating: number; // 0 to 5, e.g. 4.5. On the picker, 0 means nothing selected yet
+  label?: string; // optional text before the stars, e.g. "Friends"
+  onChange?: (rating: 1 | 2 | 3 | 4 | 5) => void; // gives the picked number back to the page
+};
+
+export function RatingStars({ rating, label, onChange }: RatingStarsProps) {
+  if (onChange) {
+    return <RatingPicker rating={rating} label={label} onChange={onChange} />;
+  }
+
+  const filled = Math.round(Math.min(5, Math.max(0, rating)));
+  return (
+    <View style={styles.row} accessible accessibilityLabel={`${label ?? 'Rating'} ${rating.toFixed(1)} out of 5`}>
+      {label && <Text style={styles.label}>{label}</Text>}
+      <Text style={styles.stars}>{'★'.repeat(filled) + '☆'.repeat(5 - filled)}</Text>
+      <Text style={styles.number}>{rating.toFixed(1)}</Text>
+    </View>
+  );
+}
+
+type RatingPickerProps = {
+  rating: number;
+  label?: string;
   onChange: (rating: 1 | 2 | 3 | 4 | 5) => void;
 };
 
-export function RatingStars({
-  rating,
-  onChange,
-}: RatingStarsProps) {
+function RatingPicker({ rating, label = 'Rating', onChange }: RatingPickerProps) {
   const stars = [1, 2, 3, 4, 5] as const;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Rating</Text>
+    <View style={styles.picker}>
+      <Text style={styles.pickerLabel}>{label}</Text>
 
-      <View style={styles.row}>
+      <View style={styles.pickerRow}>
         {stars.map((star) => (
           <Pressable
             key={star}
@@ -26,41 +46,52 @@ export function RatingStars({
             accessibilityRole="button"
             accessibilityLabel={`Rate ${star} out of 5`}
             accessibilityState={{ selected: rating === star }}
-            style={styles.button}
+            style={styles.pickerButton}
           >
-            <Text style={styles.star}>
-              {star <= rating ? '★' : '☆'}
-            </Text>
+            <Text style={styles.pickerStar}>{star <= rating ? '★' : '☆'}</Text>
           </Pressable>
         ))}
       </View>
 
-      <Text>
-        {rating === 0 ? 'Choose a rating' : `${rating} out of 5`}
-      </Text>
+      <Text>{rating === 0 ? 'Choose a rating' : `${rating} out of 5`}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 20,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   label: {
+    color: '#666',
+  },
+  stars: {
+    color: '#F5A623',
+    fontSize: 16,
+  },
+  number: {
+    fontWeight: '600',
+  },
+  picker: {
+    marginBottom: 20,
+  },
+  pickerLabel: {
     fontSize: 16,
     marginBottom: 6,
   },
-  row: {
+  pickerRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
-  button: {
+  pickerButton: {
     minWidth: 48,
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  star: {
+  pickerStar: {
     fontSize: 36,
     color: '#946200',
   },

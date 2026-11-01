@@ -31,6 +31,8 @@ export type Place = {
                         // TODO: nothing generates this yet -- the mock data just has it typed in
                         // by hand. Needs a backend that reads the reviews and writes a summary.
     reviews?: Review[]; //
+    latitude: number; // where the place is, so the Map can pin it
+    longitude: number;
     proximity: number; // how far away the place is from the user, in meters
 };
 
@@ -105,5 +107,7 @@ export const mockPlace: Place = {
             ],
         },
     ],
+    latitude: 45.9237,
+    longitude: 6.8694,
     proximity: 850,
 };
