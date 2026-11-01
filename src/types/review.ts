@@ -4,8 +4,6 @@
 // 3. Replace the example fields with the data your type needs
 // 4. Use it anywhere: import { Place } from '@/types/place';
 
-import { profileName } from ""; // type has not been created yet
-
 export type Review = {
     id: string; // text; for identification purposes
     profileName: string; // the name of the user who wrote the review

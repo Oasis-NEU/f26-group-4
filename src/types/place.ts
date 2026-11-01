@@ -21,10 +21,12 @@ export type Place = {
     country: string; // ^
     website?: string; // e.g. the reservation link for a restaurant, or the booking link for an excursion
     directions: string; // would open in maps, but this may need to become its own component (?)
-    media: 'photo' | 'video'; // how to have multiple media? and captions per piece of media?
-    coverImage: 'photo'; // the cover image for the place, I'm not sure how this would be selected
+    media: string[]; // URLs of the photos/videos other users posted for this place (swiped through in the feed)
+    coverImage: string; // URL; the cover image for the place, I'm not sure how this would be selected
     description?: string; // optional field (the ? means it can be left out; aka can be left undefined)
     reviews?: Review[]; //
+    latitude: number; // where the place is, so the Map can pin it
+    longitude: number;
     proximity: number; // how far away the place is from the user, in meters
     // A field can also be another type, e.g. `author: User;` (import `User` at the top of the file first)
 };
