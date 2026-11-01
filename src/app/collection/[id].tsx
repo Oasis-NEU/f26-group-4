@@ -52,7 +52,12 @@ export default function CollectionPage() {
   const isEmpty = collection.places.length === 0 && subCollections.length === 0;
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
+    // On iOS the header is see-through, so this keeps the content from starting underneath it.
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      style={styles.page}
+      contentContainerStyle={styles.pageContent}
+    >
       {/* Puts the collection's name in the bar at the top of the screen,
           instead of the route name. */}
       <Stack.Screen options={{ title: collection.name }} />
