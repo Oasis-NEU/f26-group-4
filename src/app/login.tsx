@@ -22,7 +22,9 @@ export default function LoginPage() {
   }
 
   return (
+    // On iOS the header is see-through, so this keeps the content from starting underneath it.
     <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
