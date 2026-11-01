@@ -8,7 +8,8 @@
     "scheme": "f26group4",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.henhen1227.f26-group-4"
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +34,8 @@
           "imageWidth": 76
         }
       ],
-      "expo-maps"
+      "expo-maps",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

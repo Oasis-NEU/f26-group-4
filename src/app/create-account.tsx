@@ -48,6 +48,7 @@ export default function CreateAccountPage() {
         label="Email"
         value={email}
         onChangeText={setEmail}
+        isEmail={true}
       />
 
       <AuthInput

@@ -13,6 +13,9 @@ type AuthInputProps = {
 
   // Optional: hides the text when this is a password field.
   isPassword?: boolean;
+
+  // Optional: shows the email keyboard (with @) and lets the phone autofill an email.
+  isEmail?: boolean;
 };
 
 export function AuthInput({
@@ -20,6 +23,7 @@ export function AuthInput({
   value,
   onChangeText,
   isPassword = false,
+  isEmail = false,
 }: AuthInputProps) {
   return (
     <View style={styles.container}>
@@ -31,6 +35,8 @@ export function AuthInput({
         value={value}
         onChangeText={onChangeText}
         secureTextEntry={isPassword}
+        keyboardType={isEmail ? 'email-address' : 'default'}
+        autoComplete={isEmail ? 'email' : undefined}
         autoCapitalize="none"
         autoCorrect={false}
       />

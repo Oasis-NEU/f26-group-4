@@ -23,6 +23,21 @@ Then open the app:
 
 If your phone can't connect (common on campus Wi-Fi), start with `npx expo start --tunnel` instead.
 
+## Connecting to Supabase
+
+The app finds our Supabase project through two settings. Copy `.env.example` to a new file called `.env.local` in the project folder (git ignores it), and fill it in:
+
+```
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+Copy both values from the Supabase dashboard: **Project Settings → API Keys**. Restart `npx expo start` after changing the file. Both values are meant to be public. Never put the secret key or the database password here.
+
+Without the file, the app still runs, but signing in says "Supabase isn't set up yet".
+
+Setting up a new Supabase project? Paste each file in `supabase/migrations/` into the dashboard's **SQL Editor** and run them in order.
+
 ## Project structure
 
 ```
@@ -42,9 +57,13 @@ src/
     template-component.tsx   Copy this to make a new component
   types/                     What the app's data looks like, e.g. a Place or an Upload
     template-type.ts         Copy this to make a new type
+  hooks/                     Custom hooks
+    use-user.tsx             Who's signed in: UserContextProvider and useUser()
   services/                  Where screens get their data from
     template-service.ts      Copy this to make a new service
+    supabase.ts              The Supabase client that services use
     mock-backend.ts          Pretends to be the backend until Supabase is set up
+supabase/migrations/         The database tables, as SQL
 assets/                      Images, icons, fonts
 app.json                     App config: name, icons, splash screen
 ```
