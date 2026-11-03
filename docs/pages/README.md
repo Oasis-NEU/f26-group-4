@@ -125,6 +125,8 @@ The ▽ filter opens a small sheet with place type, suited for, and city, which 
 
 ### Services
 
+> The function and hook names in [data-layer.md](../data-layer.md#contracts) replace this table. The table below is kept to show the original plan.
+
 Each service is a copy of `src/services/template-service.ts` with mock data, so Supabase can replace the insides later.
 
 | Service | Functions |
