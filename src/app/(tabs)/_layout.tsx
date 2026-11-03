@@ -2,8 +2,8 @@ import { Tabs } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 
 // The tab bar at the bottom of the screen. Each Tabs.Screen is one tab, and its `name`
-// is the file in this folder that it opens, e.g. name="search" opens search.tsx.
-// The order matches the sketch: account, map, feed, saved, search. Feed is index.tsx, so
+// is the file in this folder that it opens, e.g. name="explore" opens explore.tsx.
+// The order matches the sketch: account, map, feed, saved, explore. Feed is index.tsx, so
 // `/` still opens it even though it's the middle tab.
 //
 // To add a tab: create a file in this folder, then add a Tabs.Screen for it below.
@@ -53,11 +53,16 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="search"
+        name="explore"
         options={{
-          title: 'Search',
+          title: 'Explore',
+          // Explore draws its own "Explore" heading, so it doesn't need a header too
+          headerShown: false,
           tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'magnifyingglass', android: 'search', web: 'search' }} tintColor={color} />
+            <SymbolView
+              name={{ ios: 'square.grid.2x2.fill', android: 'grid_view', web: 'grid_view' }}
+              tintColor={color}
+            />
           ),
         }}
       />

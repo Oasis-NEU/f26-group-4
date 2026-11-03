@@ -14,8 +14,9 @@ This folder plans each page from our low-fidelity sketch: what goes on the page,
 | 6 | Collection list | `/collection/[id]` | [06-collection-list.md](06-collection-list.md) |
 | 7 | Upload | `/upload` | [07-upload.md](07-upload.md) |
 | 8 | Profile | `/profile` | [08-profile.md](08-profile.md) |
+| 9 | Explore | `/explore` | [09-explore.md](09-explore.md) |
 
-Search is in the sketch's tab bar and already has a placeholder (`src/app/(tabs)/search.tsx`), but it isn't planned here.
+Search was in the sketch's tab bar as a placeholder. Explore has taken that tab slot, and the placeholder page is gone. Searching for other users still has no home -- see [09-explore.md](09-explore.md).
 
 ## Navigation
 
@@ -34,8 +35,9 @@ Root Stack                     src/app/_layout.tsx, wrapped in a SessionProvider
    │  ├─ map                   /map
    │  ├─ index                 /                   "Feed" tab, the app opens here
    │  ├─ saved                 /saved              NEW tab
-   │  └─ search                /search             (not in this plan)
+   │  └─ explore               /explore            NEW tab, replaced search
    ├─ place/[id]               /place/:id          pushed, back button
+   ├─ city/[name]              /city/:name         pushed, back button       NEW (see 09)
    ├─ collection/[id]          /collection/:id     pushed, back button       NEW
    ├─ upload                   /upload             modal                     NEW
    ├─ save-to-collection       /save-to-collection sheet, ?placeId=...       NEW (see 05)
@@ -55,13 +57,14 @@ flowchart TD
     map["Map<br/>/map"]
     feed["Feed<br/>/"]
     saved["Saved collections<br/>/saved"]
-    search["Search<br/>/search"]
+    explore["Explore<br/>/explore"]
   end
 
   login -->|sign in or demo user| feed
   feed -->|tap card| place["Place details<br/>/place/[id]"]
   map -->|pin popup| place
-  search --> place
+  explore -->|tap a city tile| city["City<br/>/city/[name]"]
+  city -->|tap a place| place
   profile -->|tap a review| place
   saved -->|tap a collection| collection["Collection list<br/>/collection/[id]"]
   collection -->|tap a row| place
@@ -78,10 +81,10 @@ flowchart TD
 
 ### Tab bar
 
-The sketch's tab order, left to right: **Account (Profile), Map, Feed, Saved, Search**. The current `src/app/(tabs)/_layout.tsx` has Feed, Search, Map, Profile, so the changes are:
+The sketch's tab order, left to right: **Account (Profile), Map, Feed, Saved, Search**. The tab bar now reads **Profile, Map, Feed, Saved, Explore** -- Explore took the slot the Search placeholder had.
 
-- Add a `saved.tsx` tab (SF Symbol `bookmark.fill`, Material `bookmark`).
-- Reorder the tabs to match the sketch.
+- Add a `saved.tsx` tab (SF Symbol `bookmark.fill`, Material `bookmark`). Done.
+- Reorder the tabs to match the sketch. Done.
 - Feed stays as `index.tsx`, so `/` is still the Feed even though it's now the middle tab. After building the login gate, check that signing in lands on Feed and not on the first tab (Profile). If it doesn't, look up how to set the initial tab in the Expo Router docs.
 
 ### Login gate

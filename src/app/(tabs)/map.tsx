@@ -1,6 +1,9 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors } from '@/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MapPlacePreview } from '@/components/map-place-preview';
@@ -32,7 +35,12 @@ export default function MapScreen() {
         setPlaces(result);
         // Searching moves the map to the first match; clearing the search zooms back out
         const first = result[0];
-        setCamera(query.trim() && first ? { latitude: first.latitude, longitude: first.longitude, zoom: 10 } : WORLD_CAMERA);
+        const hasCoordinates = first?.latitude !== undefined && first?.longitude !== undefined;
+        setCamera(
+          query.trim() && hasCoordinates
+            ? { latitude: first.latitude!, longitude: first.longitude!, zoom: 10 }
+            : WORLD_CAMERA
+        );
         // Close the card if its place was filtered out
         setSelectedId((id) => (result.some((p) => p.id === id) ? id : null));
       })
@@ -86,6 +94,16 @@ export default function MapScreen() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -100,7 +118,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   preview: {
     position: 'absolute',

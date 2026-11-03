@@ -4,6 +4,8 @@ import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimen
 
 import { Place } from '@/types/place';
 import { getCountryFlag } from '@/utils/country-flags';
+import { colors, radius, spacing, type } from '@/theme';
+import { RatingBadge, Tag } from '@/components/ui';
 
 // Shows everything about one place. The screen (src/app/place/[id].tsx) finds the
 // place and hands it here; this component only displays what it's given.
@@ -122,26 +124,18 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
             )}
           </View>
 
-          {/* Friends' and "for you" are optional, so each one is checked first. */}
-          {/* TODO: swap the ★ text for the shared RatingStars component once someone builds it. */}
+          {/* Friends' and "for you" are optional, so each one is checked first.
+              The badge itself is a design-system component -- the three kinds
+              look different on purpose, see src/components/ui/rating-badge.tsx. */}
           <View style={styles.ratingRow}>
-            <View style={styles.ratingBadge}>
-              <Text style={styles.ratingNumber}>★ {place.averageRating.toFixed(1)}</Text>
-              <Text style={styles.ratingLabel}>Average</Text>
-            </View>
+            <RatingBadge variant="average" rating={place.averageRating} />
 
             {place.friendsRating !== undefined && (
-              <View style={styles.ratingBadge}>
-                <Text style={styles.ratingNumber}>★ {place.friendsRating.toFixed(1)}</Text>
-                <Text style={styles.ratingLabel}>Friends</Text>
-              </View>
+              <RatingBadge variant="friends" rating={place.friendsRating} />
             )}
 
             {place.algorithmRating !== undefined && (
-              <View style={styles.ratingBadge}>
-                <Text style={styles.ratingNumber}>★ {place.algorithmRating.toFixed(1)}</Text>
-                <Text style={styles.ratingLabel}>For you</Text>
-              </View>
+              <RatingBadge variant="forYou" rating={place.algorithmRating} />
             )}
           </View>
         </View>
@@ -170,12 +164,10 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
 
         <Text style={styles.sectionHeading}>Best suited for</Text>
 
-        {/* One pill per tag. .map() turns the array of strings into a list of Views. */}
+        {/* One pill per tag. .map() turns the array of strings into a list of Tags. */}
         <View style={styles.chipRow}>
           {place.suitedFor.map((tag) => (
-            <View key={tag} style={styles.chip}>
-              <Text style={styles.chipText}>{tag}</Text>
-            </View>
+            <Tag key={tag} label={tag} />
           ))}
         </View>
 
@@ -213,7 +205,9 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
               </View>
 
               <Text style={styles.postAuthor}>{review.profileName}</Text>
-              <Text style={styles.postRating}>★ {review.rating} / 5</Text>
+              <Text style={styles.postRating}>
+                <Text style={styles.starPost}>★</Text> {review.rating} / 5
+              </Text>
 
               {/* numberOfLines cuts long reviews off with "..." so every card is
                   roughly the same height */}
@@ -233,178 +227,183 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   coverBlock: {
     width: '100%',
-    backgroundColor: '#dcdcdc',
+    backgroundColor: colors.fill,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative', // lets the buttons sit on top using `position: absolute`
   },
   placeholderLabel: {
-    fontSize: 13,
-    color: '#8a8a8a',
+    fontSize: type.label,
+    color: colors.textMuted,
   },
-  // The squoval shape shared by every button sitting on the photo.
+  // The shape shared by every button sitting on the photo.
   overlayButton: {
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    // Slightly see-through white, so you can tell there's a photo underneath
+    // instead of a solid sticker sitting on it.
+    backgroundColor: colors.overlay,
+    borderRadius: radius.round,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   overlayButtonFilled: {
-    backgroundColor: '#c8c8c8',
+    // Saved turns yellow. It's the one place in the app where a brand colour
+    // means a state rather than an identity, and it's deliberate -- saving is
+    // the thing we most want people to notice they've done.
+    backgroundColor: colors.saved,
   },
   overlayButtonText: {
-    fontSize: 13,
+    fontWeight: '500',
+    fontSize: type.label,
+    color: colors.overlayIcon,
   },
   backButton: {
     position: 'absolute',
-    top: 16,
-    left: 16,
+    top: spacing.lg,
+    left: spacing.lg,
   },
   topRightButtons: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: spacing.lg,
+    right: spacing.lg,
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
   },
   distanceBadge: {
     position: 'absolute',
-    bottom: 16,
-    left: 16,
+    bottom: spacing.lg,
+    left: spacing.lg,
   },
   body: {
-    padding: 16,
+    padding: spacing.lg,
     gap: 10,
   },
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: spacing.md,
   },
   titleArea: {
     flex: 1, // takes the leftover space, so the name wraps instead of squashing the ratings
     gap: 6,
   },
   title: {
-    fontSize: 22,
+    // The display font is already extra-bold, so there's no fontWeight here.
+    // Setting both would make it heavier than designed, or get ignored.
     fontWeight: 'bold',
+    fontSize: type.title,
+    letterSpacing: -0.8, // the design tracks headings in tight
+
+    color: colors.text,
   },
   verifiedBadge: {
-    backgroundColor: '#e0e0e0',
-    borderRadius: 12,
+    backgroundColor: colors.fill,
+    borderRadius: radius.round,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
     alignSelf: 'flex-start', // stops the badge stretching the full width
   },
   verifiedText: {
-    fontSize: 12,
+    fontWeight: '500',
+    fontSize: type.small,
+    color: colors.text,
   },
   ratingRow: {
     flexDirection: 'row',
     gap: 6,
   },
-  ratingBadge: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    alignItems: 'center',
-  },
-  ratingNumber: {
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  ratingLabel: {
-    fontSize: 10,
-    color: '#555555',
+  starPost: {
+    color: colors.cornerBadgeStar,
   },
   subtitle: {
-    fontSize: 15,
-    color: '#555555',
+    fontSize: type.body,
+    color: colors.textMuted,
   },
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   link: {
-    fontSize: 15,
+    fontWeight: '500',
+    fontSize: type.body,
+    // Links are the one thing that's blue. Nothing else in the interface is,
+    // so blue reads as "this goes somewhere" without needing to say so.
+    color: colors.link,
     textDecorationLine: 'underline',
   },
   linkSeparator: {
-    fontSize: 15,
-    color: '#555555',
+    fontSize: type.body,
+    color: colors.textMuted,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap', // tags move onto a second line instead of running off the edge
-    gap: 8,
-  },
-  chip: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  chipText: {
-    fontSize: 13,
+    gap: spacing.sm,
   },
   summary: {
-    fontSize: 15,
+    fontSize: type.body,
     lineHeight: 22,
+    color: colors.text,
   },
   summaryNote: {
-    fontSize: 12,
-    color: '#8a8a8a',
+    fontSize: type.small,
+    color: colors.textMuted,
   },
   sectionHeading: {
-    fontSize: 18,
     fontWeight: 'bold',
-    paddingTop: 8,
+    fontSize: type.heading,
+    letterSpacing: -0.5,
+    paddingTop: spacing.sm,
+    color: colors.text,
   },
   // Same as sectionHeading, but for the bits that sit outside the padded body.
   sectionHeadingWide: {
-    fontSize: 18,
     fontWeight: 'bold',
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    fontSize: type.heading,
+    letterSpacing: -0.5,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    color: colors.text,
   },
   postStrip: {
-    paddingLeft: 16,
-    paddingVertical: 12,
+    paddingLeft: spacing.lg,
+    paddingVertical: spacing.md,
   },
   postCard: {
-    marginRight: 12,
-    gap: 4,
+    marginRight: spacing.md,
+    gap: spacing.xs,
   },
   postImage: {
     height: 120,
-    borderRadius: 12,
-    backgroundColor: '#dcdcdc',
+    borderRadius: radius.card,
+    backgroundColor: colors.fill,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   postAuthor: {
-    fontSize: 13,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: type.label,
+    color: colors.text,
   },
   postRating: {
-    fontSize: 12,
-    color: '#555555',
+    fontWeight: '600',
+    fontSize: type.small,
+    color: colors.textMuted,
   },
   postText: {
-    fontSize: 13,
+    fontSize: type.label,
     lineHeight: 18,
+    color: colors.text,
   },
   emptyText: {
-    fontSize: 15,
-    color: '#555555',
-    paddingHorizontal: 16,
+    fontSize: type.body,
+    color: colors.textMuted,
+    paddingHorizontal: spacing.lg,
   },
 });

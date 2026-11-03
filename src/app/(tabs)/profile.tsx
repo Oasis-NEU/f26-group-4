@@ -2,6 +2,9 @@ import { useCallback, useState } from 'react';
 import { Link, useFocusEffect } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors } from '@/theme';
+
 import { FriendSuggestion } from '@/components/friend-suggestion';
 import { ProfileHeader } from '@/components/profile-header';
 import { ProfileInterests } from '@/components/profile-interests';
@@ -80,6 +83,16 @@ export default function ProfilePage() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     padding: 24,
@@ -99,7 +112,7 @@ const styles = StyleSheet.create({
   },
   link: {
     marginTop: 20,
-    color: '#0066CC',
+    color: colors.link,
     fontSize: 16,
   },
   skeletonAvatar: {
@@ -107,13 +120,13 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#ddd',
+    backgroundColor: colors.fill,
   },
   skeletonLine: {
     marginTop: 16,
     height: 16,
     borderRadius: 4,
-    backgroundColor: '#ddd',
+    backgroundColor: colors.fill,
   },
   skeletonLineShort: {
     width: '50%',

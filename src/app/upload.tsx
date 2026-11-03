@@ -5,6 +5,9 @@ import {
   Text,
   TextInput,
 } from 'react-native';
+
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors, radius, spacing, type } from '@/theme';
 import { AuthInput } from '@/components/auth-input';
 import { RatingStars } from '@/components/rating-stars';
 import { TagPicker } from '@/components/tag-picker';
@@ -159,28 +162,43 @@ export default function UploadPage() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     padding: 24,
     paddingBottom: 48,
   },
   title: {
-    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 24,
+    fontSize: type.screenTitle,
+    letterSpacing: -1,
+    color: colors.text,
+    marginBottom: spacing.xl,
   },
   label: {
-    fontSize: 16,
+    fontWeight: '500',
+    fontSize: type.body,
     marginBottom: 6,
+    color: colors.text,
   },
   review: {
     minHeight: 120,
-    borderWidth: 1,
-    borderColor: '#777',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
+    // Grey fill instead of an outline, same as every other input.
+    backgroundColor: colors.fill,
+    borderRadius: radius.card,
+    padding: spacing.lg,
+    fontSize: type.body,
+    color: colors.text,
     textAlignVertical: 'top',
-    marginBottom: 24,
+    marginBottom: spacing.xl,
   },
 });

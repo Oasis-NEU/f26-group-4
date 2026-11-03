@@ -1,4 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors, radius, spacing, type } from '@/theme';
 
 type TagPickerProps = {
   // Heading above the choices.
@@ -80,14 +82,26 @@ export function TagPicker({
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     marginBottom: 24,
   },
   label: {
-    fontSize: 16,
     fontWeight: 'bold',
+    fontSize: type.body,
+    letterSpacing: -0.4,
     marginBottom: 10,
+    color: colors.text,
   },
   row: {
     flexDirection: 'row',
@@ -97,22 +111,23 @@ const styles = StyleSheet.create({
   tag: {
     minHeight: 44,
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#777',
-    borderRadius: 22,
-    paddingHorizontal: 16,
+    // No border -- grey fill off, black on. Same as every other filter pill.
+    backgroundColor: colors.fill,
+    borderRadius: radius.round,
+    paddingHorizontal: spacing.lg,
     paddingVertical: 10,
   },
   selectedTag: {
-    backgroundColor: '#245B45',
-    borderColor: '#245B45',
+    backgroundColor: colors.ink,
   },
   tagText: {
-    color: '#222',
-    fontSize: 16,
+    fontWeight: '500',
+    fontSize: type.body,
+    color: colors.text,
   },
   selectedText: {
-    color: '#FFF',
+    fontWeight: '600',
+    color: colors.textOnDark,
   },
   disabled: {
     opacity: 0.5,

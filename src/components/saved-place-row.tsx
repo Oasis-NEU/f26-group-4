@@ -1,6 +1,9 @@
+import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Place } from '@/types/place';
+import { colors, radius, spacing, type } from '@/theme';
+import { Button, CornerRating } from '@/components/ui';
 
 // One place shown as a row: a thumbnail on the left with its rating in the
 // corner, then the name and a line of details.
@@ -17,14 +20,10 @@ export function SavedPlaceRow({ place, onPress, onRemove }: SavedPlaceRowProps) 
   return (
     <Pressable style={styles.row} onPress={onPress}>
       <View style={styles.thumbnailArea}>
-        {/* Colored block instead of a photo for now.
-            TODO: swap for <Image source={place.coverImage} style={styles.thumbnail} />. */}
-        <View style={styles.thumbnail} />
+        <Image source={{ uri: place.coverImage }} style={styles.thumbnail} contentFit="cover" />
 
-        {/* The rating badge, sitting in the corner of the thumbnail */}
-        <View style={styles.ratingBadge}>
-          <Text style={styles.ratingText}>★ {place.averageRating.toFixed(1)}</Text>
-        </View>
+        {/* The rating, sitting in the corner of the thumbnail. */}
+        <CornerRating rating={place.averageRating} />
       </View>
 
       {/* flex: 1 makes this take up the leftover space, so long text wraps
@@ -37,11 +36,7 @@ export function SavedPlaceRow({ place, onPress, onRemove }: SavedPlaceRowProps) 
       </View>
 
       {/* Only shown when the parent passes an onRemove function */}
-      {onRemove !== undefined && (
-        <Pressable style={styles.removeButton} onPress={onRemove}>
-          <Text style={styles.removeText}>Remove</Text>
-        </Pressable>
-      )}
+      {onRemove !== undefined && <Button label="Remove" variant="secondary" onPress={onRemove} />}
     </Pressable>
   );
 }
@@ -50,10 +45,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 12,
-    backgroundColor: '#f7f7f7',
-    borderRadius: 16,
+    gap: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.fill,
+    borderRadius: radius.card,
   },
   thumbnailArea: {
     position: 'relative',
@@ -61,41 +56,20 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: 72,
     height: 72,
-    borderRadius: 12,
-    backgroundColor: '#e0e0e0',
-  },
-  ratingBadge: {
-    position: 'absolute',
-    bottom: 4,
-    left: 4,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  ratingText: {
-    fontSize: 11,
-    fontWeight: 'bold',
+    borderRadius: radius.image,
+    backgroundColor: colors.line,
   },
   textArea: {
     flex: 1,
     gap: 2,
   },
   name: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: type.body,
+    color: colors.text,
   },
   details: {
-    fontSize: 13,
-    color: '#555555',
-  },
-  removeButton: {
-    backgroundColor: '#e0e0e0',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  removeText: {
-    fontSize: 12,
+    fontSize: type.label,
+    color: colors.textMuted,
   },
 });

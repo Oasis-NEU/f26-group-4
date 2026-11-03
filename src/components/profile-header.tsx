@@ -1,6 +1,9 @@
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors, radius, spacing, type } from '@/theme';
+
 import type { Profile } from '@/types/profile';
 
 // Shows who this profile belongs to: picture, name, username, and where
@@ -34,6 +37,16 @@ export function ProfileHeader({ profile, isOwnProfile, onEditPress }: ProfileHea
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
@@ -45,17 +58,22 @@ const styles = StyleSheet.create({
     borderRadius: 48,
   },
   name: {
-    fontSize: 20,
     fontWeight: 'bold',
+    fontSize: 20,
+    letterSpacing: -0.6,
+    color: colors.text,
   },
   username: {
-    color: 'gray',
+    fontSize: type.label,
+    color: colors.textMuted,
   },
   editButton: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+    // Was an outlined button. Nothing in this design system is outlined -- the
+    // pale blue fill is what makes it read as a button.
+    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.round,
+    backgroundColor: colors.secondaryFill,
   },
 });
