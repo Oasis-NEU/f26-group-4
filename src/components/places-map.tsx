@@ -1,26 +1,29 @@
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, Platform, StyleSheet, Text } from 'react-native';
 
 // THEME CODE -- design system. See the note above the styles at the bottom.
 import { colors } from '@/theme';
 
+import { MapImageStack, STACK_SIZE } from '@/components/map-image-stack';
 import { MapPlacePreview } from '@/components/map-place-preview';
 import type { Place } from '@/types/place';
+import { getMapPreviewImages } from '@/utils/map-preview-images';
 
-// Full-screen map with one pin per place. Uses expo-maps: Apple Maps on iOS, Google Maps on
-// Android. expo-maps doesn't work on web or in Expo Go (it needs a development build), so it is
-// loaded inside try/catch. If it isn't available, this shows a plain list of places instead,
-// so the Map tab never crashes.
-// It holds no data itself: the screen passes in the places and hears back which pin was tapped.
+// Full-screen map with one marker per place. Each marker is a small stack of photos (friends'
+// photos first) instead of a pin. Uses react-native-maps: Apple Maps on iOS, Google Maps on
+// Android. If it isn't available, this shows a plain list of places instead, so the Map tab
+// never crashes.
+// It holds no data itself: the screen passes in the places and hears back which marker was tapped.
 
-// expo-maps is alpha, so its API may change when we update the SDK
-let ExpoMaps: typeof import('expo-maps') | null = null;
+// react-native-maps may not be available (e.g. on web), so it is loaded inside try/catch
+let RNMaps: typeof import('react-native-maps') | null = null;
 if (Platform.OS !== 'web') {
   try {
     // require() instead of import, so a missing native module can be caught here
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    ExpoMaps = require('expo-maps');
+    RNMaps = require('react-native-maps');
   } catch {
-    ExpoMaps = null;
+    RNMaps = null;
   }
 }
 
@@ -35,16 +38,26 @@ export const WORLD_CAMERA: MapCamera = { latitude: 20, longitude: 0, zoom: 1 };
 
 type PlacesMapProps = {
   places: Place[];
+  friendUsernames?: string[]; // whose photos go on top of each stack
   camera: MapCamera; // where the map is looking; change it to move the map
   onSelectPlace: (placeId: string | null) => void; // a pin was tapped, or null when the map was
   onViewDetails: (placeId: string) => void; // used by the fallback list
 };
 
-export function PlacesMap({ places, camera, onSelectPlace, onViewDetails }: PlacesMapProps) {
-  const MapView =
-    Platform.OS === 'ios' ? ExpoMaps?.AppleMaps.View : Platform.OS === 'android' ? ExpoMaps?.GoogleMaps.View : null;
+export function PlacesMap({ places, friendUsernames = [], camera, onSelectPlace, onViewDetails }: PlacesMapProps) {
+  const MapView = RNMaps?.default;
+  const Marker = RNMaps?.Marker;
+  const mapRef = useRef<InstanceType<NonNullable<typeof MapView>>>(null);
 
-  if (!MapView) {
+  // Move the map when the screen changes the camera (e.g. after a search)
+  useEffect(() => {
+    mapRef.current?.animateCamera(
+      { center: { latitude: camera.latitude, longitude: camera.longitude }, zoom: camera.zoom },
+      { duration: 500 },
+    );
+  }, [camera]);
+
+  if (!MapView || !Marker) {
     return (
       <FlatList
         data={places}
@@ -58,19 +71,61 @@ export function PlacesMap({ places, camera, onSelectPlace, onViewDetails }: Plac
 
   return (
     <MapView
+      ref={mapRef}
       style={styles.map}
-      cameraPosition={{
-        coordinates: { latitude: camera.latitude, longitude: camera.longitude },
+      initialCamera={{
+        center: { latitude: camera.latitude, longitude: camera.longitude },
         zoom: camera.zoom,
+        heading: 0,
+        pitch: 0,
       }}
-      markers={places.map((place) => ({
-        id: place.id,
-        coordinates: { latitude: place.latitude, longitude: place.longitude },
-        title: place.name,
-      }))}
-      onMarkerClick={(marker: { id?: string }) => onSelectPlace(marker.id ?? null)}
-      onMapClick={() => onSelectPlace(null)}
-    />
+      onPress={() => onSelectPlace(null)}
+    >
+      {places.map((place) => (
+        <StackMarker
+          key={place.id}
+          Marker={Marker}
+          place={place}
+          images={getMapPreviewImages(place, friendUsernames)}
+          onPress={() => onSelectPlace(place.id)}
+        />
+      ))}
+    </MapView>
+  );
+}
+
+// One marker. Android draws a marker's view once into a bitmap, so it keeps watching the view
+// until the photo has loaded, then stops (watching all the time would make the map slow).
+function StackMarker({
+  Marker,
+  place,
+  images,
+  onPress,
+}: {
+  Marker: NonNullable<typeof RNMaps>['Marker'];
+  place: Place;
+  images: string[];
+  onPress: () => void;
+}) {
+  const [tracking, setTracking] = useState(true);
+
+  return (
+    <Marker
+      coordinate={{ latitude: place.latitude, longitude: place.longitude }}
+      onPress={(e) => {
+        e.stopPropagation(); // so the map's own onPress doesn't immediately close the card
+        onPress();
+      }}
+      tracksViewChanges={tracking}
+      anchor={{ x: 0.5, y: 0.5 }}
+      accessibilityLabel={place.name}
+    >
+      {images.length > 0 ? (
+        <MapImageStack images={images} onLoad={() => setTracking(false)} />
+      ) : (
+        <Text style={{ fontSize: STACK_SIZE / 2 }}>📍</Text>
+      )}
+    </Marker>
   );
 }
 

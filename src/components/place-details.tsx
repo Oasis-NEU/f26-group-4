@@ -101,7 +101,7 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
 
           {/* TODO: this should open the Upload page with this place already filled in. */}
           <Pressable style={styles.overlayButton}>
-            <Text style={styles.overlayButtonText}>Review</Text>
+            <Text style={styles.overlayButtonText}>Post</Text>
           </Pressable>
         </View>
 
@@ -176,7 +176,7 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
           <>
             <Text style={styles.sectionHeading}>Summary</Text>
             <Text style={styles.summary}>{place.aiSummary}</Text>
-            <Text style={styles.summaryNote}>Summarised from reviews</Text>
+            <Text style={styles.summaryNote}>Summarised from posts</Text>
           </>
         )}
       </View>

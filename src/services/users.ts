@@ -171,6 +171,13 @@ export async function getSuggestionReason(myId: string, other: Profile): Promise
   return undefined;
 }
 
+// The usernames of a user's friends, e.g. to tell which posts came from friends
+export async function getFriendUsernames(userId: string): Promise<string[]> {
+  const followingIds = await getFollowingIds(userId);
+  const names = mockUsers.filter((user) => followingIds.includes(user.id)).map((user) => user.username);
+  return mockRequest(names);
+}
+
 // Saves changes to a profile and returns the updated profile,
 // or null if the user doesn't exist.
 export async function updateProfile(

@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 // THEME CODE -- design system. See the note above the styles at the bottom.
 import { colors } from '@/theme';
@@ -12,9 +12,14 @@ import { colors } from '@/theme';
 type MediaStripProps = {
   images: string[]; // image URLs
   width: number; // how wide the strip is; height is 5/4 of this
+  onPress?: () => void; // tapping an image
+  onSwipePastEnd?: () => void; // dragging past the last image (e.g. to open the place page)
 };
 
-export function MediaStrip({ images, width }: MediaStripProps) {
+// How far (px) the user must drag beyond the last image to count as a swipe past the end
+const SWIPE_PAST_END = 40;
+
+export function MediaStrip({ images, width, onPress, onSwipePastEnd }: MediaStripProps) {
   const [page, setPage] = useState(0);
   const height = width * 1.25;
 
@@ -26,9 +31,17 @@ export function MediaStrip({ images, width }: MediaStripProps) {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
+        alwaysBounceHorizontal
+        overScrollMode="always"
+        onScrollEndDrag={(e) => {
+          const { contentOffset } = e.nativeEvent;
+          if (contentOffset.x > (images.length - 1) * width + SWIPE_PAST_END) onSwipePastEnd?.();
+        }}
         onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
         renderItem={({ item }) => (
-          <Image source={{ uri: item }} style={{ width, height }} contentFit="cover" />
+          <Pressable onPress={onPress} accessibilityRole="imagebutton">
+            <Image source={{ uri: item }} style={{ width, height }} contentFit="cover" />
+          </Pressable>
         )}
       />
       {images.length > 1 && (
