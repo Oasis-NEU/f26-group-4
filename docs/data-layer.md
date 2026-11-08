@@ -406,7 +406,7 @@ The session is on Supabase Auth ([2b](#2b-auth-login-owner)). Signing in as some
    npx supabase migration new initial_schema
    ```
 
-   Done differently: the schema is three migrations in `supabase/migrations/` (core, people, reactions). They were pushed to the shared project on Nov 8, 2026 with `npx supabase db push --remote` (in CLI v3, plain `db push` targets the local stack).
+   Done differently: the schema is three migrations in `supabase/migrations/` (core, people, reactions), plus `drop_listings`, which removed an unused, unprotected `listings` table the shared project started with. They were pushed to the shared project on Nov 8, 2026 with `npx supabase db push --remote` (in CLI v3, plain `db push` targets the local stack).
 5. Done differently: the demo data is one file per system in `supabase/seed/`, and `npm run demo:reset` creates the demo accounts and loads it (backend-plan.md, "Demo data").
 6. `npx supabase gen types --schema public > src/types/database.ts`, from the local stack. **Not with `--remote`:** the shared project's generator leaves computed fields like `average_rating` out of the row types and makes the `city_stats` columns nullable, so the services stop typechecking. (CLI v3 replaced `--linked` and `--lang`.)
 7. The **public** `media` bucket and its policies are created by the core migration (see [Media](#media)).
