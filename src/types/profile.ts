@@ -1,5 +1,5 @@
 // A user's profile: who they are, where they live/travel, and their posts.
-// Used by the Profile Page.
+// Used by the Profile Page and Edit profile.
 // See src/types/template-type.ts if you want to see how a type file is put together.
 
 export type Profile = {
@@ -7,25 +7,33 @@ export type Profile = {
   name: string;
   username: string;
   profilePicture?: string; // URL to the image; missing means show initials (see Avatar)
+  // The initials' background color (0-359, a hue) when there's no photo. Missing
+  // means pick one from the user id (not the name), so it never changes just
+  // because they rename themselves.
+  avatarHue?: number;
   bio?: string; // short description shown next to the avatar (optional)
-  homeCountry: string; // 2-letter country code, e.g. "US"; their "home base"; used for the flag
-  homeCity: string; // e.g. "Boston"; shown as "Lives in Boston 🇺🇸"
-  coverImage?: string; // a cover photo the user picked; overrides the automatic one
-  dreamTrip?: string; // city used for the cover photo when they're home
-  status: TravelStatus; // home / traveling / planning; set by hand
-  statusSharing: {
-    // how much of their status other people can see
-    closeFriends: StatusDetail;
-    everyone: StatusDetail;
+  // auto: current travel city, else dream trip. custom: coverImage. none: no cover band at all.
+  coverMode: 'auto' | 'custom' | 'none';
+  coverImage?: string; // only used when coverMode is 'custom'
+  homeCityId: string; // a src/services/cities.ts id; their "home base"
+  dreamTripCityId?: string; // a cities.ts id; used for the cover fallback when home
+  status: TravelStatus & {
+    sharing: {
+      // how much of the status each audience can see
+      closeFriends: StatusDetail;
+      everyone: StatusDetail;
+    };
   };
   closeFriendIds: string[]; // IDs of their close friends, picked from their followers
   goals?: TravelGoal[]; // yearly travel goals; progress is calculated, not stored
-  interests: string[]; // hobbies/interests, e.g. ["hiking", "photography"]
+  interestIds: string[]; // src/services/interests.ts ids
   // Who follows whom now lives in src/services/follows.ts as a `follows` table,
   // not on the profile itself (see getFollowerIds/getFollowingIds).
 };
 
-// Where the user is right now. Countries are 2-letter codes, e.g. "FR".
+// Where the user is right now. City and country are picked from the same city
+// list as "Lives in"/"Dream trip" (src/services/cities.ts), so country is
+// always a full name, e.g. "France" -- never a typed-in value or a code.
 export type TravelStatus =
   | { kind: 'home' }
   | { kind: 'traveling'; city: string; country: string; until?: string } // until: "2026-11-20"

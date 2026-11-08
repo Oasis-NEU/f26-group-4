@@ -1,59 +1,85 @@
 import { Image } from 'expo-image';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, Text, useColorScheme, View } from 'react-native';
 
-// A person's picture, or -- if they don't have one -- their initials on a soft
-// color. The color is picked from their name, so the same person always gets
-// the same color. Used anywhere a profile picture shows up (profile header,
-// friend suggestions, the follow-requests inbox, etc).
+// A person's picture, or -- if they don't have one -- their initials on a
+// soft color. The color comes from `avatarHue` (0-359) if the profile has
+// one, otherwise it's derived from their user id so it's stable even if they
+// rename themselves. If a photo fails to load, this falls back to initials
+// instead of a broken-image icon. Used anywhere a profile picture shows up
+// (profile header, friend suggestions, the follow-requests inbox, etc).
 
-// Soft, readable-with-white-text colors. Picked by hashing the name so it's
-// deterministic (no color flashing/changing between renders).
-const FALLBACK_COLORS = ['#E07A5F', '#3D8D7A', '#5C7AEA', '#B5838D', '#F2A541', '#6A994E'];
-
-function colorForName(name: string): string {
+function hashString(value: string): number {
   let hash = 0;
-  for (const char of name) {
+  for (const char of value) {
     hash = char.charCodeAt(0) + ((hash << 5) - hash);
   }
-  return FALLBACK_COLORS[Math.abs(hash) % FALLBACK_COLORS.length];
+  return Math.abs(hash);
 }
 
-function initialsForName(name: string): string {
+function hueForUserId(userId: string): number {
+  return hashString(userId) % 360;
+}
+
+// First letter of the first and last word of the name ("Maya Chen" -> "MC").
+// One word -> one letter. No name at all -> first letter of the username.
+function initialsFor(name: string, username?: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return '?';
-  const first = words[0][0];
-  const last = words.length > 1 ? words[words.length - 1][0] : '';
-  return (first + last).toUpperCase();
+  if (words.length === 0) {
+    return username ? username[0].toUpperCase() : '?';
+  }
+  if (words.length === 1) {
+    return words[0][0].toUpperCase();
+  }
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
 type AvatarProps = {
-  name: string; // used for initials and to pick the fallback color
-  photoUrl?: string; // when missing, falls back to initials-on-color
+  name: string; // used for initials
+  username?: string; // fallback initial when there's no name at all
+  uri?: string; // the photo; missing (or failing to load) falls back to initials
+  userId: string; // picks a stable color when avatarHue isn't set
+  avatarHue?: number; // 0-359; overrides the userId-derived color
   size?: number; // diameter in px
 };
 
-export function Avatar({ name, photoUrl, size = 56 }: AvatarProps) {
+export function Avatar({ name, username, uri, userId, avatarHue, size = 56 }: AvatarProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const colorScheme = useColorScheme();
   const shapeStyle = { width: size, height: size, borderRadius: size / 2 };
 
-  if (photoUrl) {
-    return <Image source={{ uri: photoUrl }} style={[styles.image, shapeStyle]} />;
-  }
+  const hue = avatarHue ?? hueForUserId(userId);
+  const isDark = colorScheme === 'dark';
+  // Soft backgrounds (light = very pale, dark = muted), with text darkened/
+  // lightened the same hue so initials stay readable either way.
+  const backgroundColor = isDark ? `hsl(${hue}, 28%, 32%)` : `hsl(${hue}, 55%, 86%)`;
+  const textColor = isDark ? `hsl(${hue}, 30%, 88%)` : `hsl(${hue}, 45%, 28%)`;
 
   return (
-    <View style={[styles.fallback, shapeStyle, { backgroundColor: colorForName(name) }]}>
-      <Text style={[styles.initials, { fontSize: size * 0.4 }]}>{initialsForName(name)}</Text>
+    <View style={[styles.fallback, shapeStyle, { backgroundColor }]}>
+      <Text style={[styles.initials, { fontSize: size * 0.4, color: textColor }]}>{initialsFor(name, username)}</Text>
+
+      {/* Layered on top of the initials so there's never a grey flash -- the
+          initials show immediately, and the photo fades in over them once loaded. */}
+      {uri && !imageFailed && (
+        <Image
+          source={{ uri }}
+          style={[StyleSheet.absoluteFill, shapeStyle]}
+          transition={200}
+          onError={() => setImageFailed(true)}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  image: {},
   fallback: {
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   initials: {
-    color: '#fff',
     fontWeight: '600',
   },
 });

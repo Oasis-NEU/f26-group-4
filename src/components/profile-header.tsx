@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { getCountryFlag } from '@/utils/country-flags';
+import { formatStatusText } from '@/utils/status-text';
 import type { Profile, VisibleTravelStatus } from '@/types/profile';
 
 // Shows who this profile belongs to: name, username, where they live, and
@@ -11,56 +11,9 @@ import type { Profile, VisibleTravelStatus } from '@/types/profile';
 // The avatar itself is rendered by the caller, overlapping ProfileCover --
 // see ProfileCover's `avatar` prop.
 
-// getCountryFlag (src/utils/country-flags.ts) looks up by full country name,
-// but Profile stores 2-letter codes, so codes are converted here first.
-// TODO: only covers the countries in our mock data; ask Ruby about adding
-// code-based lookup to country-flags.ts directly instead of this list.
-const COUNTRY_NAME_BY_CODE: Record<string, string> = {
-  US: 'United States',
-  FR: 'France',
-  IT: 'Italy',
-  DE: 'Germany',
-  ES: 'Spain',
-  PT: 'Portugal',
-  AT: 'Austria',
-  CH: 'Switzerland',
-};
-
-function flagForCode(code: string): string {
-  const name = COUNTRY_NAME_BY_CODE[code];
-  return name ? getCountryFlag(name) : '';
-}
-
-// "Nov 20" from "2026-11-20"; "Dec" from "2026-12".
-function formatUntil(isoDate: string): string {
-  const date = new Date(isoDate);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function formatMonth(isoMonth: string): string {
-  const date = new Date(`${isoMonth}-01`);
-  return date.toLocaleDateString('en-US', { month: 'long' });
-}
-
-// The status pill's text, or null when there's nothing to show (hidden status).
-function statusText(status: VisibleTravelStatus | null): string | null {
-  if (!status) return null;
-  if (status.kind === 'home') return 'Home';
-
-  const label = status.kind === 'traveling' ? 'Traveling' : 'Planning';
-  const place = status.city ? `${status.city}, ${status.country}` : status.country;
-
-  if (status.kind === 'traveling' && status.until) {
-    return `${label} · ${place} · until ${formatUntil(status.until)}`;
-  }
-  if (status.kind === 'planning' && status.month) {
-    return `${label} · ${place} · ${formatMonth(status.month)}`;
-  }
-  return `${label} · ${place}`;
-}
-
 type ProfileHeaderProps = {
   profile: Profile; // the profile data to display
+  homeCity: { name: string; flag: string } | null; // resolved from profile.homeCityId by the caller (see cities.ts)
   visibleStatus: VisibleTravelStatus | null; // already trimmed for the current viewer
   isOwnProfile?: boolean; // true if the logged-in user is viewing their own profile
   isFollowing?: boolean; // only used when !isOwnProfile
@@ -72,6 +25,7 @@ type ProfileHeaderProps = {
 
 export function ProfileHeader({
   profile,
+  homeCity,
   visibleStatus,
   isOwnProfile,
   isFollowing,
@@ -80,16 +34,18 @@ export function ProfileHeader({
   onSharePress,
   notifyBell,
 }: ProfileHeaderProps) {
-  const pill = statusText(visibleStatus);
+  const pill = formatStatusText(visibleStatus);
 
   return (
     <View style={styles.container}>
       <Text style={styles.name}>{profile.name}</Text>
       <Text style={styles.username}>@{profile.username}</Text>
 
-      <Text>
-        Lives in {profile.homeCity} {flagForCode(profile.homeCountry)}
-      </Text>
+      {homeCity && (
+        <Text>
+          Lives in {homeCity.name} {homeCity.flag}
+        </Text>
+      )}
       {pill && <Text style={styles.statusPill}>{pill}</Text>}
 
       {isOwnProfile ? (

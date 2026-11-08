@@ -10,11 +10,12 @@ import { FriendSuggestion } from '@/components/friend-suggestion';
 import { PlacesMap, WORLD_CAMERA } from '@/components/places-map';
 import { ProfileBadges } from '@/components/profile-badges';
 import { ProfileChecklist, type ChecklistInput } from '@/components/profile-checklist';
-import { AVATAR_OVERLAP, ProfileCover } from '@/components/profile-cover';
+import { AVATAR_OVERLAP, hasVisibleCover, ProfileCover } from '@/components/profile-cover';
 import { ProfileHeader } from '@/components/profile-header';
 import { ProfileInterests } from '@/components/profile-interests';
 import { ProfilePosts, type ProfilePostSummary } from '@/components/profile-posts';
 import { ProfileStats } from '@/components/profile-stats';
+import { getCity } from '@/services/cities';
 import { getCollectionsForProfile } from '@/services/collections';
 import {
   acceptFollowRequest,
@@ -23,9 +24,11 @@ import {
   getFollowingIds,
   getFollowRequests,
 } from '@/services/follows';
+import { getInterestsByIds } from '@/services/interests';
 import { getPlace } from '@/services/places';
 import { getReviewsByAuthor, type AuthoredReview } from '@/services/reviews';
 import { getProfile, getSuggestedFriends, getSuggestionReason, getVisibleStatus } from '@/services/users';
+import { getCountryFlag } from '@/utils/country-flags';
 import type { Collection } from '@/types/collection';
 import type { Place } from '@/types/place';
 import type { Profile, VisibleTravelStatus } from '@/types/profile';
@@ -40,6 +43,9 @@ type ProfileTab = 'collections' | 'map' | 'badges';
 
 type ProfileData = {
   profile: Profile | null;
+  homeCity: { name: string; flag: string } | null; // resolved from profile.homeCityId
+  dreamTripName?: string; // resolved from profile.dreamTripCityId
+  interestNames: string[]; // resolved from profile.interestIds
   visibleStatus: VisibleTravelStatus | null;
   followerCount: number;
   followingCount: number;
@@ -67,6 +73,8 @@ async function loadProfileData(viewerId: string): Promise<ProfileData> {
   if (!fetchedProfile) {
     return {
       profile: null,
+      homeCity: null,
+      interestNames: [],
       visibleStatus: null,
       followerCount: followers.length,
       followingCount: following.length,
@@ -92,6 +100,7 @@ async function loadProfileData(viewerId: string): Promise<ProfileData> {
           name: requester.name,
           username: requester.username,
           photoUrl: requester.profilePicture,
+          avatarHue: requester.avatarHue,
           reason: await getSuggestionReason(viewerId, requester),
         };
       }),
@@ -102,8 +111,17 @@ async function loadProfileData(viewerId: string): Promise<ProfileData> {
     (place): place is Place => place !== null,
   );
 
+  const [homeCityRecord, dreamTripRecord, interests] = await Promise.all([
+    getCity(fetchedProfile.homeCityId),
+    fetchedProfile.dreamTripCityId ? getCity(fetchedProfile.dreamTripCityId) : Promise.resolve(null),
+    getInterestsByIds(fetchedProfile.interestIds),
+  ]);
+
   return {
     profile: fetchedProfile,
+    homeCity: homeCityRecord ? { name: homeCityRecord.name, flag: getCountryFlag(homeCityRecord.country) } : null,
+    dreamTripName: dreamTripRecord?.name,
+    interestNames: interests.map((interest) => interest.name),
     visibleStatus: getVisibleStatus(fetchedProfile, viewerId),
     followerCount: followers.length,
     followingCount: following.length,
@@ -154,8 +172,22 @@ export default function ProfilePage() {
     );
   }
 
-  const { profile, visibleStatus, followerCount, followingCount, reviews, suggestedFriends, followRequests, collections, places } =
-    data;
+  const {
+    profile,
+    homeCity,
+    dreamTripName,
+    interestNames,
+    visibleStatus,
+    followerCount,
+    followingCount,
+    reviews,
+    suggestedFriends,
+    followRequests,
+    collections,
+    places,
+  } = data;
+
+  const showsCover = hasVisibleCover(profile.coverMode, profile.coverImage, visibleStatus, dreamTripName);
 
   const postSummaries: ProfilePostSummary[] = reviews.map((review) => ({
     id: review.id,
@@ -179,30 +211,40 @@ export default function ProfilePage() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <ProfileCover
+          coverMode={profile.coverMode}
           coverImage={profile.coverImage}
           visibleStatus={visibleStatus}
-          dreamTrip={profile.dreamTrip}
+          dreamTrip={dreamTripName}
           isOwnProfile
           pendingRequestCount={followRequests.length}
-          avatar={<Avatar name={profile.name} photoUrl={profile.profilePicture} size={96} />}
+          avatar={
+            <Avatar
+              name={profile.name}
+              username={profile.username}
+              uri={profile.profilePicture}
+              userId={profile.id}
+              avatarHue={profile.avatarHue}
+              size={96}
+            />
+          }
           // TODO: Settings page isn't built yet.
           onSettingsPress={() => {}}
           onInboxPress={() => setIsInboxOpen(true)}
         />
 
-        <View style={styles.content}>
+        <View style={[styles.content, showsCover && styles.contentWithCover]}>
           <ProfileHeader
             profile={profile}
+            homeCity={homeCity}
             visibleStatus={visibleStatus}
             isOwnProfile
-            // TODO: Edit profile modal (/edit-profile) isn't built yet.
-            onEditPress={() => {}}
+            onEditPress={() => router.push('/edit-profile')}
           />
 
           <ProfileStats placesCount={reviews.length} followersCount={followerCount} followingCount={followingCount} />
 
           {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
-          <ProfileInterests interests={profile.interests} />
+          <ProfileInterests interests={interestNames} />
 
           <ProfileChecklist input={checklistInput} />
 
@@ -304,13 +346,18 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 16,
   },
-  // Same as `container`, but with extra top space so the avatar overlapping
-  // the bottom of ProfileCover (see AVATAR_OVERLAP) doesn't sit on top of the name/username.
   content: {
     paddingHorizontal: 24,
     paddingBottom: 24,
-    paddingTop: 24 + AVATAR_OVERLAP,
+    paddingTop: 24,
     gap: 16,
+  },
+  // Only when ProfileCover actually shows a band: extra top space so the
+  // avatar overlapping its bottom edge (see AVATAR_OVERLAP) doesn't sit on
+  // top of the name/username. No-cover profiles don't need this -- the
+  // avatar there is laid out inline by ProfileCover itself, not overlapping.
+  contentWithCover: {
+    paddingTop: 24 + AVATAR_OVERLAP,
   },
   section: {
     gap: 8,

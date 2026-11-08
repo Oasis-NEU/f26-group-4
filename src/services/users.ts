@@ -1,7 +1,7 @@
 import { getFollowerIds, getFollowingIds } from './follows';
 import { mockRequest } from './mock-backend';
 
-import type { Profile, VisibleTravelStatus } from '@/types/profile';
+import type { Profile, StatusDetail, TravelStatus, VisibleTravelStatus } from '@/types/profile';
 
 // Mock users for the Profile page. Each has their own home country, interests,
 // and friends so switching users in the demo visibly changes the app.
@@ -14,24 +14,35 @@ export const mockUsers: Profile[] = [
     username: 'folake',
     profilePicture: 'https://i.pravatar.cc/200?img=47',
     bio: 'Chasing good coffee and better views.',
-    homeCountry: 'US',
-    homeCity: 'Boston',
-    status: { kind: 'traveling', city: 'Paris', country: 'FR', until: '2026-11-20' },
-    statusSharing: { closeFriends: 'full', everyone: 'country' },
+    coverMode: 'auto',
+    homeCityId: 'boston-us',
+    dreamTripCityId: 'tokyo-jp',
+    status: {
+      kind: 'traveling',
+      city: 'Paris',
+      country: 'France',
+      until: '2026-11-20',
+      sharing: { closeFriends: 'full', everyone: 'country' },
+    },
     closeFriendIds: ['u2'],
-    interests: ['hiking', 'photography'],
+    interestIds: ['interest_hiking', 'interest_photography'],
   },
   {
     id: 'u2',
     name: 'Kenji',
     username: 'kenji_travels',
     profilePicture: 'https://i.pravatar.cc/200?img=12',
-    homeCountry: 'JP',
-    homeCity: 'Tokyo',
-    status: { kind: 'planning', city: 'Rome', country: 'IT', month: '2026-12' },
-    statusSharing: { closeFriends: 'full', everyone: 'country' },
+    coverMode: 'auto',
+    homeCityId: 'tokyo-jp',
+    status: {
+      kind: 'planning',
+      city: 'Rome',
+      country: 'Italy',
+      month: '2026-12',
+      sharing: { closeFriends: 'full', everyone: 'country' },
+    },
     closeFriendIds: [],
-    interests: ['food', 'photography'],
+    interestIds: ['interest_food', 'interest_photography'],
   },
   {
     id: 'u3',
@@ -39,18 +50,43 @@ export const mockUsers: Profile[] = [
     username: 'amara',
     profilePicture: 'https://i.pravatar.cc/200?img=32',
     bio: 'New here!',
-    homeCountry: 'NG',
-    homeCity: 'Lagos',
-    status: { kind: 'home' },
-    statusSharing: { closeFriends: 'full', everyone: 'country' },
+    coverMode: 'auto',
+    homeCityId: 'lagos-ng',
+    status: { kind: 'home', sharing: { closeFriends: 'full', everyone: 'country' } },
     closeFriendIds: [],
-    interests: ['museums', 'hiking'],
+    interestIds: ['interest_museums', 'interest_hiking'],
   },
 ];
 
 // One profile by its id, or null if there isn't one
 export async function getProfile(id: string): Promise<Profile | null> {
   return mockRequest(mockUsers.find((user) => user.id === id) ?? null);
+}
+
+// Whether a username is free to take. Usernames are stored lowercase, so the
+// check is case-insensitive. `excludingUserId` lets a profile keep its own
+// current username without it flagging as taken while editing.
+export async function isUsernameAvailable(username: string, excludingUserId?: string): Promise<boolean> {
+  const normalized = username.trim().toLowerCase();
+  const taken = mockUsers.some((user) => user.username === normalized && user.id !== excludingUserId);
+  return mockRequest(!taken);
+}
+
+// Trims a single status down to one sharing level. Pulled out of
+// getVisibleStatus so the Edit profile status panel can show live "Close
+// friends see: ..." / "Everyone sees: ..." previews without needing a full
+// Profile to trim against.
+export function trimStatusForLevel(status: TravelStatus, level: StatusDetail): VisibleTravelStatus | null {
+  if (level === 'hidden') return null;
+  if (status.kind === 'home') return status;
+
+  const city = level === 'country' ? undefined : status.city;
+
+  if (status.kind === 'traveling') {
+    return { kind: 'traveling', country: status.country, city, until: level === 'full' ? status.until : undefined };
+  }
+
+  return { kind: 'planning', country: status.country, city, month: level === 'full' ? status.month : undefined };
 }
 
 // Trims a profile's status down to what a given viewer is allowed to see.
@@ -62,21 +98,10 @@ export function getVisibleStatus(profile: Profile, viewerId: string): VisibleTra
   if (viewerId === profile.id) return profile.status;
 
   const level = profile.closeFriendIds.includes(viewerId)
-    ? profile.statusSharing.closeFriends
-    : profile.statusSharing.everyone;
+    ? profile.status.sharing.closeFriends
+    : profile.status.sharing.everyone;
 
-  if (level === 'hidden') return null;
-
-  const status = profile.status;
-  if (status.kind === 'home') return status;
-
-  const city = level === 'country' ? undefined : status.city;
-
-  if (status.kind === 'traveling') {
-    return { kind: 'traveling', country: status.country, city, until: level === 'full' ? status.until : undefined };
-  }
-
-  return { kind: 'planning', country: status.country, city, month: level === 'full' ? status.month : undefined };
+  return trimStatusForLevel(profile.status, level);
 }
 
 // People the user could follow: everyone except themselves and people they
@@ -95,7 +120,7 @@ export async function getSuggestedFriends(userId: string): Promise<Profile[]> {
   };
 
   const score = (other: Profile) =>
-    other.interests.filter((i) => me.interests.includes(i)).length + (sameTravelCountry(other) ? 1 : 0);
+    other.interestIds.filter((id) => me.interestIds.includes(id)).length + (sameTravelCountry(other) ? 1 : 0);
 
   const suggestions = mockUsers
     .filter((user) => user.id !== userId && !alreadyFollowing.includes(user.id))

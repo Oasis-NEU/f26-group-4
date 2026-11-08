@@ -16,7 +16,14 @@ type FriendSuggestionProps = {
 export function FriendSuggestion({ profile, reason, onAddPress }: FriendSuggestionProps) {
   return (
     <View style={styles.container}>
-      <Avatar name={profile.name} photoUrl={profile.profilePicture} size={56} />
+      <Avatar
+        name={profile.name}
+        username={profile.username}
+        uri={profile.profilePicture}
+        userId={profile.id}
+        avatarHue={profile.avatarHue}
+        size={56}
+      />
       <Text style={styles.name} numberOfLines={1}>
         {profile.name}
       </Text>

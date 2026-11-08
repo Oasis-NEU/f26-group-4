@@ -12,6 +12,7 @@ export type FollowRequestItem = {
   name: string;
   username: string;
   photoUrl?: string;
+  avatarHue?: number;
   reason?: string; // e.g. "Followed by Jordan"
 };
 
@@ -49,7 +50,14 @@ export function FollowRequestsSheet({ visible, onClose, requests, onAccept, onDe
               const justAccepted = justAcceptedIds.includes(item.fromId);
               return (
                 <View style={styles.row}>
-                  <Avatar name={item.name} photoUrl={item.photoUrl} size={44} />
+                  <Avatar
+                    name={item.name}
+                    username={item.username}
+                    uri={item.photoUrl}
+                    userId={item.fromId}
+                    avatarHue={item.avatarHue}
+                    size={44}
+                  />
                   <View style={styles.rowText}>
                     <Text style={styles.name}>{item.name}</Text>
                     <Text style={styles.username}>@{item.username}</Text>
