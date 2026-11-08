@@ -1,38 +1,17 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 
-// The comment icon. It only reports the tap; the parent opens the comments popup.
+// The comment icon, styled like the heart and bookmark. It only reports the tap;
+// the parent opens the comments popup.
 
 type CommentButtonProps = {
-  count: number;
   onPress: () => void;
 };
 
-export function CommentButton({ count, onPress }: CommentButtonProps) {
+export function CommentButton({ onPress }: CommentButtonProps) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`View comments (${count})`}
-      hitSlop={8}
-      style={styles.row}
-    >
-      <Text style={styles.icon}>💬</Text>
-      {count > 0 && <Text style={styles.count}>{count}</Text>}
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="View comments" hitSlop={8}>
+      <Ionicons name="chatbubble-outline" size={26} color="#111" />
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  icon: {
-    fontSize: 24,
-  },
-  count: {
-    fontSize: 14,
-    color: '#444',
-  },
-});

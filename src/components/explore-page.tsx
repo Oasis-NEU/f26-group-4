@@ -154,6 +154,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: spacing.lg,
+    // Matches the top padding on the Saved tab so the two titles line up
+    paddingTop: spacing.lg,
     paddingBottom: spacing.md,
     gap: spacing.md,
   },

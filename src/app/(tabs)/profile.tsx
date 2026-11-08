@@ -73,9 +73,9 @@ export default function ProfilePage() {
 
   if (profileQuery.isError) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <Text style={styles.message}>Couldn&apos;t load your profile.</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 

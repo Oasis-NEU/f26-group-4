@@ -16,6 +16,8 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
+          // Profile draws its own top bar, so it doesn't need a header too
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <SymbolView name={{ ios: 'person.fill', android: 'person', web: 'person' }} tintColor={color} />
           ),
@@ -47,6 +49,8 @@ export default function TabsLayout() {
         name="saved"
         options={{
           title: 'Saved',
+          // Saved draws its own "Saved" heading, so it doesn't need a header too
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <SymbolView name={{ ios: 'bookmark.fill', android: 'bookmark', web: 'bookmark' }} tintColor={color} />
           ),

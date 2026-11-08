@@ -16,14 +16,14 @@ type MapImageStackProps = {
 export function MapImageStack({ images, onLoad }: MapImageStackProps) {
   const shown = images.slice(0, 3);
   const height = STACK_SIZE + PEEK * 2;
-  const width = STACK_SIZE + PEEK;
+  const width = STACK_SIZE + PEEK * 3;
 
   return (
     <View style={{ width, height }}>
       {/* Draw the back photo first so the front ones land on top of it */}
       {[...shown].reverse().map((uri, reversedIndex) => {
         const depth = shown.length - 1 - reversedIndex; // 0 = front photo
-        const tilt = depth === 0 ? 0 : depth % 2 === 1 ? 7 : -7;
+        const tilt = [-6, 6, 14][depth] ?? 14; // front leans left, the ones behind fan out to the right
         return (
           <Image
             key={`${depth}-${uri}`}
@@ -34,7 +34,7 @@ export function MapImageStack({ images, onLoad }: MapImageStackProps) {
               styles.photo,
               {
                 top: PEEK * 2 - depth * PEEK,
-                left: PEEK / 2,
+                left: PEEK / 2 + depth * 3,
                 transform: [{ rotate: `${tilt}deg` }],
               },
             ]}

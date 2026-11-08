@@ -3,7 +3,7 @@ import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { BookmarkButton } from '@/components/bookmark-button';
 import { CommentButton } from '@/components/comment-button';
-import { CommentsModal } from '@/components/comments-modal';
+import { CommentsModal, type Comment } from '@/components/comments-modal';
 import { LikeButton } from '@/components/like-button';
 import { MediaStrip } from '@/components/media-strip';
 import { RatingStars } from '@/components/rating-stars';
@@ -36,7 +36,15 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
   const isSaved = useIsSaved(place.id);
   const toggleSave = useToggleSave();
   const [showComments, setShowComments] = useState(false);
-  const comments = place.reviews ?? [];
+  // The place's posts count as comments for now; new comments only last while the card is on screen
+  const [newComments, setNewComments] = useState<Comment[]>([]);
+  // Comments you posted come first, newest at the top, so yours is always the one people see
+  const comments: Comment[] = [
+    ...[...newComments].reverse(),
+    ...(place.reviews ?? [])
+      .filter((r) => r.reviewText)
+      .map((r) => ({ id: r.id, author: r.profileName, text: r.reviewText! })),
+  ];
 
   // Opens the place in the phone's maps app: Apple Maps on iOS, the default maps app on Android.
   // A place without coordinates opens by its address instead.
@@ -56,12 +64,14 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
     );
   }
 
+  // The line shown under the post: your latest comment if you posted one, otherwise the newest review
+  const featured = newComments.length > 0 ? comments[0] : undefined;
+
   return (
     <View style={styles.card}>
       <Pressable onPress={onPress} accessibilityRole="button" style={styles.header}>
         <View style={styles.nameRow}>
           <Text style={styles.name}>{place.name}</Text>
-          {place.isVerified && <Text style={styles.verified} accessibilityLabel="Verified">✓</Text>}
         </View>
       </Pressable>
       <Pressable onPress={openInMaps} accessibilityRole="link" accessibilityLabel={`Open ${place.name} in maps`} style={styles.locationRow}>
@@ -79,7 +89,15 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
         <CommentButton count={comments.length} onPress={() => setShowComments(true)} />
         <BookmarkButton isSaved={isSaved} onPress={() => toggleSave.mutate({ placeId: place.id, save: !isSaved })} />
       </View>
-      <CommentsModal visible={showComments} comments={comments} onClose={() => setShowComments(false)} />
+      <CommentsModal
+        visible={showComments}
+        comments={comments}
+        onPost={(text) => {
+          setNewComments((prev) => [...prev, { id: `new-${Date.now()}`, author: 'You', text }]);
+          setShowComments(false); // close the popup so your comment shows under the post
+        }}
+        onClose={() => setShowComments(false)}
+      />
 
       <View style={styles.info}>
         <View style={styles.ratings}>
@@ -94,7 +112,12 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
             </Text>
           ))}
         </View>
-        {newestReview?.reviewText ? (
+        {featured ? (
+          <Text numberOfLines={2}>
+            <Text style={styles.name}>{featured.author} </Text>
+            {featured.text}
+          </Text>
+        ) : newestReview?.reviewText ? (
           <Text numberOfLines={2}>
             <Text style={styles.name}>{newestReview.profileName} </Text>
             {newestReview.reviewText}
@@ -127,10 +150,6 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  verified: {
-    color: '#007AFF',
     fontWeight: 'bold',
   },
   location: {

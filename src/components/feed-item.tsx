@@ -39,14 +39,6 @@ export default function FeedItem({ post }: FeedItemProps) {
     post.bookmark
   );
 
-  // Counts the total number of individual comments through a loop
-  // reduce loops through the groups of comments and adds up a running total
-    // Begins at 0, and for each group it adds that group’s number of comments. The result is the total across all groups.
-  const commentCount = post.comments.reduce(
-    (total, group) => total + group.comments.length,
-    0
-  );
-
   // Everything inside return is the UI, or what appears on the screen
   return (
     // Main container for one travel post, styled with styles.feedItem (defined at the bottom)
@@ -78,9 +70,6 @@ export default function FeedItem({ post }: FeedItemProps) {
 
       {/* Displays the number of likes */}
       <Text>{post.likes} likes</Text>
-
-      {/* Displays the total number of comments */}
-      <Text>{commentCount} comments</Text>
 
       {/* Button to save or unsave the post */}
       {/*onPress runs when the user taps, flipping the bookmark: prev is the old value, and !prev is its opposite

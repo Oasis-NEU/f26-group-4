@@ -27,6 +27,12 @@ if (Platform.OS !== 'web') {
   }
 }
 
+// Apple Maps (iOS) ignores `zoom` and only understands `altitude` (metres above the ground), so
+// we send both. This roughly matches Google's zoom levels: zoom 1 is the whole globe.
+function zoomToAltitude(zoom: number) {
+  return 40_000_000 / Math.pow(2, zoom);
+}
+
 export type MapCamera = {
   latitude: number;
   longitude: number;
@@ -52,7 +58,11 @@ export function PlacesMap({ places, friendUsernames = [], camera, onSelectPlace,
   // Move the map when the screen changes the camera (e.g. after a search)
   useEffect(() => {
     mapRef.current?.animateCamera(
-      { center: { latitude: camera.latitude, longitude: camera.longitude }, zoom: camera.zoom },
+      {
+        center: { latitude: camera.latitude, longitude: camera.longitude },
+        zoom: camera.zoom,
+        altitude: zoomToAltitude(camera.zoom),
+      },
       { duration: 500 },
     );
   }, [camera]);
@@ -76,6 +86,7 @@ export function PlacesMap({ places, friendUsernames = [], camera, onSelectPlace,
       initialCamera={{
         center: { latitude: camera.latitude, longitude: camera.longitude },
         zoom: camera.zoom,
+        altitude: zoomToAltitude(camera.zoom),
         heading: 0,
         pitch: 0,
       }}

@@ -123,11 +123,6 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
         <View style={styles.titleRow}>
           <View style={styles.titleArea}>
             <Text style={styles.title}>{place.name}</Text>
-            {place.isVerified && (
-              <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedText}>Verified</Text>
-              </View>
-            )}
           </View>
 
           {/* Friends' and "for you" are optional, so each one is checked first.
@@ -304,18 +299,6 @@ const styles = StyleSheet.create({
     fontSize: type.title,
     letterSpacing: -0.8, // the design tracks headings in tight
 
-    color: colors.text,
-  },
-  verifiedBadge: {
-    backgroundColor: colors.fill,
-    borderRadius: radius.round,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.xs,
-    alignSelf: 'flex-start', // stops the badge stretching the full width
-  },
-  verifiedText: {
-    fontWeight: '500',
-    fontSize: type.small,
     color: colors.text,
   },
   ratingRow: {

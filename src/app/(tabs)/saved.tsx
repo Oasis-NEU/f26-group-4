@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CollectionCard } from '@/components/collection-card';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { SavedPlaceRow } from '@/components/saved-place-row';
 import { ALL_SAVED_ID, useCollections } from '@/hooks/use-collections';
 import { useAllSavedPlaces, useLooseSavedPlaces } from '@/hooks/use-saves';
@@ -100,6 +102,7 @@ export default function SavedPage() {
   }
 
   return (
+    <SafeAreaView style={styles.page} edges={['top']}>
     <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
       <Text style={styles.pageTitle}>Saved</Text>
 
@@ -158,6 +161,7 @@ export default function SavedPage() {
         ))
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
