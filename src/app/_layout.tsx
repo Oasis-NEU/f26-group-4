@@ -1,6 +1,8 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 
 import { SessionProvider, useSession } from '@/hooks/use-session';
+import { queryClient } from '@/lib/query-client';
 
 // The app's outermost navigator. The tab bar itself is set up in (tabs)/_layout.tsx.
 // Screens listed here open on top of the tabs, with a back button, instead of being a tab.
@@ -8,11 +10,15 @@ import { SessionProvider, useSession } from '@/hooks/use-session';
 // The two Stack.Protected groups are the login gate: signed out, only Log in and
 // Create account exist; signed in, everything else does. Signing in or out flips
 // the guards, and the router moves to the first screen that's allowed.
+// QueryClientProvider holds the React Query cache that every hook in
+// src/hooks/ reads from (docs/data-layer.md).
 export default function RootLayout() {
   return (
-    <SessionProvider>
-      <RootStack />
-    </SessionProvider>
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider>
+        <RootStack />
+      </SessionProvider>
+    </QueryClientProvider>
   );
 }
 

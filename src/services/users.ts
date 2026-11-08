@@ -7,18 +7,10 @@
 
 import { currentUserId, supabase } from '@/lib/supabase';
 
-import { isLocalPhoto, mediaPathFrom, uploadMedia, type MediaFolder } from './media';
-import { getMediaUrl } from './media';
+import { getMediaUrl, isLocalPhoto, mediaPathFrom, uploadMedia, type MediaFolder } from './media';
 
 import type { Database } from '@/types/database';
-import type {
-  OwnTravelStatus,
-  Profile,
-  StatusDetail,
-  TravelGoal,
-  TravelStatus,
-  VisibleTravelStatus,
-} from '@/types/profile';
+import type { OwnTravelStatus, Profile, StatusDetail, TravelGoal, VisibleTravelStatus } from '@/types/profile';
 
 const PROFILE_SELECT =
   'id, username, name, bio, avatar_path, avatar_hue, cover_mode, cover_path, dream_trip_city_id, visible_status, visible_home, interests:profile_interests(interest_id), goals:travel_goals(year, metric, target)';
@@ -107,6 +99,17 @@ export async function getProfile(id: string): Promise<Profile | null> {
   );
 }
 
+// Several people at once, e.g. your blocked accounts or your followers, in the
+// same order as the ids. Anyone who blocked you is left out.
+export async function getProfilesByIds(ids: string[]): Promise<Profile[]> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return [];
+  const { data, error } = await supabase.from('profiles').select(PROFILE_SELECT).in('id', unique);
+  if (error) throw error;
+  const byId = new Map((data as unknown as ProfileRow[]).map((row) => [row.id, toProfile(row)]));
+  return unique.flatMap((id) => byId.get(id) ?? []);
+}
+
 // Whether a username is free to take. Usernames are stored lowercase, so the
 // check ignores case, and your own current username counts as free. Works
 // signed out, for Create account.
@@ -114,22 +117,6 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('is_username_available', { username: username.trim().toLowerCase() });
   if (error) throw error;
   return data;
-}
-
-// Trims a single status down to one sharing level. The database does the same
-// for other people's statuses (private.status_json in the people migration);
-// this copy is for Edit profile's live "Close friends see: ..." previews.
-export function trimStatusForLevel(status: TravelStatus, level: StatusDetail): VisibleTravelStatus | null {
-  if (level === 'hidden') return null;
-  if (status.kind === 'home') return status;
-
-  const city = level === 'country' ? undefined : status.city;
-
-  if (status.kind === 'traveling') {
-    return { kind: 'traveling', country: status.country, city, until: level === 'full' ? status.until : undefined };
-  }
-
-  return { kind: 'planning', country: status.country, city, month: level === 'full' ? status.month : undefined };
 }
 
 export type SuggestedFriend = { profile: Profile; reason?: string };

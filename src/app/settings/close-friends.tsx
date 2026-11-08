@@ -1,48 +1,32 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
-import { getFollowerIds } from '@/services/follows';
-import { addCloseFriend, getSettings, removeCloseFriend } from '@/services/settings';
+import { useFollowerIds } from '@/hooks/use-follows';
+import { useProfilesByIds } from '@/hooks/use-profiles';
 import { useUserId } from '@/hooks/use-session';
-import { getProfile } from '@/services/users';
+import { useSettings, useToggleCloseFriend } from '@/hooks/use-settings';
 import type { Profile } from '@/types/profile';
+
+const NO_IDS: string[] = [];
+const NO_PROFILES: Profile[] = [];
 
 export default function CloseFriendsScreen() {
   const userId = useUserId();
-  const [followers, setFollowers] = useState<Profile[]>([]);
-  const [closeFriendIds, setCloseFriendIds] = useState<string[]>([]);
+  const followerIds = useFollowerIds(userId);
+  const followers = useProfilesByIds(followerIds.data ?? NO_IDS);
+  const settings = useSettings();
+  // Adding or removing shows straight away and flips back if saving fails.
+  const toggleCloseFriend = useToggleCloseFriend();
   const [query, setQuery] = useState('');
 
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
-      Promise.all([getFollowerIds(userId), getSettings()]).then(async ([followerIds, settings]) => {
-        const profiles = (await Promise.all(followerIds.map((id) => getProfile(id)))).filter(
-          (profile): profile is Profile => profile !== null,
-        );
-        if (!isActive) return;
-        setFollowers(profiles);
-        setCloseFriendIds(settings.closeFriendIds);
-      });
-      return () => {
-        isActive = false;
-      };
-    }, [userId]),
-  );
+  const closeFriendIds = settings.data?.closeFriendIds ?? NO_IDS;
 
-  async function toggle(friendId: string) {
-    const isCloseFriend = closeFriendIds.includes(friendId);
-    setCloseFriendIds((current) => (isCloseFriend ? current.filter((id) => id !== friendId) : [...current, friendId]));
-    if (isCloseFriend) {
-      await removeCloseFriend(friendId);
-    } else {
-      await addCloseFriend(friendId);
-    }
+  function toggle(friendId: string) {
+    toggleCloseFriend.mutate({ friendId, add: !closeFriendIds.includes(friendId) });
   }
 
-  const visibleFollowers = followers.filter((follower) => {
+  const visibleFollowers = (followers.data ?? NO_PROFILES).filter((follower) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return follower.name.toLowerCase().includes(q) || follower.username.toLowerCase().includes(q);

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput } from 'react-native';
 
 import { EditPanelSheet } from '@/components/edit-panel-sheet';
-import { searchProfileCities } from '@/services/profile-cities';
+import { useCitySearch } from '@/hooks/use-cities';
 import type { ProfileCity } from '@/services/profile-cities';
 
 // Reused for both "Lives in" and "Dream trip" -- always picked from the city
@@ -14,24 +14,14 @@ type EditCityPanelProps = {
   visible: boolean;
   title: string; // "Lives in" or "Dream trip"
   selectedCityId?: string;
-  onSelect: (cityId: string) => void;
+  onSelect: (city: ProfileCity) => void; // the whole city, so callers don't look it up again
   onClose: () => void;
 };
 
 export function EditCityPanel({ visible, title, selectedCityId, onSelect, onClose }: EditCityPanelProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<ProfileCity[]>([]);
-
-  useEffect(() => {
-    if (!visible) return;
-    let ignore = false;
-    searchProfileCities(query).then((cities) => {
-      if (!ignore) setResults(cities);
-    });
-    return () => {
-      ignore = true;
-    };
-  }, [query, visible]);
+  // Every city when the box is empty; the list is small and cached.
+  const results = useCitySearch(query).data ?? [];
 
   return (
     <EditPanelSheet visible={visible} title={title} onClose={onClose}>
@@ -52,7 +42,7 @@ export function EditCityPanel({ visible, title, selectedCityId, onSelect, onClos
           <Pressable
             style={styles.row}
             onPress={() => {
-              onSelect(item.id);
+              onSelect(item);
               onClose();
             }}
           >

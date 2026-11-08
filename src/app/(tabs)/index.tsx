@@ -1,65 +1,32 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Button, FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlaceCard } from '@/components/place-card';
 import { SearchFilterBar } from '@/components/search-filter-bar';
-import { useFilterOptions } from '@/hooks/use-filter-options';
-import { getPlaces, toggleBookmark } from '@/services/places';
-import type { Place } from '@/types/place';
+import { useFilterOptions, usePlaces } from '@/hooks/use-places';
 
 // Feed: one place card per place, in a vertical list
 
 export default function FeedScreen() {
   const { width } = useWindowDimensions();
 
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(false);
-
-  // Search text and filters; changing any of them re-fetches the list
+  // Search text and filters; changing any of them loads the matching places
   const [query, setQuery] = useState('');
   const [placeTypes, setPlaceTypes] = useState<string[]>([]);
   const [suitedFor, setSuitedFor] = useState<string[]>([]);
   const filterOptions = useFilterOptions();
 
-  const load = useCallback(async () => {
-    setError(false);
-    try {
-      setPlaces(await getPlaces({ query, placeTypes, suitedFor }));
-    } catch {
-      setError(true);
-    }
-  }, [query, placeTypes, suitedFor]);
+  const places = usePlaces({ query, placeTypes, suitedFor });
 
-  useEffect(() => {
-    // `ignore` stops an older, slower request from overwriting a newer one while typing
-    let ignore = false;
-    getPlaces({ query, placeTypes, suitedFor })
-      .then((result) => {
-        if (ignore) return;
-        setError(false);
-        setPlaces(result);
-      })
-      .catch(() => !ignore && setError(true))
-      .finally(() => !ignore && setLoading(false));
-    return () => {
-      ignore = true;
-    };
-  }, [query, placeTypes, suitedFor]);
-
+  // Pull to refresh. A local flag, because isRefetching is also true during
+  // background refetches (docs/data-layer.md, "Showing states").
+  const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
     setRefreshing(true);
-    await load();
+    await places.refetch();
     setRefreshing(false);
-  }
-
-  async function handleBookmark(placeId: string) {
-    // TODO: open the "Save to collection" sheet instead of toggling directly
-    const isSaved = await toggleBookmark(placeId);
-    setPlaces((prev) => prev.map((p) => (p.id === placeId ? { ...p, bookmark: isSaved } : p)));
   }
 
   function clearFilters() {
@@ -86,23 +53,22 @@ export default function FeedScreen() {
         }
       />
 
-      {loading ? (
+      {places.isPending ? (
         <ActivityIndicator style={styles.center} />
-      ) : error ? (
+      ) : places.isError ? (
         <View style={styles.center}>
           <Text>Something went wrong loading places.</Text>
-          <Button title="Try again" onPress={handleRefresh} />
+          <Button title="Try again" onPress={() => places.refetch()} />
         </View>
       ) : (
         <FlatList
-          data={places}
+          data={places.data}
           keyExtractor={(place) => place.id}
           renderItem={({ item }) => (
             <PlaceCard
               place={item}
               width={width}
               onPress={() => router.push({ pathname: '/place/[id]', params: { id: item.id } })}
-              onBookmarkPress={() => handleBookmark(item.id)}
             />
           )}
           refreshing={refreshing}

@@ -1,10 +1,8 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { PlaceDetails } from '@/components/place-details';
-import { getPlace } from '@/services/places';
-import { Place } from '@/types/place';
+import { usePlace } from '@/hooks/use-places';
 
 // Place page: opens on top of the tabs when someone taps a place.
 // The [id] in the file name is filled in from the link, e.g. /place/place_001 gives id "place_001".
@@ -14,20 +12,10 @@ import { Place } from '@/types/place';
 export default function PlacePage() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  // The place we're showing. null means "we don't have one".
-  const [place, setPlace] = useState<Place | null>(null);
-  // Starts true because we start out fetching.
-  const [isLoading, setIsLoading] = useState(true);
+  // Loads when the screen opens, and again if the id in the link changes.
+  const { data: place, isPending, isError } = usePlace(id);
 
-  // Runs when the screen opens, and again if the id in the link changes.
-  useEffect(() => {
-    getPlace(id).then((result) => {
-      setPlace(result);
-      setIsLoading(false);
-    });
-  }, [id]);
-
-  if (isLoading) {
+  if (isPending) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator />
@@ -35,10 +23,10 @@ export default function PlacePage() {
     );
   }
 
-  if (place === null) {
+  if (isError || !place) {
     return (
       <View style={styles.centered}>
-        <Text>Place not found.</Text>
+        <Text>{isError ? "Couldn't load this place." : 'Place not found.'}</Text>
       </View>
     );
   }

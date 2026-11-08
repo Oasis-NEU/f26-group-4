@@ -1,44 +1,22 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { SettingsRow } from '@/components/settings-row';
-import { getSettings, updateSettings } from '@/services/settings';
+import { useSettings, useUpdateSettings } from '@/hooks/use-settings';
 import type { Settings } from '@/types/settings';
 
 export default function NotificationsScreen() {
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [error, setError] = useState('');
+  const settingsQuery = useSettings();
+  // Each switch flips straight away and flips back if saving fails.
+  const updateSettings = useUpdateSettings();
 
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
-      getSettings().then((s) => {
-        if (isActive) setSettings(s);
-      });
-      return () => {
-        isActive = false;
-      };
-    }, []),
-  );
-
-  async function patchNotifications(changes: Partial<Settings['notifications']>) {
-    if (!settings) return;
-    const previous = settings;
-    const notifications = { ...settings.notifications, ...changes };
-    setSettings({ ...settings, notifications });
-    setError('');
-    try {
-      await updateSettings({ notifications });
-    } catch {
-      setSettings(previous);
-      setError("Couldn't save. Try again.");
-    }
-  }
-
+  const settings = settingsQuery.data;
   if (!settings) return null;
 
   const { notifications } = settings;
+
+  function patchNotifications(changes: Partial<Settings['notifications']>) {
+    updateSettings.mutate({ notifications: { ...notifications, ...changes } });
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -90,7 +68,7 @@ export default function NotificationsScreen() {
         For one specific person, tap 🔔 on their profile. These switches are for everything else.
       </Text>
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {updateSettings.isError && <Text style={styles.error}>Couldn&apos;t save. Try again.</Text>}
     </ScrollView>
   );
 }

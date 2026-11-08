@@ -2,7 +2,7 @@
 
 What we want the Supabase backend to do: the tables, who can see what, the functions the app calls, file storage, accounts, and the order to build it in. It's written from what the app does today (the services in `src/services/`, the types in `src/types/`, and the screens), so every piece of mock data has somewhere to go.
 
-**Status:** built on the `supabase-backend` branch: B1 to B4, the demo data, and the app switched over to it. It's tested against a local Supabase (29 database tests, the Security Advisor, and the app on the web). It isn't on the shared project yet. [What changed while building](#what-changed-while-building) lists where the build differs from the plan below. [data-layer.md](data-layer.md) Phase 0 (React Query) is still to do.
+**Status:** built on the `supabase-backend` branch: B1 to B4, the demo data, and the app switched over to it. It's tested against a local Supabase (29 database tests, the Security Advisor, and the app on the web). It isn't on the shared project yet. [What changed while building](#what-changed-while-building) lists where the build differs from the plan below. Screens and components read and write through React Query hooks ([data-layer.md](data-layer.md) Phases 0 and 1).
 
 **This replaces** [supabase-schema.sql](supabase-schema.sql) and the "The schema" part of [data-layer.md, Phase 2](data-layer.md#phase-2-supabase). Those were written before follows, settings, privacy, interests and profile cities existed ([what changed](#what-changed-from-the-old-schema)). Everything else in data-layer.md still applies: services and hooks, query keys, and how a service moves from mock data to Supabase.
 
@@ -54,7 +54,7 @@ What we want the Supabase backend to do: the tables, who can see what, the funct
 1. **Privacy lives in the database.** Every table has row level security (RLS) turned on, with its policies and grants in the same migration ([writing migrations](#writing-migrations)). With RLS on and no policies, the app can't use a table at all. With RLS off, anyone signed in can read and change every row.
 2. **RLS decides what you're allowed to see, not what a screen asked for.** Other people's public collections are readable, so "my collections" has to ask for `owner_id = me` itself. Services get "me" from the session, so callers still don't pass it ([data-layer rule 9](data-layer.md#the-rules)).
 3. **Calculated, not stored.** Ratings, counts, interest popularity and city stats are worked out when they're asked for. Nothing has to be kept in sync.
-4. **The database keeps its own rules** with triggers ([the list](#rules-the-database-keeps)). The mock services copy the same rules ([data-layer rule 10](data-layer.md#the-rules)).
+4. **The database keeps its own rules** with triggers ([the list](#rules-the-database-keeps)). The app doesn't repeat them; it refetches what they change ([data-layer rule 10](data-layer.md#the-rules)).
 5. **"Friends" means people you follow.** The old plan had two-way friendships. The app has follows now, so `friends_rating` is the average from people you follow.
 6. **Services hide the database.** Columns are `snake_case`. Services turn rows into the app's types (`camelCase`) and storage paths into image URLs, so screens don't change.
 7. **Stay inside the free plan**: small photos, no video at first, and someone uses the project at least weekly ([see below](#before-we-start)).
@@ -276,7 +276,7 @@ as $$
 $$;
 ```
 
-`private.status_json(row, level)` does what `trimStatusForLevel` does in `users.ts`. Keep the app's copy for Edit profile's "Close friends see: …" previews.
+`private.status_json(row, level)` does what `trimStatusForLevel` does in `src/utils/status-text.ts`. Keep the app's copy for the "Close friends see: …" previews in Edit profile and Privacy.
 
 ### RPCs
 
@@ -398,10 +398,10 @@ Services keep their names, so screens don't change. Functions lose the signed-in
 | | not built yet | `getSavedPlaceIds`, `savePlace`, `unsavePlace`, and the rest of the [collections contract](data-layer.md#services). |
 | `reviews.ts` | `getReviewsByAuthor(authorId)` | Same. With the place and photos. |
 | `posts.ts` (from the `upload-screen` branch) | `createPost(fields)` | Same name. Upload the photos, then call `create_review()`; if that fails, delete the photos. It takes over data-layer's planned `createReview` and `createPlace`. |
-| | `validatePost(fields)` | Stays in the app. The database checks the rating and lengths again. |
+| | `validatePost(fields)` | Stays in the app, in `src/utils/validate-post.ts`. The database checks the rating and lengths again. |
 | `users.ts` | `getProfile(id)` | Same. With the counts, `visible_status`, `visible_home`, interests and goals. |
 | | `isUsernameAvailable(username, excludingUserId)` | `isUsernameAvailable(username)`. |
-| | `trimStatusForLevel(status, level)` | Stays in the app, for Edit profile's previews only. |
+| | `trimStatusForLevel(status, level)` | Stays in the app, in `src/utils/status-text.ts`, for the previews only. |
 | | `getVisibleStatus(profile, viewerId, closeFriendIds)` | Removed. The database trims it (`visible_status`). |
 | | `getSuggestedFriends(userId)`, `getSuggestionReason(myId, other)` | `getSuggestedFriends()`, with the reason included. Moves to `follows.ts` (data-layer calls it `friends.ts`). |
 | | `getFriendUsernames(userId)` | `getFollowingIds()`. The Map should compare ids, since usernames can change. |
@@ -610,7 +610,7 @@ Each has a default, so building isn't blocked. Change the default here if the te
 - **`.env` is tracked by git.** That's fine for the project URL and the publishable key: `EXPO_PUBLIC_` values can be read out of the app anyway, and Expo's docs allow committing `.env` when it only holds values like these. Never put the secret key or the database password in it; if either was ever committed, rotate it in the dashboard. data-layer.md says to pass the keys around in `.env.local` instead. Either works; pick one and make the other doc match.
 - **Client setup has one new step.** Expo's [Supabase guide](https://docs.expo.dev/guides/using-supabase/) now also adds the `expo-sqlite` config plugin to `app.json`. The rest of data-layer.md 2a step 3 still matches it.
 - **The free plan** gives each project a 500 MB database, 1 GB of file storage, 5 GB of data out a month (plus 5 GB served from cache) and 50,000 monthly users, with 2 free projects per account. **A project pauses after 7 days without much use.** Anyone on the team can resume it from the dashboard, but open the app the day before a demo to be sure.
-- **data-layer Phase 0** (React Query) can happen alongside B1. Switching a service to Supabase doesn't need it, but the hooks do.
+- **data-layer Phase 0** (React Query) can happen alongside B1. Switching a service to Supabase doesn't need it, but the hooks do. (Done, after B4.)
 
 ## What changed from the old schema
 

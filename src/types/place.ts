@@ -13,11 +13,8 @@ export type Place = {
     isVerified: boolean; // `true` or `false`
     suitedFor: string[]; // a list of strings e.g. "solo", "adventure", "skiiers", etc
     placeType: string; // e.g. "cafe", "excursion", "sport", etc
-    bookmark: boolean; // "bookmarked" and "saved" mean the same thing -- one tap puts the
-                       // place on the Saved page.
-                       // TODO: the team plan (docs/pages/README.md) says to remove this.
-    addToList: boolean; // TODO: and this. Whether a place is saved depends on WHO is signed in,
-                        // so it belongs in collections, not on the place itself. Ask the team first.
+    // Whether it's saved depends on who's signed in, so it isn't on the place:
+    // use useIsSaved(place.id) from src/hooks/use-saves.ts.
     address: string; // a string ; I think we should do geotag here, I'm not sure how to do that yet
     city: string; // for display purposes, and so we can filter by city; this should generate based on the location of the place, but I'm not sure how to do that yet
     country: string; // ^

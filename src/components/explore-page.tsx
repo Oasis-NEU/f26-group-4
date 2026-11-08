@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Pressable,
@@ -13,8 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CityTile } from '@/components/city-tile';
 import { FilterPill, SearchField } from '@/components/ui';
-import { getCities, type City } from '@/services/cities';
-import { useFilterOptions } from '@/hooks/use-filter-options';
+import { useCities } from '@/hooks/use-cities';
+import { useFilterOptions } from '@/hooks/use-places';
+import type { City } from '@/services/cities';
 import { colors, spacing, type } from '@/theme';
 
 // Explore: a grid of cities. Each tile is a filter -- tap Florence and you get
@@ -53,34 +54,20 @@ function splitIntoColumns(cities: City[], columnWidth: number) {
   return columns;
 }
 
+const NO_CITIES: City[] = [];
+
 export function ExplorePage() {
   const { width } = useWindowDimensions();
-
-  const [cities, setCities] = useState<City[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   const [query, setQuery] = useState('');
   const filterOptions = useFilterOptions();
   // Which category pill is on. `null` is the "Explore" pill -- no filter.
   const [placeType, setPlaceType] = useState<string | null>(null);
 
-  useEffect(() => {
-    // `ignore` stops an older, slower request from overwriting a newer one
-    // while someone is still typing.
-    let ignore = false;
-    getCities({ query, placeType: placeType ?? undefined })
-      .then((result) => {
-        if (ignore) return;
-        setError(false);
-        setCities(result);
-      })
-      .catch(() => !ignore && setError(true))
-      .finally(() => !ignore && setLoading(false));
-    return () => {
-      ignore = true;
-    };
-  }, [query, placeType]);
+  const citiesQuery = useCities({ query, placeType: placeType ?? undefined });
+  const cities = citiesQuery.data ?? NO_CITIES;
+  const loading = citiesQuery.isPending;
+  const error = citiesQuery.isError;
 
   // Two columns of page margin, one gap between the columns.
   const columnWidth = (width - spacing.lg * 2 - spacing.md) / 2;

@@ -4,8 +4,7 @@
 
 import { supabase } from '@/lib/supabase';
 
-import { getSavedPlaceIds, savePlace, unsavePlace } from './collections';
-import { getPersonal, PLACE_SELECT, toPlace, UUID_PATTERN, type PlaceRow } from './place-rows';
+import { PLACE_SELECT, toPlace, UUID_PATTERN, type PlaceRow } from './place-rows';
 
 import type { Place } from '@/types/place';
 
@@ -17,29 +16,32 @@ export type PlaceFilters = {
 
 // Places that match the filters, newest first. With no filters, every place.
 export async function getPlaces(filters: PlaceFilters = {}): Promise<Place[]> {
-  const [{ data, error }, personal] = await Promise.all([
-    supabase
-      .rpc('search_places', {
-        query: filters.query?.trim() || undefined,
-        types: filters.placeTypes?.length ? filters.placeTypes : undefined,
-        tags: filters.suitedFor?.length ? filters.suitedFor : undefined,
-      })
-      .select(PLACE_SELECT),
-    getPersonal(),
-  ]);
+  const { data, error } = await supabase
+    .rpc('search_places', {
+      query: filters.query?.trim() || undefined,
+      types: filters.placeTypes?.length ? filters.placeTypes : undefined,
+      tags: filters.suitedFor?.length ? filters.suitedFor : undefined,
+    })
+    .select(PLACE_SELECT);
   if (error) throw error;
-  return (data as unknown as PlaceRow[]).map((row) => toPlace(row, personal));
+  return (data as unknown as PlaceRow[]).map(toPlace);
 }
 
 // One place by its id, with all its reviews, or null if there isn't one with that id.
 export async function getPlace(id: string): Promise<Place | null> {
   if (!UUID_PATTERN.test(id)) return null;
-  const [{ data, error }, personal] = await Promise.all([
-    supabase.from('places').select(PLACE_SELECT).eq('id', id).maybeSingle(),
-    getPersonal(),
-  ]);
+  const { data, error } = await supabase.from('places').select(PLACE_SELECT).eq('id', id).maybeSingle();
   if (error) throw error;
-  return data ? toPlace(data as unknown as PlaceRow, personal) : null;
+  return data ? toPlace(data as unknown as PlaceRow) : null;
+}
+
+// Several places by id in one request, e.g. the ones on a profile's Map tab.
+export async function getPlacesByIds(ids: string[]): Promise<Place[]> {
+  const valid = [...new Set(ids)].filter((id) => UUID_PATTERN.test(id));
+  if (valid.length === 0) return [];
+  const { data, error } = await supabase.from('places').select(PLACE_SELECT).in('id', valid);
+  if (error) throw error;
+  return (data as unknown as PlaceRow[]).map(toPlace);
 }
 
 // Every place type, in display order, for the filters. These only change with a
@@ -55,17 +57,4 @@ export async function getSuitedForTags(): Promise<string[]> {
   const { data, error } = await supabase.from('suited_for_tags').select('slug').order('sort_order');
   if (error) throw error;
   return data.map((row) => row.slug);
-}
-
-// Saves or unsaves a place and returns whether it's saved now.
-// TODO (data-layer Phase 0): screens should call savePlace / unsavePlace
-// (collections.ts) through useToggleSave instead.
-export async function toggleBookmark(placeId: string): Promise<boolean> {
-  const isSaved = (await getSavedPlaceIds()).includes(placeId);
-  if (isSaved) {
-    await unsavePlace(placeId);
-  } else {
-    await savePlace(placeId);
-  }
-  return !isSaved;
 }

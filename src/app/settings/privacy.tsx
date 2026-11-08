@@ -1,14 +1,13 @@
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ConfirmModal } from '@/components/confirm-modal';
 import { OptionPills } from '@/components/option-pills';
 import { SettingsRow } from '@/components/settings-row';
-import { getFollowRequests } from '@/services/follows';
-import { trimStatusForLevel } from '@/services/users';
-import { getSettings, updateSettings } from '@/services/settings';
-import { formatStatusText } from '@/utils/status-text';
+import { useFollowRequests } from '@/hooks/use-follows';
+import { useSettings, useUpdateSettings } from '@/hooks/use-settings';
+import { formatStatusText, trimStatusForLevel } from '@/utils/status-text';
 import type { Audience, Settings } from '@/types/settings';
 import type { StatusDetail, TravelStatus } from '@/types/profile';
 
@@ -47,51 +46,32 @@ const COLLECTION_OPTIONS: { value: 'public' | 'private'; label: string }[] = [
 ];
 
 export default function PrivacyScreen() {
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [pendingRequestCount, setPendingRequestCount] = useState(0);
+  const settingsQuery = useSettings();
+  const requests = useFollowRequests();
+  // Each change shows straight away and flips back if saving fails.
+  const updateSettings = useUpdateSettings();
   const [confirmAction, setConfirmAction] = useState<'turnOn' | 'turnOff' | null>(null);
-  const [error, setError] = useState('');
 
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
-      Promise.all([getSettings(), getFollowRequests()]).then(([s, requests]) => {
-        if (!isActive) return;
-        setSettings(s);
-        setPendingRequestCount(requests.length);
-      });
-      return () => {
-        isActive = false;
-      };
-    }, []),
-  );
-
-  async function patch(changes: Partial<Settings>) {
-    if (!settings) return;
-    const previous = settings;
-    setSettings({ ...settings, ...changes });
-    setError('');
-    try {
-      await updateSettings(changes);
-    } catch {
-      setSettings(previous);
-      setError("Couldn't save. Try again.");
-    }
-  }
-
-  async function confirmTurnOn() {
-    setConfirmAction(null);
-    await patch({ accountType: 'friendsOnly' });
-  }
-
-  async function confirmTurnOff() {
-    setConfirmAction(null);
-    // Turning friends-only off also accepts every waiting request (a database rule).
-    await patch({ accountType: 'public' });
-    setPendingRequestCount(0);
-  }
-
+  const settings = settingsQuery.data;
   if (!settings) return null;
+
+  const pendingRequestCount = requests.data?.length ?? 0;
+
+  function patch(changes: Partial<Settings>) {
+    updateSettings.mutate(changes);
+  }
+
+  function confirmTurnOn() {
+    setConfirmAction(null);
+    patch({ accountType: 'friendsOnly' });
+  }
+
+  function confirmTurnOff() {
+    setConfirmAction(null);
+    // Turning friends-only off also accepts every waiting request (a database
+    // rule). The inbox count refreshes once it's saved.
+    patch({ accountType: 'public' });
+  }
 
   const isFriendsOnly = settings.accountType === 'friendsOnly';
   const friendsOnlySubtitle = isFriendsOnly
@@ -194,7 +174,7 @@ export default function PrivacyScreen() {
         />
       </View>
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {updateSettings.isError && <Text style={styles.error}>Couldn&apos;t save. Try again.</Text>}
 
       <ConfirmModal
         visible={confirmAction === 'turnOn'}

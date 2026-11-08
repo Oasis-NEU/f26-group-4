@@ -1,29 +1,29 @@
 # Data layer plan
 
-How screens get, save and share data: with mock services now, and with Supabase later. Read this before writing code that loads or saves data, signs people in, or touches Supabase.
+How screens get, save and share data, all of it from the Supabase backend. Read this before writing code that loads or saves data, signs people in, or touches Supabase.
 
 Each phase ends with a checklist. Tick the boxes in the same PR as the work.
 
 ## For Claude Code sessions
 
 - Read this whole file before working on data, auth or Supabase. Then check what's actually built: the checklists can fall behind, so look for the files they name.
-- If the step you need isn't built yet (for example, `src/lib/query-client.ts` doesn't exist), don't set it up inside a feature branch. Several people doing that at once means merge conflicts in `package.json` and `_layout.tsx`. Tell the user which step the work is waiting on, and keep building the UI against the service functions as they are.
-- Follow the rules below even where older code doesn't. Most existing screens were written before this plan.
-- If you add a service function, hook or mutation, add it to the tables in this file in the same change.
+- Every screen and component follows the rules below. `npm run lint` enforces rules 1 and 3: importing `@/lib/supabase` outside `src/services/`, or a service's functions into `src/app/` or `src/components/`, is a lint error. Importing a service's types (`import type`) is fine.
+- Need data a hook doesn't give yet? Add the service function, then a hook around it, then use the hook. Don't call the service from the screen.
+- If you add a service function, hook, query key or mutation, add it to the tables in this file in the same change.
 - Run `npm run lint` and `npx tsc --noEmit` before you finish.
 
 ## The rules
 
-1. **Screens and components never fetch data themselves.** They call hooks from `src/hooks/`. New code doesn't call services from a `useEffect`.
+1. **Screens and components never fetch data themselves.** They call hooks from `src/hooks/`, never a service from a `useEffect`. Lint enforces this.
 2. **Hooks wrap services.** Each hook is a thin `useQuery` or `useMutation` around a function in `src/services/`.
-3. **Only services talk to the backend.** Nothing outside `src/services/` imports the Supabase client, except `use-session.tsx` for signing in and out. Moving from mock data to Supabase only changes the insides of service functions.
+3. **Only services talk to the backend.** Nothing outside `src/services/` imports the Supabase client, except `use-session.tsx` for signing in and out. Lint enforces this.
 4. **The database is the source of truth.** The React Query cache is a copy of it. Writes go to the server straight away. The cache updates first so the app feels instant, and goes back if the write fails. There's no "save locally, sync later".
 5. **Context only holds the session**, meaning who's signed in. Places, saves, collections and friends live in the query cache, not in context.
 6. **Anything that depends on who's signed in is its own query, not a field on shared data.** "Is this place saved?" comes from `useIsSaved(placeId)`, not `place.bookmark`. The same goes for "is this person my friend?".
 7. **Services throw when something fails** (`if (error) throw error`), so hooks can show an error and undo optimistic changes.
 8. **Query keys only come from `src/lib/query-keys.ts`.** Never type a key like `['saves']` inline.
-9. **Services never take the signed-in user's id.** Write `getCollections()`, not `getCollections(userId)`. Mock services get it from `getMockUserId()` in `mock-backend.ts`. Supabase gets it from the session through column defaults and row level security. Functions about *someone else* do take an id, e.g. `getProfile(id)`.
-10. **Mock services follow the same rules as the database.** If the database removes a place from your collections when you unsave it, the mock should too. Otherwise the UI will rely on behavior the real backend won't have.
+9. **Services never take the signed-in user's id.** Write `getCollections()`, not `getCollections(userId)`. The services get it from the session: `currentUserId()` in `src/lib/supabase.ts`, column defaults (`default auth.uid()`) and row level security. Functions about *someone else* do take an id, e.g. `getProfile(id)`.
+10. **The database keeps its own rules** (unsaving a place takes it out of your collections, blocking ends follows, and so on: [backend-plan.md](backend-plan.md#rules-the-database-keeps)). Services don't repeat them. A mutation invalidates whatever those rules change, so the screens refetch it.
 
 ## Where state lives
 
@@ -39,10 +39,12 @@ Why not keep the user's data in context: every change would re-render every scre
 
 ```
 src/app/         Screens. Call hooks; show the loading, error, empty and loaded states.
+src/components/  Same rule as screens: hooks, not services.
 src/hooks/       One file per kind of data (use-saves.ts, use-places.ts, ...): useQuery / useMutation around services.
-src/lib/         query-client.ts, query-keys.ts, and supabase.ts in Phase 2.
-src/services/    Plain async functions. Mock data now; Supabase queries in Phase 2.
-supabase/        Migrations and seed data (Phase 2). The database schema, checked into git.
+src/lib/         query-client.ts, query-keys.ts and supabase.ts.
+src/services/    Plain async functions that query Supabase. The only place that imports the client.
+src/utils/       Pure helpers with no backend: validatePost, formatStatusText, trimStatusForLevel, ...
+supabase/        Migrations, seed data and database tests. The database schema, checked into git.
 ```
 
 ## Worked example: saving a place
@@ -138,7 +140,14 @@ export function usePlaces(filters: PlaceFilters) {
 }
 ```
 
-Each set of filters gets its own cache entry, and answers for old filters are ignored. That means the `ignore` flag in the Feed and Map `useEffect`s isn't needed any more.
+Each set of filters gets its own cache entry, and answers for old filters are ignored, so screens don't need an `ignore` flag in a `useEffect`.
+
+### Showing a change while it saves
+
+Two ways, depending on the data:
+
+- **Change the cache in `onMutate`** when several screens show the same thing, like saves, likes and settings. Every screen flips at once, and `onError` puts it back.
+- **Show the mutation's `variables` while `isPending`** when only one screen shows it. Your travel does this with the goal: `useUpdateProfile` stays pending until the fresh profile has loaded, so nothing flickers back.
 
 ### Showing states
 
@@ -152,50 +161,25 @@ Each set of filters gets its own cache entry, and answers for old filters are ig
 
 ## Query keys
 
-`src/lib/query-keys.ts`. Keys are nested, so invalidating `saves.all` (`['saves']`) also refreshes everything that starts with `'saves'`.
+Every key is in `src/lib/query-keys.ts`. Add a new one there before a hook uses it. Keys are nested, so invalidating `saves.all` (`['saves']`) also refreshes everything that starts with `'saves'`.
 
-```ts
-import type { PlaceFilters } from '@/services/places';
+| Group | Keys |
+| --- | --- |
+| `places` | `all`, `list(filters)`, `detail(id)`, `byIds(ids)`, `types`, `tags` |
+| `cities` | `all`, `list(filters)`, `detail(id)`, `places(id)`, `pick(id)`, `search(query)` |
+| `reviews` | `all`, `byUser(userId)`, `likedIds` |
+| `saves` | `all`, `ids`, `places` ("All saved"), `loose` (saved but in no collection) |
+| `collections` | `all`, `mine`, `ofProfile(ownerId)`, `detail(id)` |
+| `profiles` | `all`, `detail(id)`, `byIds(ids)`, `usernameAvailable(username)` |
+| `follows` | `all`, `followers(userId)`, `following(userId)`, `requests`, `suggestions`, `friendUsernames` |
+| `settings` | `all` |
+| `interests` | `all`, `byIds(ids)`, `popular(limit)`, `search(query)`, `suggested` |
 
-export const queryKeys = {
-  places: {
-    all: ['places'] as const,
-    list: (filters: PlaceFilters) => ['places', 'list', filters] as const,
-    detail: (id: string) => ['places', 'detail', id] as const,
-  },
-  reviews: {
-    all: ['reviews'] as const,
-    byUser: (userId: string) => ['reviews', 'user', userId] as const,
-  },
-  saves: {
-    all: ['saves'] as const,
-    ids: ['saves', 'ids'] as const, // every saved place id
-    places: ['saves', 'places'] as const, // every saved place, for "All saved"
-    loose: ['saves', 'loose'] as const, // saved but not in a collection
-  },
-  collections: {
-    all: ['collections'] as const,
-    list: ['collections', 'list'] as const,
-    detail: (id: string) => ['collections', 'detail', id] as const,
-    containing: (placeId: string) => ['collections', 'containing', placeId] as const,
-  },
-  profiles: {
-    detail: (id: string) => ['profiles', id] as const,
-  },
-  friends: {
-    all: ['friends'] as const,
-    of: (userId: string) => ['friends', 'of', userId] as const,
-    requests: ['friends', 'requests'] as const,
-    suggested: ['friends', 'suggested'] as const,
-  },
-};
-```
-
-When someone signs out or switches demo user, the session calls `queryClient.clear()`, so the next person never sees the last person's saves.
+When the signed-in user changes (signing out, or switching demo user), `SessionProvider` calls `queryClient.clear()`, so the next person never sees the last person's data.
 
 ## Contracts
 
-UI work can build against these names now. Functions marked **add** need a mock version first, written the same way as the existing ones. This list replaces the Services table in [pages/README.md](pages/README.md#services). It differs on purpose in two places: services don't take the signed-in user's id, and v1 collections hold places only.
+Screens build against the hooks, and hooks against these services. Names marked **add** aren't built yet. This list replaces the Services table in [pages/README.md](pages/README.md#services). It differs on purpose in two places: services don't take the signed-in user's id, and v1 collections hold places only.
 
 ### Services
 
@@ -206,7 +190,7 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 | `places.ts` | `getPlaces(filters): Place[]` | `search_places()`, with ratings, city and reviews |
 | | `getPlace(id): Place \| null` | with all its reviews |
 | | `getPlaceTypes()`, `getSuitedForTags(): string[]` | the filter lists, from the database |
-| | `toggleBookmark(placeId): boolean` | **remove** in Phase 0; use `savePlace` / `unsavePlace` |
+| | `getPlacesByIds(ids): Place[]` | several places in one request, e.g. the ones a profile reviewed |
 | `collections.ts` | `getSavedPlaceIds(): string[]` | |
 | | `savePlace(placeId)` / `unsavePlace(placeId)` | unsaving also takes the place out of every collection (a database rule) |
 | | `getAllSavedPlaces()`, `getSavedPlaces(): Place[]` | every save; the loose ones |
@@ -215,15 +199,15 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 | | `removeFromCollection(collectionId, placeId)` | the place stays saved |
 | | `getSavedCollectionIds(placeId)`, `createCollection`, `renameCollection`, `deleteCollection`, `addToCollection` | **add** for the save sheet |
 | `posts.ts` | `createPost(fields: UploadFields): SavedPost` | uploads the photos, then `create_review()`, which adds the city and place if they're new |
-| | `validatePost(fields)` | Upload's form check |
 | `reviews.ts` | `getReviewsByAuthor(authorId): AuthoredReview[]` | |
+| | `getLikedReviewIds(): string[]` | every review the signed-in user liked |
 | | `likeReview(reviewId)`, `unlikeReview(reviewId)` | |
 | `users.ts` | `getProfile(id): Profile \| null` | yours has your full `status`; anyone's has the trimmed `visibleStatus` |
+| | `getProfilesByIds(ids): Profile[]` | several people in one request, in the order given (followers, blocked accounts) |
 | | `updateProfile(changes)` | the signed-in user only; routes each field to its table |
 | | `isUsernameAvailable(username)` | works signed out |
 | | `getSuggestedFriends(): SuggestedFriend[]` | with each reason ("Also in Lisbon", "3 mutuals") |
 | | `getFriendUsernames(): string[]` | the people you follow |
-| | `trimStatusForLevel(status, level)` | Edit profile's previews; the database trims everyone else's |
 | `follows.ts` | `getFollowerIds(userId)`, `getFollowingIds(userId)`, `isFollowing(userId)` | |
 | | `followUser(userId): 'following' \| 'requested'` | a friends-only account gets a request |
 | | `unfollowUser(userId)`, `setNotifyPrefs(userId, prefs)` | |
@@ -234,60 +218,68 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 | `cities.ts` | `getCities(filters)`, `getCity(id)`, `getCityPlaces(id)` | the `city_stats` view |
 | `profile-cities.ts` | `getProfileCity(id)`, `searchProfileCities(query)` | the `cities` table |
 | `media.ts` | `uploadMedia(localUri, folder)`, `getMediaUrl(path)`, `deleteMedia(paths)` | photos in the `media` bucket |
-| `place-rows.ts` | `PLACE_SELECT`, `toPlace`, `toReview`, `getPersonal` | shared by the services that return places |
+| `place-rows.ts` | `PLACE_SELECT`, `toPlace`, `toReview` | shared by the services that return places. Nothing per-user: "saved?" and "liked?" are their own queries (rule 6) |
 | `mock-backend.ts` | `mockRequest(data)` | only `template-service.ts` uses it now |
+
+Helpers that don't touch the backend live in `src/utils/`: `validatePost(fields)` (Upload's form check, in `validate-post.ts`) and `formatStatusText` / `trimStatusForLevel` (Edit profile's and Privacy's previews, in `status-text.ts`; the database trims everyone else's status).
 
 ### Hooks
 
-| File | Hook | Wraps | Used by |
+Every hook that takes one id also accepts `undefined`, and waits until the id is set (`skipToken`). So a screen can call it before it knows the id.
+
+| File | Hooks | Wraps | Used by |
 | --- | --- | --- | --- |
-| `use-session.tsx` (exists) | `SessionProvider`, `useSession()` returns `{ user, isLoading, signIn, signUp, signInAsDemoUser, signOut, deleteAccount }`; `useUserId()` | Supabase Auth | root layout, Login, Create account, Settings, Profile |
-| `use-filter-options.ts` (exists) | `useFilterOptions()` | `getPlaceTypes`, `getSuitedForTags` | Feed, Map, Explore |
-| `use-review-like.ts` (exists) | `useReviewLike(review)` | `likeReview`, `unlikeReview` | `PlaceCard` |
-| `use-places.ts` | `usePlaces(filters)` | `getPlaces` | Feed, Map, Upload suggestions |
-| | `usePlace(id)` | `getPlace` | Place details |
-| | `useCreatePlace()` | `createPlace` | Upload |
-| `use-saves.ts` | `useSavedPlaceIds()`, `useIsSaved(placeId)` | `getSavedPlaceIds` | every `BookmarkButton` |
-| | `useToggleSave()` | `savePlace` / `unsavePlace` | every `BookmarkButton` |
+| `use-session.tsx` | `SessionProvider`, `useSession()` returns `{ user, isLoading, signIn, signUp, signInAsDemoUser, signOut, deleteAccount }`; `useUserId()` | Supabase Auth | root layout, Login, Create account, Settings, Profile |
+| `use-places.ts` | `usePlaces(filters)`, `usePlace(id)`, `usePlacesByIds(ids)` | `getPlaces`, `getPlace`, `getPlacesByIds` | Feed, Map, Place details, Profile |
+| | `useFilterOptions()` returns `{ placeTypes, suitedFor }` | `getPlaceTypes`, `getSuitedForTags` | Feed, Map, Explore |
+| `use-saves.ts` | `useSavedPlaceIds()`, `useIsSaved(placeId)`, `useToggleSave()` | `getSavedPlaceIds`, `savePlace` / `unsavePlace` | `PlaceCard`, Place details, Collection |
 | | `useAllSavedPlaces()`, `useLooseSavedPlaces()` | `getAllSavedPlaces`, `getSavedPlaces` | Saved |
-| `use-collections.ts` | `useCollections()`, `useCollection(id)` | `getCollections`, `getCollection` | Saved, Collection, save sheet |
-| | `useCollectionsContaining(placeId)` | `getSavedCollectionIds` | save sheet |
-| | `useCreateCollection()`, `useRenameCollection()`, `useDeleteCollection()` | | Saved, save sheet |
-| | `useAddToCollection()`, `useRemoveFromCollection()` | | save sheet, Collection |
-| `use-reviews.ts` | `useReviewsByUser(userId)` | `getReviewsByUser` | Profile |
-| | `useCreateReview()` | `createReview` | Upload |
-| `use-profiles.ts` | `useProfile(id)`, `useUpdateProfile()` | `getProfile`, `updateProfile` | Profile, Edit profile |
-| `use-friends.ts` | `useFriends(userId)`, `useFriendRequests()`, `useSuggestedFriends()` | `friends.ts` | Profile |
-| | `useSendFriendRequest()`, `useAcceptFriendRequest()`, `useRemoveFriend()` | `friends.ts` | Profile, `FriendSuggestion` |
+| `use-collections.ts` | `useCollections()`, `useCollectionsForProfile(ownerId)`, `useCollection(id)`, `useRemoveFromCollection()`; re-exports `ALL_SAVED_ID` | `getCollections`, `getCollectionsForProfile`, `getCollection`, `removeFromCollection` | Saved, Profile, Collection |
+| | `useCollectionsContaining(placeId)`, `useCreateCollection()`, `useRenameCollection()`, `useDeleteCollection()`, `useAddToCollection()` | **add** with the save sheet | |
+| `use-reviews.ts` | `useReviewsByUser(userId)`, `useIsLiked(reviewId)`, `useToggleLike()` | `getReviewsByAuthor`, `getLikedReviewIds`, `likeReview` / `unlikeReview` | Profile, `PlaceCard` |
+| | `useCreatePost()` | `createPost` | Upload |
+| `use-profiles.ts` | `useProfile(id)`, `useProfilesByIds(ids)`, `useUpdateProfile()` | `getProfile`, `getProfilesByIds`, `updateProfile` | Profile, Edit profile, Settings |
+| | `useCheckUsername()` returns `(username) => Promise<boolean>` | `isUsernameAvailable` | Create account, Edit profile |
+| `use-follows.ts` | `useFollowerIds(userId)`, `useFollowingIds(userId)`, `useFollowRequests()`, `useSuggestedFriends()`, `useFriendUsernames()` | `follows.ts`, `getSuggestedFriends`, `getFriendUsernames` | Profile, Map, Privacy, Close friends |
+| | `useFollow()`, `useUnfollow()`, `useAcceptFollowRequest()`, `useDeclineFollowRequest()` | `followUser`, `unfollowUser`, `acceptFollowRequest`, `declineFollowRequest` | Profile |
+| `use-settings.ts` | `useSettings()`, `useUpdateSettings()`, `useToggleCloseFriend()`, `useBlockUser()`, `useUnblockUser()` | `settings.ts` | Settings screens |
+| `use-interests.ts` | `useInterestsByIds(ids)`, `usePopularInterests(limit, enabled?)`, `useSearchInterests(query)`, `useSuggestedInterests(enabled?)`, `useAddInterest()` | `interests.ts` | Profile, Edit profile |
+| `use-cities.ts` | `useCities(filters)`, `useCity(id)`, `useCityPlaces(id)` | `cities.ts` | Explore, City |
+| | `useProfileCity(id)`, `useCitySearch(query)` | `profile-cities.ts` | Profile, Edit profile |
 
 ### Mutations and what they refresh
 
-| Mutation hook | Updates the cache first? | Then invalidates |
+| Mutation hook | Changes the cache first? | Then invalidates |
 | --- | --- | --- |
-| `useToggleSave` | yes, `saves.ids` | `saves.all`, `collections.all` |
-| `useAddToCollection`, `useRemoveFromCollection` | optional, `collections.containing(placeId)` | `collections.all`, `saves.all` |
-| `useCreateCollection`, `useRenameCollection` | no | `collections.all` |
-| `useDeleteCollection` | no | `collections.all`, `saves.all` (its places become loose) |
-| `useCreateReview` | no | `reviews.all`, `places.all` (ratings and the newest review change) |
-| `useCreatePlace` | no | `places.all` |
-| `useUpdateProfile` | no | `profiles.detail(id)` |
-| `useSendFriendRequest`, `useAcceptFriendRequest`, `useRemoveFriend` | no | `friends.all`, `places.all` (friends' ratings change) |
+| `useToggleSave` | yes, `saves.ids` | `saves.all`, `collections.all` (unsaving uncollects) |
+| `useToggleLike` | yes, `reviews.likedIds` | `reviews.likedIds` |
+| `useRemoveFromCollection` | no | `collections.all`, `saves.all` |
+| `useCreatePost` | no | `places.all`, `cities.all`, `reviews.all`, `collections.all`, `saves.all`, `interests.suggested` |
+| `useUpdateProfile` | no; stays pending until the fresh profile loads | `profiles.all`, `interests.all`, `follows.suggestions` |
+| `useFollow`, `useUnfollow`, `useAcceptFollowRequest`, `useDeclineFollowRequest` | no | `follows.all`, `profiles.all`, `places.all` (friends' ratings change) |
+| `useUpdateSettings` | yes, `settings.all` | `settings.all`, `follows.all` (friends-only off accepts requests), `profiles.all` |
+| `useToggleCloseFriend` | yes, `settings.all` | `settings.all` |
+| `useUnblockUser` | yes, `settings.all` | `settings.all`, `follows.all`, `profiles.all` |
+| `useBlockUser` | no | `settings.all`, `follows.all` (blocking ends follows), `profiles.all` |
+| `useAddInterest` | no | `interests.all` |
+| save sheet: `useAddToCollection`, `useCreateCollection`, `useRenameCollection`, `useDeleteCollection` | **add** | `collections.all`, and `saves.all` for add and delete |
 
 ## Type changes
 
 | Type | Change | When |
 | --- | --- | --- |
-| `Place` | Remove `bookmark` and `addToList`. Use `useIsSaved(place.id)` instead. | Phase 0 |
-| `Place` | Make `proximity` optional. It depends on where the phone is, so it can't come from the database. Only show the distance when it's set. | Phase 2 |
+| `Place` | Remove `bookmark` and `addToList`. Use `useIsSaved(place.id)` instead. | Done |
+| `Place` | Make `proximity` optional. It depends on where the phone is, so it can't come from the database. Only show the distance when it's set. | Done |
 | `Place` | Keep `reviews?`. `getPlace` fills in all of them, and `getPlaces` can fill in just the newest one for the Feed card. | — |
-| `Review` | Add `authorId`. Keep `profileName` as the username to show; the service fills it in from the author's profile. | Phase 1 (Profile reviews need it) |
-| `Profile` | Remove `friendIds` and `postIds`. Use `useFriends(id)` and `useReviewsByUser(id)`. Mock services can keep their own lists inside the service. | Phase 1 (Profile) |
+| `Review` | Add `authorId`. Keep `profileName` as the username to show; the service fills it in from the author's profile. | Done |
+| `Review` | Remove `likedByMe`. Use `useIsLiked(review.id)` instead. | Done |
+| `Profile` | Remove `friendIds` and `postIds`. Use `useFollowerIds(id)`, `useFollowingIds(id)` and `useReviewsByUser(id)`. | Done |
 | `Collection` | No change. Services build `places` and `subCollections` from the database. | — |
-| `src/types/database.ts` | Generated from the database in Phase 2. Never edit it by hand. | Phase 2 |
+| `src/types/database.ts` | Generated from the database. Never edit it by hand. | Done |
 
 ## Phase 0: Foundation
 
-**One person, one PR, before Phase 1.** Everyone else keeps building UI in the meantime.
+**Done** on the `supabase-backend` branch, after Phase 2 rather than before it. The services were already on Supabase, so the mock steps (5 and 6) were skipped. The steps are kept as the record.
 
 1. `npx expo install @tanstack/react-query`
 2. Create `src/lib/query-client.ts`:
@@ -318,15 +310,15 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 7. Create `src/hooks/use-saves.ts` from the [worked example](#worked-example-saving-a-place). Use it in `PlaceCard` (Feed) and `PlaceDetails` in place of `place.bookmark` and the local `isBookmarked` state.
 8. Lint and typecheck.
 
-- [ ] React Query installed and provided in the root layout
-- [ ] `src/lib/query-client.ts` and `src/lib/query-keys.ts`
-- [ ] Mock current user in `mock-backend.ts`
-- [ ] Mock saves in `collections.ts`; `Place.bookmark`, `addToList` and `toggleBookmark` removed
-- [ ] `src/hooks/use-saves.ts`, used by Feed and Place details
+- [x] React Query installed and provided in the root layout
+- [x] `src/lib/query-client.ts` and `src/lib/query-keys.ts`
+- [x] ~~Mock current user in `mock-backend.ts`~~ Not needed: services read the user from the Supabase session
+- [x] Saves in `collections.ts` (on Supabase); `Place.bookmark`, `addToList` and `toggleBookmark` removed
+- [x] `src/hooks/use-saves.ts`, used by Feed and Place details
 
-## Phase 1: Connect screens to hooks (mock data)
+## Phase 1: Connect screens to hooks
 
-Each page's owner does their own page, all at the same time. Add the hooks and mock service functions your page needs (see [Contracts](#contracts)). If two pages need the same hook, whoever gets there first writes it.
+**Done** on the `supabase-backend` branch, against Supabase rather than mock data. Every screen and component now reads and writes through the hooks in [Contracts](#hooks), and lint stops new code from calling services directly. The table below is the original plan; the hooks table above has the names as built (for example `useCreatePost` rather than `useCreateReview`, and the follow hooks rather than `useFriends`).
 
 | Page | File | Hooks | Gets rid of |
 | --- | --- | --- | --- |
@@ -341,18 +333,20 @@ Each page's owner does their own page, all at the same time. Add the hooks and m
 | Edit profile (new) | `edit-profile.tsx` | `useUpdateProfile()` | |
 | Upload | `upload.tsx` | `useCreateReview()`, `usePlaces({ query })` for suggestions | |
 
-The mock session follows [01-login.md](pages/01-login.md). `signInAsMockUser(id)` calls `setMockUserId(id)` and then `queryClient.clear()`. `signIn` finds a mock user and accepts any password.
+The session is on Supabase Auth ([2b](#2b-auth-login-owner)). Signing in as someone else clears the query cache.
 
 - [x] Session, login gate and demo users (on Supabase Auth)
-- [ ] Feed
-- [ ] Map
-- [ ] Place details
-- [ ] Saved
-- [ ] Collection
-- [ ] Save sheet
-- [ ] Profile (with `Review.authorId`; `Profile.friendIds` and `postIds` removed)
-- [ ] Edit profile
-- [ ] Upload
+- [x] Feed
+- [x] Map
+- [x] Place details
+- [x] Saved
+- [x] Collection
+- [ ] Save sheet (not built yet; a bookmark tap still toggles)
+- [x] Profile (with `Review.authorId`; `Profile.friendIds` and `postIds` removed)
+- [x] Edit profile
+- [x] Upload
+- [x] Explore and City (not in the original plan)
+- [x] Settings: Privacy, Notifications, Close friends, Blocked, Your travel; and Create account's username check
 
 ## Phase 2: Supabase
 
@@ -505,7 +499,7 @@ create policy "media: upload own" on storage.objects
 
 - **Auto-sort.** `profiles.auto_sort_saves` already exists. Add `match_country`, `match_city` and `match_place_type` to `collections`, plus an `after insert` trigger on `saves` that adds the place to matching collections. First answer the open questions in the `collections.ts` note.
 - **Distance.** Get the phone's location with `expo-location`, and fill in `proximity` in the service or hook.
-- **Live friend requests**, using Supabase Realtime on `friendships`.
+- **Live follow requests**, using Supabase Realtime on `follow_requests`.
 - **AI summaries**, written by an Edge Function when reviews change, and stored in `places.ai_summary`.
 - **Search debounce.** Wait about 300 ms after typing stops before the search text goes into the query key, so it's not one request per keystroke.
 

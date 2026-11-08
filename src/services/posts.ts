@@ -7,48 +7,14 @@ import { supabase } from '@/lib/supabase';
 
 import { deleteMedia, uploadMedia } from './media';
 
-import type { UploadFields } from '@/types/upload-fields';
+import { validatePost } from '@/utils/validate-post';
 
-export type PostErrors = Partial<Record<keyof UploadFields, string>>;
+import type { UploadFields } from '@/types/upload-fields';
 
 export type SavedPost = UploadFields & {
   id: string; // the place's id, so Upload can open the place afterwards
   createdAt: string;
 };
-
-export function validatePost(fields: UploadFields): PostErrors {
-  const errors: PostErrors = {};
-
-  if (!fields.media.some((item) => item.type === 'photo')) {
-    errors.media = 'Add at least one photo.';
-  }
-
-  if (!fields.placeName.trim()) {
-    errors.placeName = 'Enter a place name.';
-  }
-
-  if (!fields.city.trim()) {
-    errors.city = 'Enter a city.';
-  }
-
-  if (!fields.country.trim()) {
-    errors.country = 'Enter a country.';
-  }
-
-  if (fields.rating < 1 || fields.rating > 5) {
-    errors.rating = 'Choose a rating from 1 to 5 stars.';
-  }
-
-  if (!fields.reviewText.trim()) {
-    errors.reviewText = 'Write a short review.';
-  }
-
-  if (!fields.placeType) {
-    errors.placeType = 'Choose a place type.';
-  }
-
-  return errors;
-}
 
 export async function createPost(fields: UploadFields): Promise<SavedPost> {
   if (Object.keys(validatePost(fields)).length > 0) {

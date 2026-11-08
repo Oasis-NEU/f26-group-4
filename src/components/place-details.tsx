@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { useIsSaved, useToggleSave } from '@/hooks/use-saves';
 import { Place } from '@/types/place';
 import { getCountryFlag } from '@/utils/country-flags';
 import { colors, radius, spacing, type } from '@/theme';
@@ -15,10 +15,11 @@ type PlaceDetailsProps = {
 };
 
 export function PlaceDetails({ place }: PlaceDetailsProps) {
-  // Whether the bookmark button looks filled in. Only remembered while the app is open.
-  // TODO: once collections exist, this should check whether the place is actually saved,
-  // and tapping it should open the "save to collection" sheet instead of just toggling.
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  // Whether the place is saved. It comes from the shared list of saved ids, so
+  // it matches the bookmark on every other screen.
+  // TODO: tapping it should open the "save to collection" sheet instead of just toggling.
+  const isBookmarked = useIsSaved(place.id);
+  const toggleSave = useToggleSave();
 
   // Some sizes depend on how big the phone is, so they have to be measured
   const window = useWindowDimensions();
@@ -58,7 +59,7 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
   }
 
   function handleBookmark() {
-    setIsBookmarked(!isBookmarked);
+    toggleSave.mutate({ placeId: place.id, save: !isBookmarked });
   }
 
   function handleShare() {

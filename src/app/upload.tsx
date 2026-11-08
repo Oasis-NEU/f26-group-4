@@ -15,8 +15,9 @@ import { AuthInput } from '@/components/auth-input';
 import { RatingStars } from '@/components/rating-stars';
 import { TagPicker } from '@/components/tag-picker';
 import { UploadMediaPicker } from '@/components/upload-media-picker';
-import { createPost, validatePost } from '@/services/posts';
+import { useCreatePost } from '@/hooks/use-reviews';
 import type { UploadFields } from '@/types/upload-fields';
+import { validatePost } from '@/utils/validate-post';
 
 const placeTypes = [
   'Cafe',
@@ -96,6 +97,7 @@ function FieldError({ message }: { message?: string }) {
 }
 
 export default function UploadPage() {
+  const createPost = useCreatePost();
   const [fields, setFields] = useState<UploadFields>(emptyFields);
   const [attempted, setAttempted] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
@@ -231,7 +233,7 @@ export default function UploadPage() {
     setIsPosting(true);
 
     try {
-      await createPost({ ...fields, ...(await findCoordinates(fields)) });
+      await createPost.mutateAsync({ ...fields, ...(await findCoordinates(fields)) });
       setSaved(true);
       scrollView.current?.scrollTo({ y: 0, animated: true });
     } catch {
@@ -257,11 +259,10 @@ export default function UploadPage() {
   if (saved) {
     return (
       <View style={styles.successContainer}>
-        <Text style={styles.title}>Demo post saved</Text>
+        <Text style={styles.title}>Post saved</Text>
 
         <Text accessibilityLiveRegion="polite" style={styles.hint}>
-          Your post was saved for this app session. It is not
-          published online and will disappear when the app reloads.
+          Your review is now on the place&apos;s page and in the Feed.
         </Text>
 
         <Pressable
@@ -287,8 +288,7 @@ export default function UploadPage() {
       <Text style={styles.title}>New post</Text>
 
       <Text style={styles.hint}>
-        Fields marked * are required. Posts are saved for this
-        demo session only.
+        Fields marked * are required.
       </Text>
 
       {hasErrors && (

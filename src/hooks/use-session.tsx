@@ -1,8 +1,9 @@
 // Who's signed in. This is the app's only context (docs/data-layer.md, rule 5):
 // everything else comes from services. Signing in or out flips the guards in
 // src/app/_layout.tsx, which moves the app between Login and the tabs.
-import type { User } from '@supabase/supabase-js';
-import { createContext, use, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { Session, User } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
+import { createContext, use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { supabase } from '@/lib/supabase';
 
@@ -32,20 +33,31 @@ const DEMO_EMAIL_DOMAIN = 'example.com';
 const SessionContext = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const userIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    // When a different person signs in (or everyone signs out), empty the
+    // React Query cache, so nobody ever sees the last person's saves or settings.
+    function applySession(session: Session | null) {
+      const nextUser = session?.user ?? null;
+      if ((nextUser?.id ?? null) !== userIdRef.current) {
+        userIdRef.current = nextUser?.id ?? null;
+        queryClient.clear();
+      }
+      setUser(nextUser);
+    }
+
     supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
+      applySession(data.session);
       setIsLoading(false);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => applySession(session));
     return () => data.subscription.unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   const value = useMemo<SessionValue>(
     () => ({

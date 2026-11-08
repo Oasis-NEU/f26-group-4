@@ -151,7 +151,7 @@ const places = await getPlaces();
 
 The services read and write Supabase now. A new service can start from the template's mock data, so you can build the screen first; once its tables exist, only the insides of its functions change, and screens keep calling it the same way.
 
-Screens are moving to hooks in `src/hooks/` (e.g. `usePlaces()`), which call the services and keep every screen in sync. [docs/data-layer.md](docs/data-layer.md) has the rules, the function and hook names to use, and the Supabase plan.
+Screens and components get their data from hooks in `src/hooks/` (e.g. `usePlaces()`), which call the services and keep every screen in sync. `npm run lint` fails if a screen or component imports a service's functions, or if anything outside `src/services/` imports the Supabase client. [docs/data-layer.md](docs/data-layer.md) has the rules, the function and hook names to use, and the Supabase plan.
 
 ## Installing packages
 

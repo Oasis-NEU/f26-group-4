@@ -5,14 +5,15 @@ import { Button, ScrollView, StyleSheet, Text } from 'react-native';
 // THEME CODE -- design system. See the note above the styles at the bottom.
 import { colors } from '@/theme';
 import { AuthInput } from '@/components/auth-input';
+import { useCheckUsername } from '@/hooks/use-profiles';
 import { useSession } from '@/hooks/use-session';
-import { isUsernameAvailable } from '@/services/users';
 
 // The database's rule for usernames (supabase/migrations, profiles.username).
 const USERNAME_PATTERN = /^[a-z0-9._]{3,30}$/;
 
 export default function CreateAccountPage() {
   const { signUp } = useSession();
+  const isUsernameAvailable = useCheckUsername();
 
   // Remember what the person types in each box.
   const [email, setEmail] = useState('');

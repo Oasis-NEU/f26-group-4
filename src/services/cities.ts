@@ -6,7 +6,7 @@
 import { supabase } from '@/lib/supabase';
 
 import { getMediaUrl } from './media';
-import { getPersonal, PLACE_SELECT, toPlace, type PlaceRow } from './place-rows';
+import { PLACE_SELECT, toPlace, type PlaceRow } from './place-rows';
 
 import type { Database } from '@/types/database';
 import type { Place } from '@/types/place';
@@ -69,16 +69,13 @@ export async function getCities(filters: CityFilters = {}): Promise<City[]> {
 
 // Every place in one city, best-rated first. Used by the city page the tiles open.
 export async function getCityPlaces(cityId: string): Promise<Place[]> {
-  const [{ data, error }, personal] = await Promise.all([
-    supabase
-      .from('places')
-      .select(PLACE_SELECT)
-      .eq('city_id', cityId)
-      .order('average_rating', { ascending: false, nullsFirst: false }),
-    getPersonal(),
-  ]);
+  const { data, error } = await supabase
+    .from('places')
+    .select(PLACE_SELECT)
+    .eq('city_id', cityId)
+    .order('average_rating', { ascending: false, nullsFirst: false });
   if (error) throw error;
-  return (data as unknown as PlaceRow[]).map((row) => toPlace(row, personal));
+  return (data as unknown as PlaceRow[]).map(toPlace);
 }
 
 // One city on its own, or null if we have no places there.

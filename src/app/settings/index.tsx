@@ -1,33 +1,16 @@
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { SettingsRow } from '@/components/settings-row';
-import { getSettings } from '@/services/settings';
+import { useProfile } from '@/hooks/use-profiles';
 import { useUserId } from '@/hooks/use-session';
-import { getProfile } from '@/services/users';
-import type { Profile } from '@/types/profile';
-import type { Settings } from '@/types/settings';
+import { useSettings } from '@/hooks/use-settings';
 
 export default function SettingsIndexScreen() {
   const userId = useUserId();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [settings, setSettings] = useState<Settings | null>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
-      Promise.all([getProfile(userId), getSettings()]).then(([fetchedProfile, fetchedSettings]) => {
-        if (!isActive) return;
-        setProfile(fetchedProfile);
-        setSettings(fetchedSettings);
-      });
-      return () => {
-        isActive = false;
-      };
-    }, [userId]),
-  );
+  const { data: profile } = useProfile(userId);
+  const { data: settings } = useSettings();
 
   if (!profile || !settings) return null;
 

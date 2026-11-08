@@ -2,8 +2,6 @@
 // collections.ts, cities.ts, reviews.ts): what to ask Supabase for, and how a
 // database row becomes the app's Place and Review types. Rows are snake_case;
 // the app's types are camelCase (docs/data-layer.md, 2c).
-import { currentUserId, supabase } from '@/lib/supabase';
-
 import { getMediaUrl } from './media';
 
 import type { Media } from '@/types/media';
@@ -57,26 +55,11 @@ export type PlaceRow = {
 // The place a review belongs to, as much as toReview needs of it.
 type ReviewPlace = Pick<PlaceRow, 'id' | 'place_type' | 'address' | 'website' | 'city'>;
 
-// What depends on who's signed in: the places they saved and the reviews they
-// liked. Fetched once per call, rather than stored on shared data
-// (docs/data-layer.md, rule 6).
-export type Personal = { savedIds: Set<string>; likedIds: Set<string> };
+// Whether the signed-in user saved a place or liked a review isn't part of
+// these: it's its own query (useIsSaved, useIsLiked), so the same place data
+// works for everyone (docs/data-layer.md, rule 6).
 
-export async function getPersonal(): Promise<Personal> {
-  const userId = await currentUserId();
-  const [saves, likes] = await Promise.all([
-    supabase.from('saves').select('place_id').eq('user_id', userId),
-    supabase.from('review_likes').select('review_id').eq('user_id', userId),
-  ]);
-  if (saves.error) throw saves.error;
-  if (likes.error) throw likes.error;
-  return {
-    savedIds: new Set(saves.data.map((row) => row.place_id)),
-    likedIds: new Set(likes.data.map((row) => row.review_id)),
-  };
-}
-
-export function toReview(row: ReviewRow, place: ReviewPlace, personal?: Personal): Review {
+export function toReview(row: ReviewRow, place: ReviewPlace): Review {
   return {
     id: row.id,
     profileName: row.author?.username ?? 'someone',
@@ -96,7 +79,6 @@ export function toReview(row: ReviewRow, place: ReviewPlace, personal?: Personal
     authorId: row.author_id,
     createdAt: row.created_at.slice(0, 10),
     likeCount: row.like_count ?? 0,
-    likedByMe: personal?.likedIds.has(row.id) ?? false,
   };
 }
 
@@ -110,11 +92,11 @@ function directionsFor(row: PlaceRow): string {
   return `https://maps.google.com/?q=${encodeURIComponent(query)}`;
 }
 
-export function toPlace(row: PlaceRow, personal?: Personal): Place {
+export function toPlace(row: PlaceRow): Place {
   // Oldest first, as the mock data had them: the Feed card shows the last one as the newest.
   const reviews = [...(row.reviews ?? [])]
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .map((review) => toReview(review, row, personal));
+    .map((review) => toReview(review, row));
   // Every photo from its reviews, newest review first.
   const media = [...reviews]
     .reverse()
@@ -129,9 +111,6 @@ export function toPlace(row: PlaceRow, personal?: Personal): Place {
     isVerified: row.is_verified,
     suitedFor: row.suited_for,
     placeType: row.place_type,
-    // TODO (data-layer Phase 0): drop bookmark and addToList; use useIsSaved(place.id).
-    bookmark: personal?.savedIds.has(row.id) ?? false,
-    addToList: false,
     address: row.address,
     city: row.city?.name ?? '',
     country: row.city?.country ?? '',

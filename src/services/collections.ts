@@ -13,7 +13,7 @@
 import { currentUserId, supabase } from '@/lib/supabase';
 
 import { getMediaUrl } from './media';
-import { getPersonal, PLACE_SELECT, toPlace, UUID_PATTERN, type Personal, type PlaceRow } from './place-rows';
+import { PLACE_SELECT, toPlace, UUID_PATTERN, type PlaceRow } from './place-rows';
 
 import type { Collection } from '@/types/collection';
 import type { Place } from '@/types/place';
@@ -35,10 +35,10 @@ type CollectionRow = {
   collection_places: { added_at: string; place: PlaceRow | null }[];
 };
 
-function toCollection(row: CollectionRow, personal: Personal): Collection {
+function toCollection(row: CollectionRow): Collection {
   const places = [...row.collection_places]
     .sort((a, b) => a.added_at.localeCompare(b.added_at))
-    .flatMap((item) => (item.place ? [toPlace(item.place, personal)] : []));
+    .flatMap((item) => (item.place ? [toPlace(item.place)] : []));
   // A collection's country is worked out from its places: only when they share one.
   const countries = new Set(places.map((place) => place.country));
 
@@ -54,8 +54,8 @@ function toCollection(row: CollectionRow, personal: Personal): Collection {
 }
 
 // Top-level collections, each with its sub-collections inside.
-function toTree(rows: CollectionRow[], personal: Personal): Collection[] {
-  const byId = new Map(rows.map((row) => [row.id, toCollection(row, personal)]));
+function toTree(rows: CollectionRow[]): Collection[] {
+  const byId = new Map(rows.map((row) => [row.id, toCollection(row)]));
   const top: Collection[] = [];
   for (const row of rows) {
     const collection = byId.get(row.id)!;
@@ -70,12 +70,13 @@ function toTree(rows: CollectionRow[], personal: Personal): Collection[] {
 }
 
 async function collectionsOwnedBy(ownerId: string): Promise<Collection[]> {
-  const [{ data, error }, personal] = await Promise.all([
-    supabase.from('collections').select(COLLECTION_SELECT).eq('owner_id', ownerId).order('created_at'),
-    getPersonal(),
-  ]);
+  const { data, error } = await supabase
+    .from('collections')
+    .select(COLLECTION_SELECT)
+    .eq('owner_id', ownerId)
+    .order('created_at');
   if (error) throw error;
-  return toTree(data as unknown as CollectionRow[], personal);
+  return toTree(data as unknown as CollectionRow[]);
 }
 
 // Every collection the signed-in user has made. Other people's public
@@ -98,12 +99,13 @@ export async function getCollection(id: string): Promise<Collection | null> {
   }
   if (!UUID_PATTERN.test(id)) return null;
 
-  const [{ data, error }, personal] = await Promise.all([
-    supabase.from('collections').select(COLLECTION_SELECT).or(`id.eq.${id},parent_id.eq.${id}`).order('created_at'),
-    getPersonal(),
-  ]);
+  const { data, error } = await supabase
+    .from('collections')
+    .select(COLLECTION_SELECT)
+    .or(`id.eq.${id},parent_id.eq.${id}`)
+    .order('created_at');
   if (error) throw error;
-  return toTree(data as unknown as CollectionRow[], personal).find((collection) => collection.id === id) ?? null;
+  return toTree(data as unknown as CollectionRow[]).find((collection) => collection.id === id) ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,18 +136,13 @@ export async function unsavePlace(placeId: string): Promise<void> {
 // Every place saved anywhere, newest save first, for the "All saved" card.
 export async function getAllSavedPlaces(): Promise<Place[]> {
   const userId = await currentUserId();
-  const [{ data, error }, personal] = await Promise.all([
-    supabase
-      .from('saves')
-      .select(`created_at, place:places(${PLACE_SELECT})`)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false }),
-    getPersonal(),
-  ]);
+  const { data, error } = await supabase
+    .from('saves')
+    .select(`created_at, place:places(${PLACE_SELECT})`)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data as unknown as { place: PlaceRow | null }[]).flatMap((row) =>
-    row.place ? [toPlace(row.place, personal)] : [],
-  );
+  return (data as unknown as { place: PlaceRow | null }[]).flatMap((row) => (row.place ? [toPlace(row.place)] : []));
 }
 
 // The loose saved places: saved, but not in any of your collections.

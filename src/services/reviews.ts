@@ -3,7 +3,7 @@
 
 import { currentUserId, supabase } from '@/lib/supabase';
 
-import { getPersonal, REVIEW_SELECT, toReview, type ReviewRow } from './place-rows';
+import { REVIEW_SELECT, toReview, type ReviewRow } from './place-rows';
 
 import type { Review } from '@/types/review';
 
@@ -22,18 +22,24 @@ type AuthoredRow = ReviewRow & {
 
 // Every review this user wrote, newest first.
 export async function getReviewsByAuthor(authorId: string): Promise<AuthoredReview[]> {
-  const [{ data, error }, personal] = await Promise.all([
-    supabase
-      .from('reviews')
-      .select(`${REVIEW_SELECT}, place:places(id, name, place_type, address, website, city:cities(name, country))`)
-      .eq('author_id', authorId)
-      .order('created_at', { ascending: false }),
-    getPersonal(),
-  ]);
+  const { data, error } = await supabase
+    .from('reviews')
+    .select(`${REVIEW_SELECT}, place:places(id, name, place_type, address, website, city:cities(name, country))`)
+    .eq('author_id', authorId)
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return (data as unknown as AuthoredRow[]).flatMap((row) =>
-    row.place ? [{ ...toReview(row, row.place, personal), placeName: row.place.name }] : [],
+    row.place ? [{ ...toReview(row, row.place), placeName: row.place.name }] : [],
   );
+}
+
+// Ids of every review the signed-in user liked. Shared by every heart, the way
+// getSavedPlaceIds is shared by every bookmark.
+export async function getLikedReviewIds(): Promise<string[]> {
+  const userId = await currentUserId();
+  const { data, error } = await supabase.from('review_likes').select('review_id').eq('user_id', userId);
+  if (error) throw error;
+  return data.map((row) => row.review_id);
 }
 
 export async function likeReview(reviewId: string): Promise<void> {
