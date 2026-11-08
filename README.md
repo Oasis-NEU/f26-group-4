@@ -112,7 +112,7 @@ Everyone shares the same data, so your test posts, saves and follows show up for
 
 ### Changing the database
 
-Only the tech lead changes the database. If your feature needs a new table or column, ask them, or open a PR with a new migration for them to review and push. `npx supabase migration new <what-changed>` makes the file in `supabase/migrations/` (it needs no Docker or login); docs/backend-plan.md, "Writing migrations", says what goes in it. Don't run `npx supabase db push`, and never put the secret key or database password in the app or in any `.env`.
+Only the tech lead changes the database. If your feature needs a new table or column, ask them, or open a PR with a new migration for them to review and push. `npx supabase migration new <what-changed>` makes the file in `supabase/migrations/` (it needs no Docker or login); docs/backend-plan.md, "Writing migrations", says what goes in it. Don't run `npx supabase db push --remote`, and never put the secret key or database password in the app or in any `.env`.
 
 ### Running Supabase on your own computer
 

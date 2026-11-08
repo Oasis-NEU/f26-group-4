@@ -2,7 +2,7 @@
 
 What we want the Supabase backend to do: the tables, who can see what, the functions the app calls, file storage, accounts, and the order to build it in. It's written from what the app does today (the services in `src/services/`, the types in `src/types/`, and the screens), so every piece of mock data has somewhere to go.
 
-**Status:** built on the `supabase-backend` branch: B1 to B4, the demo data, and the app switched over to it. It's tested against a local Supabase (29 database tests, the Security Advisor, and the app on the web). It isn't on the shared project yet. [What changed while building](#what-changed-while-building) lists where the build differs from the plan below. Screens and components read and write through React Query hooks ([data-layer.md](data-layer.md) Phases 0 and 1).
+**Status:** built on the `supabase-backend` branch: B1 to B4, the demo data, and the app switched over to it. It's tested against a local Supabase (29 database tests, the Security Advisor, and the app on the web). The migrations and the `delete-account` function are on the shared project since Nov 8, 2026; its demo data comes from `npm run demo:reset -- --remote` ([Demo data](#demo-data)). [What changed while building](#what-changed-while-building) lists where the build differs from the plan below. Screens and components read and write through React Query hooks ([data-layer.md](data-layer.md) Phases 0 and 1).
 
 **This replaces** [supabase-schema.sql](supabase-schema.sql) and the "The schema" part of [data-layer.md, Phase 2](data-layer.md#phase-2-supabase). Those were written before follows, settings, privacy, interests and profile cities existed ([what changed](#what-changed-from-the-old-schema)). Everything else in data-layer.md still applies: services and hooks, query keys, and how a service moves from mock data to Supabase.
 
@@ -501,7 +501,7 @@ When a service switches to Supabase, its mock data moves into its seed file and 
 - **Function rights.** Postgres lets everyone run a new function, signed-out visitors included. The first migration turns that off with `alter default privileges revoke execute on functions from public` (and the same `in schema public … from anon, authenticated`, in case the project grants those too). After that, each function grants `execute` to the roles that use it (`anon` only for `is_username_available`), and those roles get `usage` on the `private` schema.
 - **Views** made `with (security_invoker = true)`.
 
-After pushing, regenerate `src/types/database.ts` and run the Security Advisor. The Supabase CLI reached v3 on Nov 2, 2026, and the type commands are now `npx supabase gen types --schema public > src/types/database.ts` (the local stack) and the same with `--remote` (the linked project).
+Regenerate `src/types/database.ts` from the local stack with `npx supabase gen types --schema public > src/types/database.ts`, and after pushing (`npx supabase db push --remote`) run `npx supabase db advisors --remote`. Don't generate the types with `--remote`: the shared project's generator leaves computed fields like `average_rating` out of the row types and makes view columns nullable, so the services stop typechecking. (The Supabase CLI reached v3 on Nov 2, 2026; commands target the local stack unless you pass `--remote`.)
 
 ## Build order
 
