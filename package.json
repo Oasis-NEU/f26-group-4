@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~58.0.27",
     "@expo/vector-icons": "^15.0.2",
+    "@supabase/supabase-js": "^2.119.0",
     "expo": "^58.0.0",
     "expo-constants": "~58.0.14",
     "expo-device": "~58.0.5",
@@ -37,6 +38,7 @@
     "@types/react": "~19.3.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.4",
+    "supabase": "^3.0.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -44,7 +46,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "demo:reset": "node --env-file-if-exists=.env.local supabase/seed/reset.mjs"
   },
   "private": true
 }
