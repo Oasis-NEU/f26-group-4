@@ -90,37 +90,35 @@ async function loadProfileData(viewerId: string): Promise<ProfileData> {
     };
   }
 
-  const suggestedFriends = await Promise.all(
-    friends.map(async (friend) => ({ profile: friend, reason: await getSuggestionReason(viewerId, friend) })),
-  );
-
-  const followRequests = (
-    await Promise.all(
-      requests.map(async (request): Promise<FollowRequestItem | null> => {
-        const requester = await getProfile(request.fromId);
-        if (!requester) return null;
-        return {
-          fromId: request.fromId,
-          name: requester.name,
-          username: requester.username,
-          photoUrl: requester.profilePicture,
-          avatarHue: requester.avatarHue,
-          reason: await getSuggestionReason(viewerId, requester),
-        };
-      }),
-    )
-  ).filter((item): item is FollowRequestItem => item !== null);
-
-  const places = (await Promise.all(authoredReviews.map((review) => getPlace(review.placeID)))).filter(
-    (place): place is Place => place !== null,
-  );
-
-  const [homeCityRecord, dreamTripRecord, interests, mySettings] = await Promise.all([
-    getProfileCity(fetchedProfile.homeCityId),
-    fetchedProfile.dreamTripCityId ? getProfileCity(fetchedProfile.dreamTripCityId) : Promise.resolve(null),
-    getInterestsByIds(fetchedProfile.interestIds),
-    getSettings(viewerId),
-  ]);
+  // These four are independent of each other -- each only needs something
+  // already fetched above (friends/requests/reviews/profile), not each
+  // other's results -- so they run as one batch instead of four sequential
+  // round trips through the mock backend's simulated network delay.
+  const [suggestedFriends, followRequests, places, homeCityRecord, dreamTripRecord, interests, mySettings] =
+    await Promise.all([
+      Promise.all(friends.map(async (friend) => ({ profile: friend, reason: await getSuggestionReason(viewerId, friend) }))),
+      Promise.all(
+        requests.map(async (request): Promise<FollowRequestItem | null> => {
+          const requester = await getProfile(request.fromId);
+          if (!requester) return null;
+          return {
+            fromId: request.fromId,
+            name: requester.name,
+            username: requester.username,
+            photoUrl: requester.profilePicture,
+            avatarHue: requester.avatarHue,
+            reason: await getSuggestionReason(viewerId, requester),
+          };
+        }),
+      ).then((items) => items.filter((item): item is FollowRequestItem => item !== null)),
+      Promise.all(authoredReviews.map((review) => getPlace(review.placeID))).then((items) =>
+        items.filter((place): place is Place => place !== null),
+      ),
+      getProfileCity(fetchedProfile.homeCityId),
+      fetchedProfile.dreamTripCityId ? getProfileCity(fetchedProfile.dreamTripCityId) : Promise.resolve(null),
+      getInterestsByIds(fetchedProfile.interestIds),
+      getSettings(viewerId),
+    ]);
 
   return {
     profile: fetchedProfile,

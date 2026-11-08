@@ -131,7 +131,10 @@ export async function getSuggestedFriends(userId: string): Promise<Profile[]> {
     })),
   );
 
-  return mockRequest(scored.sort((a, b) => b.score - a.score).map((entry) => entry.profile));
+  // No mockRequest() wrap here -- the awaits above already paid the simulated
+  // network delay; wrapping an already-fetched result in another one just
+  // stacks a third round trip on top for no reason.
+  return scored.sort((a, b) => b.score - a.score).map((entry) => entry.profile);
 }
 
 // The reason line shown under a suggested friend's name, e.g. "Also in Lisbon"
@@ -140,9 +143,13 @@ export async function getSuggestionReason(myId: string, other: Profile): Promise
   const me = mockUsers.find((user) => user.id === myId);
   if (!me) return undefined;
 
-  const [myCloseFriendIds, otherCloseFriendIds] = await Promise.all([
+  // Fetched together up front (rather than only fetching followers if the
+  // country check falls through) so this never takes more than one round trip.
+  const [myCloseFriendIds, otherCloseFriendIds, myFollowers, otherFollowers] = await Promise.all([
     getSettings(myId).then((s) => s.closeFriendIds),
     getSettings(other.id).then((s) => s.closeFriendIds),
+    getFollowerIds(myId),
+    getFollowerIds(other.id),
   ]);
 
   const myStatus = getVisibleStatus(me, myId, myCloseFriendIds);
@@ -158,7 +165,6 @@ export async function getSuggestionReason(myId: string, other: Profile): Promise
     return otherStatus.city ? `Also in ${otherStatus.city}` : `Also in ${otherStatus.country}`;
   }
 
-  const [myFollowers, otherFollowers] = await Promise.all([getFollowerIds(myId), getFollowerIds(other.id)]);
   const mutualCount = myFollowers.filter((id) => otherFollowers.includes(id)).length;
   if (mutualCount > 0) return `${mutualCount} mutual${mutualCount === 1 ? '' : 's'}`;
 
