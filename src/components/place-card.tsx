@@ -1,7 +1,10 @@
-import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useState } from 'react';
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BookmarkButton } from '@/components/bookmark-button';
+import { CommentButton } from '@/components/comment-button';
+import { CommentsModal } from '@/components/comments-modal';
+import { LikeButton } from '@/components/like-button';
 import { MediaStrip } from '@/components/media-strip';
 import { RatingStars } from '@/components/rating-stars';
 import type { Place } from '@/types/place';
@@ -21,6 +24,24 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress, onBook
   const photos = place.media.filter((item) => item.type === 'photo').map((item) => item.url);
   const images = [place.coverImage, ...photos];
   // The newest friend review shows when there is one, otherwise the description
+  // Likes aren't stored anywhere yet, so this only lasts while the card is on screen
+  const [isLiked, setIsLiked] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const comments = place.reviews ?? [];
+
+  // Opens the place in the phone's maps app: Apple Maps on iOS, the default maps app on Android
+  function openInMaps() {
+    const { latitude: lat, longitude: lng, name } = place;
+    const label = encodeURIComponent(name);
+    const url = Platform.select({
+      ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
+      default: `geo:${lat},${lng}?q=${lat},${lng}(${label})`,
+    });
+    Linking.openURL(url).catch(() =>
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`)
+    );
+  }
+
   const newestReview = place.reviews?.[place.reviews.length - 1];
 
   return (
@@ -30,18 +51,21 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress, onBook
           <Text style={styles.name}>{place.name}</Text>
           {place.isVerified && <Text style={styles.verified} accessibilityLabel="Verified">✓</Text>}
         </View>
+      </Pressable>
+      <Pressable onPress={openInMaps} accessibilityRole="link" accessibilityLabel={`Open ${place.name} in maps`} style={styles.locationRow}>
         <Text style={styles.location}>
           {place.city}, {place.country}
         </Text>
       </Pressable>
 
-      <Pressable onPress={onPress} accessibilityRole="imagebutton" accessibilityLabel={`Open ${place.name}`}>
-        <MediaStrip images={images} width={width} />
-      </Pressable>
+      <MediaStrip images={images} width={width} onPress={onPress} onSwipePastEnd={onPress} />
 
       <View style={styles.actions}>
+        <LikeButton isLiked={isLiked} onPress={() => setIsLiked((prev) => !prev)} />
+        <CommentButton count={comments.length} onPress={() => setShowComments(true)} />
         <BookmarkButton isSaved={place.bookmark} onPress={onBookmarkPress} />
       </View>
+      <CommentsModal visible={showComments} comments={comments} onClose={() => setShowComments(false)} />
 
       <View style={styles.info}>
         <View style={styles.ratings}>
@@ -75,7 +99,12 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingTop: 8,
+  },
+  locationRow: {
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+    alignSelf: 'flex-start',
   },
   nameRow: {
     flexDirection: 'row',
@@ -91,10 +120,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   location: {
-    color: '#666',
+    color: '#007AFF',
   },
   actions: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
     paddingHorizontal: 12,
     paddingTop: 8,
   },

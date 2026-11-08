@@ -42,7 +42,7 @@ export const mockPlaces: Place[] = [
     reviews: [
       {
         id: 'review_021',
-        profileName: 'tomasz_w',
+        profileName: 'kenji_travels',
         placeID: 'place_002',
         rating: 5,
         placeType: 'excursion',
@@ -51,7 +51,7 @@ export const mockPlaces: Place[] = [
         address: 'Route du Belvédère, Les Deux Alpes',
         city: 'Les Deux Alpes',
         country: 'France',
-        media: [{ type: 'photo', url: '', caption: 'First light' }],
+        media: [{ type: 'photo', url: 'https://picsum.photos/id/1036/800/600', caption: 'First light' }],
       },
       {
         id: 'review_022',

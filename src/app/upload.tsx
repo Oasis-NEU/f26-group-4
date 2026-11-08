@@ -118,10 +118,10 @@ export default function UploadPage() {
         }
       />
 
-      <Text style={styles.label}>Your review</Text>
+      <Text style={styles.label}>Your post</Text>
 
       <TextInput
-        accessibilityLabel="Your review"
+        accessibilityLabel="Your post"
         style={styles.review}
         multiline
         placeholder="What was your experience?"

@@ -9,22 +9,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPlacePreview } from '@/components/map-place-preview';
 import { PlacesMap, WORLD_CAMERA, type MapCamera } from '@/components/places-map';
 import { SearchFilterBar } from '@/components/search-filter-bar';
+import { getFriendUsernames } from '@/services/users';
 import { getPlaces, PLACE_TYPES, SUITED_FOR } from '@/services/places';
 import type { Place } from '@/types/place';
 
-// Map: one pin per place. Tapping a pin shows a preview card on this page, and the card's
+// Map: one photo-stack marker per place. Tapping a marker shows a preview card on this page, and the card's
 // "View details" button opens Place details. See the Map page in the docs.
 
 export default function MapScreen() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [friendUsernames, setFriendUsernames] = useState<string[]>([]);
   const [camera, setCamera] = useState<MapCamera>(WORLD_CAMERA);
 
   // Search text and filters; changing any of them re-fetches, which hides pins that don't match
   const [query, setQuery] = useState('');
   const [placeTypes, setPlaceTypes] = useState<string[]>([]);
   const [suitedFor, setSuitedFor] = useState<string[]>([]);
+
+  // TODO: use the signed-in user once there is one (the Profile page also hard-codes 'u1')
+  useEffect(() => {
+    getFriendUsernames('u1').then(setFriendUsernames);
+  }, []);
 
   useEffect(() => {
     // `ignore` stops an older, slower request from overwriting a newer one while typing
@@ -72,7 +79,7 @@ export default function MapScreen() {
 
       {/* The map shows right away; pins are added when they arrive */}
       <View style={styles.mapArea}>
-        <PlacesMap places={places} camera={camera} onSelectPlace={setSelectedId} onViewDetails={openDetails} />
+        <PlacesMap places={places} friendUsernames={friendUsernames} camera={camera} onSelectPlace={setSelectedId} onViewDetails={openDetails} />
 
         {!loading && places.length === 0 && (
           <View style={styles.banner}>
