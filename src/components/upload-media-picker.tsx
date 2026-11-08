@@ -9,25 +9,106 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+
 import type { Media } from '../../types';
 import { AuthInput } from './auth-input';
 
-//This file lets someone pick real photos or videos, add captions, and remove items.
+type PhotoLocation = {
+  latitude: number;
+  longitude: number;
+};
 
 type UploadMediaPickerProps = {
-  // Photos and videos currently selected.
   media: Media[];
-
-  // Gives the updated list back to the upload page.
   onChange: (media: Media[]) => void;
-
-  // Prevents changes while the post is being saved.
+  onPhotoLocation?: (coordinates: PhotoLocation) => void;
   disabled?: boolean;
 };
+
+// Photos may store coordinates as decimals or degrees/minutes/seconds.
+function toDecimal(value: unknown): number | undefined {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : undefined;
+  }
+
+  if (Array.isArray(value) && value.length === 3) {
+    const degrees = toDecimal(value[0]);
+    const minutes = toDecimal(value[1]);
+    const seconds = toDecimal(value[2]);
+
+    if (
+      degrees === undefined ||
+      minutes === undefined ||
+      seconds === undefined ||
+      minutes < 0 ||
+      minutes >= 60 ||
+      seconds < 0 ||
+      seconds >= 60
+    ) {
+      return undefined;
+    }
+
+    return (
+      (degrees < 0 ? -1 : 1) *
+      (Math.abs(degrees) + minutes / 60 + seconds / 3600)
+    );
+  }
+
+  return undefined;
+}
+
+function getPhotoLocation(
+  exif: Record<string, unknown> | null | undefined
+): PhotoLocation | undefined {
+  if (!exif) return undefined;
+
+  // Some devices put GPS information inside a nested object.
+  const nested = exif['{GPS}'];
+  const gps =
+    typeof nested === 'object' && nested !== null
+      ? (nested as Record<string, unknown>)
+      : exif;
+
+  let latitude = toDecimal(gps.GPSLatitude ?? gps.Latitude);
+  let longitude = toDecimal(gps.GPSLongitude ?? gps.Longitude);
+
+  if (latitude === undefined || longitude === undefined) {
+    return undefined;
+  }
+
+  const latitudeRef = gps.GPSLatitudeRef ?? gps.LatitudeRef;
+  const longitudeRef = gps.GPSLongitudeRef ?? gps.LongitudeRef;
+
+  if (typeof latitudeRef === 'string') {
+    const ref = latitudeRef.toUpperCase();
+
+    if (ref !== 'N' && ref !== 'S') return undefined;
+    latitude = Math.abs(latitude) * (ref === 'S' ? -1 : 1);
+  }
+
+  if (typeof longitudeRef === 'string') {
+    const ref = longitudeRef.toUpperCase();
+
+    if (ref !== 'E' && ref !== 'W') return undefined;
+    longitude = Math.abs(longitude) * (ref === 'W' ? -1 : 1);
+  }
+
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+    return undefined;
+  }
+
+  return { latitude, longitude };
+}
 
 export function UploadMediaPicker({
   media,
   onChange,
+  onPhotoLocation,
   disabled = false,
 }: UploadMediaPickerProps) {
   const [message, setMessage] = useState('');
@@ -38,13 +119,14 @@ export function UploadMediaPicker({
     setIsPicking(true);
 
     try {
-      // iOS may need library permission for original video files.
       if (Platform.OS === 'ios') {
         const permission =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permission.granted) {
-          setMessage('Please allow photo library access to select videos.');
+          setMessage(
+            'Please allow photo library access to select photos and videos.'
+          );
           return;
         }
       }
@@ -53,12 +135,10 @@ export function UploadMediaPicker({
         mediaTypes: ['images', 'videos'],
         allowsMultipleSelection: true,
         allowsEditing: false,
+        exif: true,
       });
 
-      // Closing the picker without choosing anything is fine.
-      if (result.canceled) {
-        return;
-      }
+      if (result.canceled) return;
 
       const selectedMedia: Media[] = result.assets.map((file) => ({
         imgURL: file.uri,
@@ -67,6 +147,26 @@ export function UploadMediaPicker({
       }));
 
       onChange([...media, ...selectedMedia]);
+
+      let photoLocation: PhotoLocation | undefined;
+
+      for (const file of result.assets) {
+        if (file.type === 'video') continue;
+
+        photoLocation = getPhotoLocation(file.exif);
+
+        if (photoLocation) break;
+      }
+
+      if (photoLocation) {
+        onPhotoLocation?.(photoLocation);
+      } else {
+        setMessage(
+          Platform.OS === 'web'
+            ? 'Photo location autofill is available in the mobile app. Enter the location below.'
+            : 'No GPS data found in these photos. Enter the location below.'
+        );
+      }
     } catch {
       setMessage('Could not open the media picker. Please try again.');
     } finally {
@@ -75,7 +175,7 @@ export function UploadMediaPicker({
   }
 
   function removeMedia(indexToRemove: number) {
-    onChange(media.filter((item, index) => index !== indexToRemove));
+    onChange(media.filter((_, index) => index !== indexToRemove));
   }
 
   function changeCaption(indexToChange: number, caption: string) {
@@ -96,7 +196,9 @@ export function UploadMediaPicker({
         disabled={disabled || isPicking}
       />
 
-      <Text accessibilityLiveRegion="polite">{message}</Text>
+      <Text accessibilityLiveRegion="polite" style={styles.message}>
+        {message}
+      </Text>
 
       <ScrollView horizontal>
         {media.map((item, index) => (
@@ -116,7 +218,6 @@ export function UploadMediaPicker({
               />
             )}
 
-            {/* Prevent editing while posting or opening the picker. */}
             {disabled || isPicking ? (
               <Text>{item.caption}</Text>
             ) : (
@@ -147,6 +248,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
+  },
+  message: {
+    marginVertical: 8,
+    lineHeight: 20,
   },
   card: {
     width: 200,

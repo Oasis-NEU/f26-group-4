@@ -1,10 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type RatingStarsProps = {
-  // The selected rating. Zero means nothing selected.
   rating: number;
-
-  // Gives the selected number back to the page.
   onChange: (rating: 1 | 2 | 3 | 4 | 5) => void;
 };
 
@@ -16,7 +13,7 @@ export function RatingStars({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Rating</Text>
+      <Text style={styles.label}>Choose a star rating *</Text>
 
       <View style={styles.row}>
         {stars.map((star) => (
@@ -34,16 +31,13 @@ export function RatingStars({
           </Pressable>
         ))}
       </View>
-
-      <Text>
-        {rating === 0 ? 'Choose a rating' : `${rating} out of 5`}
-      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    marginTop: 12,
     marginBottom: 20,
   },
   label: {
