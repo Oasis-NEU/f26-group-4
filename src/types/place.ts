@@ -76,6 +76,8 @@ export const mockPlace: Place = {
             city: "Chamonix",
             country: "France",
             media: [{ type: "photo", url: "", caption: "Empty terrace" }],
+            authorId: "u1", // Folake; so the Profile page has something to show
+            createdAt: "2026-09-10",
         },
         {
             id: "review_002",

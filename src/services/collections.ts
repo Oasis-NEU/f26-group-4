@@ -19,6 +19,7 @@ const mockCollections: Collection[] = [
     name: 'Europe Trip',
     places: [], // this one's places live in the sub-collections below
     coverImage: 'https://picsum.photos/id/1036/800/600',
+    ownerId: 'u1',
     subCollections: [
       {
         id: 'col_europe_france',
@@ -26,6 +27,8 @@ const mockCollections: Collection[] = [
         country: 'France',
         places: placesWithIds(['place_001', 'place_002']),
         coverImage: 'https://picsum.photos/id/1018/800/600',
+        ownerId: 'u1',
+        isAuto: true, // made automatically because the user posted places in France
       },
       {
         id: 'col_europe_italy',
@@ -33,6 +36,8 @@ const mockCollections: Collection[] = [
         country: 'Italy',
         places: placesWithIds(['place_004', 'place_005']),
         coverImage: 'https://picsum.photos/id/292/800/600',
+        ownerId: 'u1',
+        isAuto: true, // same, for Italy
       },
     ],
   },
@@ -41,11 +46,14 @@ const mockCollections: Collection[] = [
     name: 'Coffee Shops',
     places: placesWithIds(['place_001', 'place_003', 'place_006']),
     coverImage: 'https://picsum.photos/id/225/800/600',
+    ownerId: 'u1',
   },
   {
     id: 'col_someday',
     name: 'Someday',
     places: placesWithIds(['place_005']),
+    ownerId: 'u1',
+    isPrivate: true, // a personal wishlist -- only the owner should see this one
   },
 ];
 
@@ -59,6 +67,19 @@ export const ALL_SAVED_ID = 'all_saved';
 // Every collection the user has made.
 export async function getCollections(): Promise<Collection[]> {
   return mockRequest(mockCollections);
+}
+
+// A profile's collections, as `viewerId` is allowed to see them: only that
+// profile's own collections, and -- unless the viewer IS the owner -- with
+// private ones filtered out. Used by the Profile page instead of
+// getCollections(), which has no concept of "whose" collections they are and
+// is left alone so the Saved tab (always a self-view) keeps working as-is.
+export async function getCollectionsForProfile(ownerId: string, viewerId: string): Promise<Collection[]> {
+  const isOwner = ownerId === viewerId;
+  const visible = mockCollections.filter(
+    (collection) => collection.ownerId === ownerId && (isOwner || !collection.isPrivate),
+  );
+  return mockRequest(visible);
 }
 
 // One collection by its id. Looks inside sub-collections too, so opening

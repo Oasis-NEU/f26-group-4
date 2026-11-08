@@ -1,22 +1,129 @@
 import { useCallback, useState } from 'react';
-import { Link, useFocusEffect } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link, router, useFocusEffect } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CollectionCard } from '@/components/collection-card';
+import { FollowRequestsSheet, type FollowRequestItem } from '@/components/follow-requests-sheet';
 import { FriendSuggestion } from '@/components/friend-suggestion';
+import { PlacesMap, WORLD_CAMERA } from '@/components/places-map';
+import { ProfileBadges } from '@/components/profile-badges';
+import { ProfileChecklist, type ChecklistInput } from '@/components/profile-checklist';
+import { ProfileCover } from '@/components/profile-cover';
 import { ProfileHeader } from '@/components/profile-header';
 import { ProfileInterests } from '@/components/profile-interests';
-import { getProfile, getSuggestedFriends } from '@/services/users';
-import type { Profile } from '@/types/profile';
+import { ProfilePosts, type ProfilePostSummary } from '@/components/profile-posts';
+import { ProfileStats } from '@/components/profile-stats';
+import { getCollectionsForProfile } from '@/services/collections';
+import {
+  acceptFollowRequest,
+  declineFollowRequest,
+  getFollowerIds,
+  getFollowingIds,
+  getFollowRequests,
+} from '@/services/follows';
+import { getPlace } from '@/services/places';
+import { getReviewsByAuthor, type AuthoredReview } from '@/services/reviews';
+import { getProfile, getSuggestedFriends, getSuggestionReason, getVisibleStatus } from '@/services/users';
+import type { Collection } from '@/types/collection';
+import type { Place } from '@/types/place';
+import type { Profile, VisibleTravelStatus } from '@/types/profile';
 
 // Profile tab: the logged-in user's own profile.
 // There's no auth/session yet, so which profile is "mine" is hardcoded here.
 // Swap this for the real signed-in user's id once a session exists.
 const CURRENT_USER_ID = 'u1';
 
+type SuggestedFriend = { profile: Profile; reason?: string };
+type ProfileTab = 'collections' | 'map' | 'badges';
+
+type ProfileData = {
+  profile: Profile | null;
+  visibleStatus: VisibleTravelStatus | null;
+  followerCount: number;
+  followingCount: number;
+  reviews: AuthoredReview[];
+  suggestedFriends: SuggestedFriend[];
+  followRequests: FollowRequestItem[];
+  collections: Collection[];
+  places: Place[];
+};
+
+// Everything this screen needs, fetched together. Kept outside the component
+// so useFocusEffect can call it without re-creating it every render.
+async function loadProfileData(viewerId: string): Promise<ProfileData> {
+  const [fetchedProfile, followers, following, authoredReviews, friends, requests, fetchedCollections] =
+    await Promise.all([
+      getProfile(viewerId),
+      getFollowerIds(viewerId),
+      getFollowingIds(viewerId),
+      getReviewsByAuthor(viewerId),
+      getSuggestedFriends(viewerId),
+      getFollowRequests(viewerId),
+      getCollectionsForProfile(viewerId, viewerId),
+    ]);
+
+  if (!fetchedProfile) {
+    return {
+      profile: null,
+      visibleStatus: null,
+      followerCount: followers.length,
+      followingCount: following.length,
+      reviews: authoredReviews,
+      suggestedFriends: [],
+      followRequests: [],
+      collections: fetchedCollections,
+      places: [],
+    };
+  }
+
+  const suggestedFriends = await Promise.all(
+    friends.map(async (friend) => ({ profile: friend, reason: await getSuggestionReason(viewerId, friend) })),
+  );
+
+  const followRequests = (
+    await Promise.all(
+      requests.map(async (request): Promise<FollowRequestItem | null> => {
+        const requester = await getProfile(request.fromId);
+        if (!requester) return null;
+        return {
+          fromId: request.fromId,
+          name: requester.name,
+          username: requester.username,
+          photoUrl: requester.profilePicture,
+          reason: await getSuggestionReason(viewerId, requester),
+        };
+      }),
+    )
+  ).filter((item): item is FollowRequestItem => item !== null);
+
+  const places = (await Promise.all(authoredReviews.map((review) => getPlace(review.placeID)))).filter(
+    (place): place is Place => place !== null,
+  );
+
+  return {
+    profile: fetchedProfile,
+    visibleStatus: getVisibleStatus(fetchedProfile, viewerId),
+    followerCount: followers.length,
+    followingCount: following.length,
+    reviews: authoredReviews,
+    suggestedFriends,
+    followRequests,
+    collections: fetchedCollections,
+    places,
+  };
+}
+
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [suggestedFriends, setSuggestedFriends] = useState<Profile[]>([]);
+  const [data, setData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInboxOpen, setIsInboxOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProfileTab>('collections');
+
+  const refresh = useCallback(async () => {
+    const fresh = await loadProfileData(CURRENT_USER_ID);
+    setData(fresh);
+  }, []);
 
   // Refetch whenever the tab comes back into focus, e.g. after closing the edit modal.
   useFocusEffect(
@@ -24,14 +131,11 @@ export default function ProfilePage() {
       let isActive = true;
 
       setIsLoading(true);
-      Promise.all([getProfile(CURRENT_USER_ID), getSuggestedFriends(CURRENT_USER_ID)]).then(
-        ([fetchedProfile, friends]) => {
-          if (!isActive) return;
-          setProfile(fetchedProfile);
-          setSuggestedFriends(friends);
-          setIsLoading(false);
-        },
-      );
+      loadProfileData(CURRENT_USER_ID).then((fresh) => {
+        if (!isActive) return;
+        setData(fresh);
+        setIsLoading(false);
+      });
 
       return () => {
         isActive = false;
@@ -39,7 +143,7 @@ export default function ProfilePage() {
     }, []),
   );
 
-  if (isLoading || !profile) {
+  if (isLoading || !data?.profile) {
     return (
       <View style={styles.container}>
         <View style={styles.skeletonAvatar} />
@@ -49,56 +153,215 @@ export default function ProfilePage() {
     );
   }
 
+  const { profile, visibleStatus, followerCount, followingCount, reviews, suggestedFriends, followRequests, collections, places } =
+    data;
+
+  const postSummaries: ProfilePostSummary[] = reviews.map((review) => ({
+    id: review.id,
+    placeName: review.placeName,
+    rating: review.rating,
+    thumbnail: review.media[0]?.url || undefined,
+  }));
+
+  const checklistInput: ChecklistInput = {
+    hasProfilePhoto: !!profile.profilePicture,
+    hasBio: !!profile.bio,
+    postsCount: reviews.length,
+    followingCount,
+  };
+
+  function openPlace(placeId: string) {
+    router.push({ pathname: '/place/[id]', params: { id: placeId } });
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <ProfileHeader profile={profile} isOwnProfile />
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ProfileCover
+          coverImage={profile.coverImage}
+          visibleStatus={visibleStatus}
+          dreamTrip={profile.dreamTrip}
+          isOwnProfile
+          pendingRequestCount={followRequests.length}
+          // TODO: Settings page isn't built yet.
+          onSettingsPress={() => {}}
+          onInboxPress={() => setIsInboxOpen(true)}
+        />
 
-      <ProfileInterests interests={profile.interests} />
+        <View style={styles.container}>
+          <ProfileHeader
+            profile={profile}
+            visibleStatus={visibleStatus}
+            isOwnProfile
+            // TODO: Edit profile modal (/edit-profile) isn't built yet.
+            onEditPress={() => {}}
+          />
 
-      {/* TODO(reviews): wire up once Review has an authorId and users.ts
-          (or a new reviews service) exposes getReviewsByUser. For now every
-          profile shows the empty state. */}
-      <Text style={styles.sectionTitle}>Reviews</Text>
-      <Text style={styles.message}>You haven&apos;t reviewed anywhere yet.</Text>
+          <ProfileStats placesCount={reviews.length} followersCount={followerCount} followingCount={followingCount} />
 
-      {suggestedFriends.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Suggested friends</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.friendsRow}>
-            {suggestedFriends.map((friend) => (
-              <FriendSuggestion key={friend.id} profile={friend} />
+          {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
+          <ProfileInterests interests={profile.interests} />
+
+          <ProfileChecklist input={checklistInput} />
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Places I&apos;ve been</Text>
+              {/* TODO: no full-grid "see all" screen yet -- this row is the only view for now. */}
+            </View>
+            {postSummaries.length > 0 ? (
+              <ProfilePosts posts={postSummaries} variant="horizontal" onPostPress={openPlace} />
+            ) : (
+              <Text style={styles.message}>You haven&apos;t reviewed anywhere yet.</Text>
+            )}
+          </View>
+
+          {suggestedFriends.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Suggested friends</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.friendsRow}>
+                {suggestedFriends.map(({ profile: friend, reason }) => (
+                  <FriendSuggestion key={friend.id} profile={friend} reason={reason} />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          <View style={styles.tabBar}>
+            {(['collections', 'map', 'badges'] as const).map((tab) => (
+              <Pressable
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
+              >
+                <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
+                  {tab === 'collections' ? 'Collections' : tab === 'map' ? 'Map' : 'Badges'}
+                </Text>
+              </Pressable>
             ))}
-          </ScrollView>
-        </>
-      )}
+          </View>
 
-      {/* Temporary, so demo users can be switched until a real login gate exists. */}
-      <Link href="/login" style={styles.link}>
-        Log out
-      </Link>
-    </ScrollView>
+          {activeTab === 'collections' &&
+            (collections.length > 0 ? (
+              <View style={styles.collectionsGrid}>
+                {collections.map((collection) => (
+                  <View key={collection.id} style={styles.collectionItem}>
+                    <CollectionCard
+                      collection={collection}
+                      onPress={() => router.push({ pathname: '/collection/[id]', params: { id: collection.id } })}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.message}>No collections yet.</Text>
+            ))}
+
+          {activeTab === 'map' && (
+            <View style={styles.mapTab}>
+              {places.length > 0 ? (
+                <PlacesMap places={places} camera={WORLD_CAMERA} onSelectPlace={() => {}} onViewDetails={openPlace} />
+              ) : (
+                <Text style={styles.message}>No places on the map yet.</Text>
+              )}
+            </View>
+          )}
+
+          {activeTab === 'badges' && <ProfileBadges reviews={reviews} goals={profile.goals} />}
+
+          {/* Temporary, so demo users can be switched until a real login gate exists. */}
+          <Link href="/login" style={styles.link}>
+            Log out
+          </Link>
+        </View>
+      </ScrollView>
+
+      <FollowRequestsSheet
+        visible={isInboxOpen}
+        onClose={() => setIsInboxOpen(false)}
+        requests={followRequests}
+        onAccept={(fromId) => {
+          acceptFollowRequest(CURRENT_USER_ID, fromId).then(refresh);
+        }}
+        onDecline={(fromId) => {
+          declineFollowRequest(CURRENT_USER_ID, fromId).then(refresh);
+        }}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 24,
+  },
   container: {
     padding: 24,
+    gap: 16,
+  },
+  section: {
+    gap: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginTop: 24,
-    marginBottom: 8,
+  },
+  bio: {
+    fontSize: 15,
+    textAlign: 'center',
   },
   message: {
-    marginTop: 16,
     fontSize: 16,
+    color: 'gray',
   },
   friendsRow: {
     flexDirection: 'row',
   },
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabButtonActive: {
+    borderBottomColor: '#2A9D8F',
+  },
+  tabLabel: {
+    color: 'gray',
+    fontWeight: '600',
+  },
+  tabLabelActive: {
+    color: '#2A9D8F',
+  },
+  collectionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  collectionItem: {
+    width: '47%',
+  },
+  mapTab: {
+    height: 360,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
   link: {
-    marginTop: 20,
+    marginTop: 8,
     color: '#0066CC',
     fontSize: 16,
   },
