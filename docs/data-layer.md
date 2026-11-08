@@ -199,40 +199,51 @@ UI work can build against these names now. Functions marked **add** need a mock 
 
 ### Services
 
-| File | Function | Status |
+What exists, on Supabase. Functions about the signed-in user don't take their id (rule 9); functions about someone else do. When you add or change one, update this table in the same change.
+
+| File | Function | Notes |
 | --- | --- | --- |
-| `places.ts` | `getPlaces(filters): Place[]` | exists |
-| | `getPlace(id): Place \| null` (with its reviews) | exists |
-| | `createPlace(fields): Place` | add |
-| | `toggleBookmark(placeId)` | **remove** in Phase 0; replaced by `savePlace` / `unsavePlace` |
-| `collections.ts` | `getSavedPlaceIds(): string[]` | add (Phase 0) |
-| | `savePlace(placeId)` / `unsavePlace(placeId)`. Unsaving also takes the place out of every collection. | add (Phase 0) |
-| | `getAllSavedPlaces(): Place[]` | exists |
-| | `getSavedPlaces(): Place[]`, the loose ones that aren't in a collection | exists |
-| | `getCollections(): Collection[]` | exists |
-| | `getCollection(id): Collection \| null`. Handles `ALL_SAVED_ID`. | exists |
-| | `getSavedCollectionIds(placeId): string[]`, which collections hold this place (for the save sheet) | add |
-| | `createCollection(name, parentId?)`, `renameCollection(id, name)`, `deleteCollection(id)` | add |
-| | `addToCollection(collectionId, placeId)`. Also saves the place. | add |
-| | `removeFromCollection(collectionId, placeId)`. The place stays saved. | add |
-| `reviews.ts` (new) | `getReviewsByUser(userId): Review[]` | add |
-| | `createReview(fields: UploadFields): Review`. Uploads the media, and creates the place first if `placeId` is missing. | add |
-| `users.ts` | `getProfile(id): Profile \| null` | exists |
-| | `updateProfile(changes)`, for the signed-in user only. Drop the `id` argument; nothing calls it yet. | change |
-| | `getSuggestedFriends(userId)` | **move** to `friends.ts` as `getSuggestedFriends()` |
-| `friends.ts` (new) | `getFriends(userId): Profile[]` | add |
-| | `getFriendRequests(): Profile[]`, requests sent to me that I haven't answered | add |
-| | `sendFriendRequest(userId)`, `acceptFriendRequest(userId)` | add |
-| | `removeFriend(userId)`. Also declines or cancels a request. | add |
-| | `getSuggestedFriends(): Profile[]` | move here |
-| `mock-backend.ts` | `getMockUserId()` / `setMockUserId(id)`, which demo user is signed in (starts as `'u1'`) | add (Phase 0) |
-| `media.ts` (new, Phase 2) | `uploadMedia(localUri): string` (the storage path), `getMediaUrl(path): string` | add |
+| `places.ts` | `getPlaces(filters): Place[]` | `search_places()`, with ratings, city and reviews |
+| | `getPlace(id): Place \| null` | with all its reviews |
+| | `getPlaceTypes()`, `getSuitedForTags(): string[]` | the filter lists, from the database |
+| | `toggleBookmark(placeId): boolean` | **remove** in Phase 0; use `savePlace` / `unsavePlace` |
+| `collections.ts` | `getSavedPlaceIds(): string[]` | |
+| | `savePlace(placeId)` / `unsavePlace(placeId)` | unsaving also takes the place out of every collection (a database rule) |
+| | `getAllSavedPlaces()`, `getSavedPlaces(): Place[]` | every save; the loose ones |
+| | `getCollections()`, `getCollectionsForProfile(ownerId): Collection[]` | yours; someone's, without their private ones |
+| | `getCollection(id): Collection \| null` | handles `ALL_SAVED_ID` |
+| | `removeFromCollection(collectionId, placeId)` | the place stays saved |
+| | `getSavedCollectionIds(placeId)`, `createCollection`, `renameCollection`, `deleteCollection`, `addToCollection` | **add** for the save sheet |
+| `posts.ts` | `createPost(fields: UploadFields): SavedPost` | uploads the photos, then `create_review()`, which adds the city and place if they're new |
+| | `validatePost(fields)` | Upload's form check |
+| `reviews.ts` | `getReviewsByAuthor(authorId): AuthoredReview[]` | |
+| | `likeReview(reviewId)`, `unlikeReview(reviewId)` | |
+| `users.ts` | `getProfile(id): Profile \| null` | yours has your full `status`; anyone's has the trimmed `visibleStatus` |
+| | `updateProfile(changes)` | the signed-in user only; routes each field to its table |
+| | `isUsernameAvailable(username)` | works signed out |
+| | `getSuggestedFriends(): SuggestedFriend[]` | with each reason ("Also in Lisbon", "3 mutuals") |
+| | `getFriendUsernames(): string[]` | the people you follow |
+| | `trimStatusForLevel(status, level)` | Edit profile's previews; the database trims everyone else's |
+| `follows.ts` | `getFollowerIds(userId)`, `getFollowingIds(userId)`, `isFollowing(userId)` | |
+| | `followUser(userId): 'following' \| 'requested'` | a friends-only account gets a request |
+| | `unfollowUser(userId)`, `setNotifyPrefs(userId, prefs)` | |
+| | `getFollowRequests()`, `acceptFollowRequest(fromId)`, `declineFollowRequest(fromId)` | the 📥 inbox |
+| `settings.ts` | `getSettings()`, `updateSettings(changes)` | put together from four tables |
+| | `addCloseFriend(id)`, `removeCloseFriend(id)`, `blockUser(id)`, `unblockUser(id)` | |
+| `interests.ts` | `getInterestsByIds(ids)`, `searchInterests(query)`, `getPopularInterests(limit)`, `suggestInterestsFromPosts()`, `addInterest(name)` | |
+| `cities.ts` | `getCities(filters)`, `getCity(id)`, `getCityPlaces(id)` | the `city_stats` view |
+| `profile-cities.ts` | `getProfileCity(id)`, `searchProfileCities(query)` | the `cities` table |
+| `media.ts` | `uploadMedia(localUri, folder)`, `getMediaUrl(path)`, `deleteMedia(paths)` | photos in the `media` bucket |
+| `place-rows.ts` | `PLACE_SELECT`, `toPlace`, `toReview`, `getPersonal` | shared by the services that return places |
+| `mock-backend.ts` | `mockRequest(data)` | only `template-service.ts` uses it now |
 
 ### Hooks
 
 | File | Hook | Wraps | Used by |
 | --- | --- | --- | --- |
-| `use-session.tsx` | `SessionProvider`, `useSession()` returns `{ user, isLoading, signIn, signUp, signInAsMockUser, signOut }` | auth | root layout, Login, Create account, Profile |
+| `use-session.tsx` (exists) | `SessionProvider`, `useSession()` returns `{ user, isLoading, signIn, signUp, signInAsDemoUser, signOut, deleteAccount }`; `useUserId()` | Supabase Auth | root layout, Login, Create account, Settings, Profile |
+| `use-filter-options.ts` (exists) | `useFilterOptions()` | `getPlaceTypes`, `getSuitedForTags` | Feed, Map, Explore |
+| `use-review-like.ts` (exists) | `useReviewLike(review)` | `likeReview`, `unlikeReview` | `PlaceCard` |
 | `use-places.ts` | `usePlaces(filters)` | `getPlaces` | Feed, Map, Upload suggestions |
 | | `usePlace(id)` | `getPlace` | Place details |
 | | `useCreatePlace()` | `createPlace` | Upload |
@@ -332,7 +343,7 @@ Each page's owner does their own page, all at the same time. Add the hooks and m
 
 The mock session follows [01-login.md](pages/01-login.md). `signInAsMockUser(id)` calls `setMockUserId(id)` and then `queryClient.clear()`. `signIn` finds a mock user and accepts any password.
 
-- [ ] Session, login gate and demo users
+- [x] Session, login gate and demo users (on Supabase Auth)
 - [ ] Feed
 - [ ] Map
 - [ ] Place details
@@ -344,6 +355,9 @@ The mock session follows [01-login.md](pages/01-login.md). `signInAsMockUser(id)
 - [ ] Upload
 
 ## Phase 2: Supabase
+
+**Built** on the `supabase-backend` branch: the database, sign-in, and every service. [backend-plan.md](backend-plan.md) has the design, and its "What changed while building" section. The README's "The backend (Supabase)" section says how to run it locally. The steps below are kept as the record; where they disagree with backend-plan.md or the code, those win.
+
 
 ### 2a. Setup (one person, one PR)
 
@@ -398,10 +412,10 @@ The mock session follows [01-login.md](pages/01-login.md). `signInAsMockUser(id)
    npx supabase migration new initial_schema
    ```
 
-   Paste [supabase-schema.sql](supabase-schema.sql) into the new file in `supabase/migrations/`, then run `npx supabase db push`.
-5. Write `supabase/seed.sql` with the mock places from `src/services/places.ts`, and run it once in the dashboard's SQL editor. Create the demo users by signing up in the app.
-6. `npx supabase gen types --lang=typescript --linked > src/types/database.ts`
-7. Create a **public** storage bucket named `media` (see [Media](#media)).
+   Done differently: the schema is three migrations in `supabase/migrations/` (core, people, reactions). Push them with `npx supabase db push`.
+5. Done differently: the demo data is one file per system in `supabase/seed/`, and `npm run demo:reset` creates the demo accounts and loads it (backend-plan.md, "Demo data").
+6. `npx supabase gen types --schema public > src/types/database.ts` from the local stack, or with `--remote` from the linked project. (CLI v3 replaced `--linked` and `--lang`.)
+7. The **public** `media` bucket and its policies are created by the core migration (see [Media](#media)).
 
 ### 2b. Auth (Login owner)
 
@@ -411,11 +425,13 @@ Change `SessionProvider` to use Supabase Auth:
 - `signIn(email, password)` calls `signInWithPassword`. `signUp` calls `supabase.auth.signUp({ email, password, options: { data: { username, name } } })`, and a database trigger creates the profile from `username` and `name`.
 - `signOut()` calls `supabase.auth.signOut()` and then `queryClient.clear()`.
 - Supabase signs in with **email**, so the Login form asks for email instead of username (see [Open decisions](#open-decisions)).
-- Only show the demo user buttons in development builds (`__DEV__`).
+- The demo user buttons show when `EXPO_PUBLIC_DEMO_LOGINS=true`, not only in development builds, so they work in the build you demo from.
 
 ### 2c. Move services to Supabase (one PR per file, any order after 2a)
 
 Only the insides of each function change. Convert database rows (`snake_case`) into the app's types (`camelCase`) inside the service, so screens never change.
+
+All of them wait for 2b, not just 2a: signed-out people can't read anything, so a service can't work against Supabase until the session does. Then `places.ts` goes first, since the others read places.
 
 ```ts
 // src/services/collections.ts
@@ -453,57 +469,24 @@ const { data, error } = await supabase
 
 Remember to throw when something fails, and build `directions` from the coordinates.
 
-- [ ] 2a. Project, client, CLI, first migration, seed, generated types, storage bucket
-- [ ] 2b. Session uses Supabase Auth
-- [ ] `places.ts`
-- [ ] `collections.ts`
-- [ ] `reviews.ts` and `media.ts`
-- [ ] `users.ts`
-- [ ] `friends.ts`
-- [ ] `mock-backend.ts` deleted (nothing imports it any more)
+- [x] 2a. Project, client, CLI, first migration, seed, generated types, storage bucket
+- [x] 2b. Session uses Supabase Auth
+- [x] `places.ts`
+- [x] `collections.ts`
+- [x] `reviews.ts` and `media.ts`
+- [x] `users.ts`
+- [x] `follows.ts`, `settings.ts`, `interests.ts`, `cities.ts`, `profile-cities.ts` and `posts.ts` (there's no `friends.ts`: the app has follows)
+- [ ] `mock-backend.ts` deleted (only `template-service.ts` still imports it)
 
 ### The schema
 
-The full SQL, tested, is in [supabase-schema.sql](supabase-schema.sql).
-
-| Table | What a row means |
-| --- | --- |
-| `profiles` | One per user (`id` is the same as the Supabase Auth user id). Created automatically on sign-up. |
-| `places` | A place anyone can see. |
-| `reviews` | One person's review of one place, rated 1 to 5. |
-| `review_media` | A photo or video on a review. Stores its path in the `media` bucket. |
-| `saves` | The bookmark. A place is saved if this row exists. |
-| `collections` | A user's collection. `parent_id` puts one inside another ("France" inside "Europe Trip"). |
-| `collection_places` | A place in a collection. |
-| `friendships` | A friend request. `status = 'accepted'` means they're friends. Only one row per pair. |
-
-Rules the database enforces, whatever the app sends:
-
-- Putting a place in a collection also saves it.
-- Unsaving a place takes it out of all of that user's collections.
-- Signing up creates the profile.
-- Ratings are 1 to 5, you can't friend yourself, and there's only one friendship per pair.
-
-Values the database calculates instead of storing, so they're never out of date:
-
-- **`average_rating`** and **`friends_rating`** are computed columns. Ask for them by name in `.select(...)`.
-- **`suggested_friends()`** is a function that replaces the mock scoring. Call it with `supabase.rpc('suggested_friends')`.
-- **"All saved"** is the `saves` table. **Loose saves** are saves that aren't in any of your collections.
-- **`proximity`** and **`directions`** are worked out in the app.
-
-Who can do what (row level security):
-
-| Table | Read | Write |
-| --- | --- | --- |
-| `profiles`, `places`, `reviews`, `review_media` | anyone signed in | only your own (anyone signed in can add a place) |
-| `saves`, `collections`, `collection_places` | only your own | only your own |
-| `friendships` | the two people involved; accepted ones are visible to everyone | send as yourself; only the person asked can accept; either person can remove |
+The schema is in `supabase/migrations/`, and [backend-plan.md](backend-plan.md) explains it: the tables, who can see what, the functions, the rules the database keeps, and the demo data. It replaced `supabase-schema.sql`, which was written before follows, settings and privacy existed.
 
 ### Media
 
 Store photos in the `media` bucket at `<user id>/<file name>`. Store only that path in the database, never the full URL. To upload, read the picked file as bytes and pass it to `supabase.storage.from('media').upload(path, bytes, { contentType })`. Supabase's [Expo user management tutorial](https://supabase.com/docs/guides/getting-started/tutorials/with-expo-react-native) shows the whole flow, using `fetch(uri).then((res) => res.arrayBuffer())`. To show a photo, use `supabase.storage.from('media').getPublicUrl(path)`.
 
-Then add a storage policy so people can only upload into their own folder (not tested locally, unlike the rest of the schema):
+The core migration creates the bucket and policies like this one, so people can only upload into (and replace or delete from) their own folder. `src/services/media.ts` shrinks photos and uploads them:
 
 ```sql
 create policy "media: upload own" on storage.objects
@@ -514,8 +497,9 @@ create policy "media: upload own" on storage.objects
 ### Changing the schema later
 
 - Make a new migration for each change (`npx supabase migration new <what-changed>`). **Never edit a migration that's already been pushed.**
-- After the PR is merged, whoever merged it runs `npx supabase db push`, then regenerates `src/types/database.ts` and commits it.
-- Every new table needs `enable row level security` and policies in the same migration. A table without policies can't be read or written from the app. A table with RLS turned off can be read and written by anyone.
+- After the PR is merged, whoever merged it runs `npx supabase db push`, then regenerates `src/types/database.ts` (`npx supabase gen types --schema public --remote > src/types/database.ts`) and commits it.
+- Every new table needs `enable row level security`, policies and grants in the same migration ([backend-plan.md, "Writing migrations"](backend-plan.md#writing-migrations)). A table without policies or grants can't be read or written from the app. A table with RLS turned off can be read and written by anyone signed in.
+- Add a check to `supabase/tests/` for every new privacy rule, and run `npx supabase test db`.
 
 ## Phase 3: Later
 
@@ -532,8 +516,8 @@ Each one has a default, so work isn't blocked. Change the default here if the te
 | Question | Default |
 | --- | --- |
 | Sign in with email or username? | **Email.** Supabase Auth signs in by email, and looking up an email from a username would let anyone find people's emails. The username stays as the display handle. |
-| Friend requests, or follow without approval? | **Requests.** The schema supports them. Follows would be a simpler `follows` table. |
+| Friend requests, or follow without approval? | **Follows**, with requests only for friends-only accounts. That's what the app built. |
 | Does a bookmark tap toggle, or open the save sheet? | **Open the sheet**, as planned in [05](pages/05-saved-collections.md). Until the sheet exists, it toggles. |
-| Can friends see your collections? | **No**, they're private. Loosen the `collections` read policy later if needed. |
+| Can friends see your collections? | **Yes, unless they're private** (the Settings and Profile pages already worked this way). See backend-plan.md, open decision 9. |
 | How deep can collections nest? | **One level.** `createCollection` refuses a parent that already has a parent. |
 | Who can read reviews? | **Anyone signed in.** |

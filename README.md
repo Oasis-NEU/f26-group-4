@@ -89,6 +89,37 @@ type PlaceCardProps = {
 };
 ```
 
+## The backend (Supabase)
+
+The app's data lives in [Supabase](https://supabase.com): sign-in, the database and photos. [docs/backend-plan.md](docs/backend-plan.md) explains the tables, who can see what, and the demo data.
+
+**Using the team's shared project.** `.env` holds its URL and publishable key (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`). That key is meant to ship in the app; never put the secret key or database password in any `.env`.
+
+**Running your own copy** (for database work, or to try things without touching the shared data). You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) running:
+
+```bash
+npx supabase start
+```
+
+Then make a `.env.local` (git ignores it) with the local URL and publishable key that `npx supabase status` prints, plus the demo sign-in settings:
+
+```
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<PUBLISHABLE_KEY from npx supabase status>
+EXPO_PUBLIC_DEMO_LOGINS=true
+EXPO_PUBLIC_DEMO_PASSWORD=<any password, 6+ characters>
+```
+
+Load the demo accounts and data, which also resets them whenever you want a clean slate:
+
+```bash
+npm run demo:reset
+```
+
+`.env.local` wins over `.env`; delete it to go back to the shared project. `npx supabase test db` runs the database tests.
+
+**Native builds.** The app now uses `expo-sqlite` (keeps you signed in) and `expo-image-manipulator` (shrinks photos before upload). Both are native modules, so rebuild your development build once: `npx expo run:ios` or `npx expo run:android`. The web and Expo Go don't need this.
+
 ## Getting data
 
 Screens and components don't fetch data themselves; they call functions in `src/services/`. Copy `src/services/template-service.ts` to make one service per kind of data (e.g. `places.ts` with `getPlaces()`), and give it a few mock examples:
@@ -99,7 +130,7 @@ import { getPlaces } from '@/services/places';
 const places = await getPlaces();
 ```
 
-When Supabase is set up, only the insides of the service functions change. Screens keep calling `getPlaces()` the same way.
+The services read and write Supabase now. A new service can start from the template's mock data, so you can build the screen first; once its tables exist, only the insides of its functions change, and screens keep calling it the same way.
 
 Screens are moving to hooks in `src/hooks/` (e.g. `usePlaces()`), which call the services and keep every screen in sync. [docs/data-layer.md](docs/data-layer.md) has the rules, the function and hook names to use, and the Supabase plan.
 

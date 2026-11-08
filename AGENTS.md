@@ -33,6 +33,16 @@ Run lint and typecheck before declaring any task done.
 
 Before writing code that loads or saves data, signs people in, or touches Supabase, read `docs/data-layer.md`. It sets where state lives (React Query hooks over `src/services/`, context only for the session), the service and hook names to build against, and which phase is already built.
 
+Before changing the database (tables, privacy rules, functions, storage, demo data), read `docs/backend-plan.md`, especially "Writing migrations": every new table needs RLS, policies and grants, and functions that skip RLS live in the `private` schema. The schema lives in `supabase/migrations/`; never edit a migration that's been pushed.
+
+```bash
+npx supabase start        # local Supabase in Docker (needs Docker Desktop running)
+npm run demo:reset        # rebuild the demo accounts and data on the local stack
+npx supabase test db      # the database tests in supabase/tests/
+npx supabase db advisors  # Supabase's security and performance checks
+npx supabase gen types --schema public > src/types/database.ts  # after a schema change
+```
+
 ## Building with EAS
 
 Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.

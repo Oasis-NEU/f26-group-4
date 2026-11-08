@@ -2,7 +2,7 @@
 
 What we want the Supabase backend to do: the tables, who can see what, the functions the app calls, file storage, accounts, and the order to build it in. It's written from what the app does today (the services in `src/services/`, the types in `src/types/`, and the screens), so every piece of mock data has somewhere to go.
 
-**Status:** a draft for the team to review. Nothing is built yet: there's no Supabase client and no migrations. [data-layer.md](data-layer.md) Phase 0 (React Query) isn't done either. The two can happen at the same time.
+**Status:** built on the `supabase-backend` branch: B1 to B4, the demo data, and the app switched over to it. It's tested against a local Supabase (29 database tests, the Security Advisor, and the app on the web). It isn't on the shared project yet. [What changed while building](#what-changed-while-building) lists where the build differs from the plan below. [data-layer.md](data-layer.md) Phase 0 (React Query) is still to do.
 
 **This replaces** [supabase-schema.sql](supabase-schema.sql) and the "The schema" part of [data-layer.md, Phase 2](data-layer.md#phase-2-supabase). Those were written before follows, settings, privacy, interests and profile cities existed ([what changed](#what-changed-from-the-old-schema)). Everything else in data-layer.md still applies: services and hooks, query keys, and how a service moves from mock data to Supabase.
 
@@ -16,6 +16,19 @@ What we want the Supabase backend to do: the tables, who can see what, the funct
 - **Email and password sign-in.** One Edge Function, `delete-account`, for Settings → Account → Delete account.
 - **Demo data is real rows** in the real database: one seed file per system, rebuilt with one command before demo day.
 - **Later:** push notifications, a live inbox, auto-sorting saves, AI summaries, trip overlap.
+
+## What changed while building
+
+- **Places don't need coordinates.** `latitude` and `longitude` are optional; a place posted without them stays off the map. Upload takes them from the photo's GPS data, or else looks up the typed address on the phone (iOS and Android).
+- **Upload keeps its typed city and country.** `create_review()` matches them to a city (ignoring case) or adds one, so there's no city picker yet. Cities people add have no country code; flags still come from `getCountryFlag(country)`.
+- **Slugs are the words the app shows** (`cafe`, `families`, `remote work`), so chips and `src/utils/tag-emoji.ts` keep working. Emojis stay in `tag-emoji.ts`; `place_types` has no emoji column.
+- **12 background accounts, not 11.** The mocks had two Kenji reviews of the same place, so `anneke.v` became a background account.
+- **Demo photos are links for now.** Seed rows hold the mock's picsum and pravatar URLs, which `getMediaUrl` passes through. Files in `supabase/seed/photos/` still work, and replace them.
+- **The reset needs no database password.** It runs the SQL through `npx supabase db query`, wrapped in one `do` block (one statement, one transaction). On the shared project it needs only the secret key and a linked CLI.
+- **The functions the app calls are plain** (`security invoker`) and ask helpers in `private` for anything private, as [Functions that skip RLS](#functions-that-skip-rls) describes. `create_review()` takes one `post` JSON argument.
+- **Likes** attach to the review a Feed card shows. Writing comments is still to build (the table exists).
+- **Upload is photos only**; the picker no longer offers videos.
+- **Not built yet:** changing email or password, Upload's city picker, writing comments, and everything under [Later](#later).
 
 ## What the app needs
 
@@ -133,7 +146,7 @@ The app's `Interest.userCount` is the `user_count` field, counted when asked for
 | `suited_for` | list of tags from `suited_for_tags` | a new review adds its tags |
 | `address` | text | |
 | `city_id` | → `cities` | in place of typed `city` and `country` ([open decision 1](#open-decisions)) |
-| `latitude`, `longitude` | numbers, required | without them the place can't go on the map |
+| `latitude`, `longitude` | numbers, optional | without them the place just stays off the map |
 | `website` | optional | |
 | `cover_path` | optional | falls back to the newest photo from its reviews |
 | `description` | optional | |
@@ -145,8 +158,8 @@ The app's `Interest.userCount` is the `user_count` field, counted when asked for
 
 | Table | Columns |
 | --- | --- |
-| `place_types` | `slug` (e.g. `cafe`, the primary key), `label` (`Cafe`), `emoji`, `category` (`Food`, `Outdoors`, `Culture` or `Other`, for the Badges tab's traveler type), `sort_order` |
-| `suited_for_tags` | `slug` (e.g. `remote-work`, the primary key), `label` (`Remote work`), `sort_order` |
+| `place_types` | `slug` (e.g. `cafe`, the primary key), `label` (`Cafe`), `category` (`Food`, `Outdoors`, `Culture` or `Other`, for the Badges tab's traveler type), `sort_order` |
+| `suited_for_tags` | `slug` (e.g. `remote work`, the primary key; slugs are the words the app shows), `label` (`Remote work`), `sort_order` |
 
 This fixes a mismatch that exists today: Upload offers `Cafe`, `Sport` and `Families`, while the mock places use `cafe`, `garden` and `family`. They replace `PLACE_TYPES` and `SUITED_FOR` in `places.ts`, Upload's two hard-coded lists, and the category list in `profile-badges.tsx`.
 
@@ -439,7 +452,7 @@ The fixed lists go in migrations, not seed files, because the app needs them in 
 2. **Files run in number order.** A file can only point at accounts and at rows from lower-numbered files.
 3. **No pasted ids.** People are `seed.user('folake')`. Everything else has a readable key: `seed.id('place', 'da-nino')` always gives the same id (it's `md5('place:da-nino')::uuid`), so other files can point at it and a reset rebuilds the same rows. Keys only need to be unique within their kind.
 4. **Dates are relative to today:** `now() - interval '3 days'`, `current_date + 5`. The demo looks current whenever it's rebuilt.
-5. **Photos by file name.** Put the file in `seed/photos/` and use `seed/<file name>` as its path.
+5. **Photos by file name.** Put the file in `seed/photos/` and use `seed/<file name>` as its path. A full `https://` link works too (the placeholders do this), but a file can't disappear on demo day.
 6. **Files never delete.** The reset clears old rows first. A file inserts its rows, updates the ones sign-up already made (profiles, settings, locations), and upserts rows no account owns, such as places (`on conflict (id) do update`), so running it again replaces them.
 
 A typo fails loudly: a wrong username or key breaks the run with a foreign-key error instead of quietly loading half the data.
@@ -449,13 +462,13 @@ A typo fails loudly: a wrong username or key breaks the run with a foreign-key e
 `accounts.json` lists every account, one line each, e.g. `{ "username": "folake", "name": "Folake", "role": "demo" }`. Emails are `<username>@example.com`, all with one shared password.
 
 - **demo:** Folake, Kenji and Amara, who get the sign-in buttons.
-- **background:** the 11 people whose mock reviews have no author today (`dgonzalez`, `s.whitfield`, `priya_n` and 8 more). Every review needs a real author, and one person can only review a place once.
+- **background:** the 12 people who wrote the other mock reviews (`dgonzalez`, `s.whitfield`, `anneke.v` and 9 more). Every review needs a real author, and one person can only review a place once, which is why `anneke.v` isn't Kenji.
 
 For your own testing, make your own account in the app. Resets don't touch it.
 
 ### Resetting
 
-`node supabase/seed/reset.mjs` rebuilds the demo from nothing:
+`npm run demo:reset` (which runs `supabase/seed/reset.mjs`) rebuilds the demo from nothing:
 
 1. For each account in `accounts.json`: delete its files and the account, then create it again. Deleting an account deletes everything it made, so the reset never needs a list of tables, and new tables are covered as long as their rows belong to someone.
 2. Upload `seed/photos/` to `media/seed/`, replacing what's there.
@@ -463,7 +476,11 @@ For your own testing, make your own account in the app. Resets don't touch it.
 
 Accounts that aren't in `accounts.json`, like yours or the audience's, are left alone along with everything they made.
 
-It's a Node script: supabase-js for the accounts and files, and the `postgres` package for the SQL. It needs two secrets, passed in from the terminal and never committed or given an `EXPO_PUBLIC_` name: the secret key, and the database connection string.
+It's a Node script: supabase-js for the accounts and files, and `npx supabase db query` for the SQL. Locally it needs nothing but the demo password (from `.env.local`). On the shared project it needs the secret key, passed in from the terminal and never committed or given an `EXPO_PUBLIC_` name, and the CLI linked to the project:
+
+```bash
+SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=sb_secret_... DEMO_PASSWORD=... npm run demo:reset -- --remote
+```
 
 ### From mock services to seed files
 
@@ -484,7 +501,7 @@ When a service switches to Supabase, its mock data moves into its seed file and 
 - **Function rights.** Postgres lets everyone run a new function, signed-out visitors included. The first migration turns that off with `alter default privileges revoke execute on functions from public` (and the same `in schema public … from anon, authenticated`, in case the project grants those too). After that, each function grants `execute` to the roles that use it (`anon` only for `is_username_available`), and those roles get `usage` on the `private` schema.
 - **Views** made `with (security_invoker = true)`.
 
-After pushing, regenerate `src/types/database.ts` and run the Security Advisor. The Supabase CLI reached v3 on Nov 2, 2026, and the type command is now `npx supabase gen types --remote > src/types/database.ts`. data-layer.md 2a still shows the v2 form.
+After pushing, regenerate `src/types/database.ts` and run the Security Advisor. The Supabase CLI reached v3 on Nov 2, 2026, and the type commands are now `npx supabase gen types --schema public > src/types/database.ts` (the local stack) and the same with `--remote` (the linked project).
 
 ## Build order
 
@@ -501,31 +518,31 @@ The schema is easiest with **one person writing migrations** and everyone else r
 
 ### B1. Core (one person, one PR)
 
-- [ ] Supabase CLI set up and linked (data-layer 2a, step 4)
-- [ ] Migration: `cities`, `place_types` and `suited_for_tags` with their starting rows, then `profiles`, `profile_locations`, `settings`, `blocks`, the sign-up trigger, the `private` schema, and the function-rights default from [Writing migrations](#writing-migrations). `blocks` comes this early because most read rules check it.
-- [ ] Migration: `places`, `reviews`, `review_media`, `saves`, `collections`, `collection_places`, rules 2 to 4, 8 and 9, `average_rating`, `review_count`, `search_places()`, `create_review()`, `is_username_available()`
-- [ ] The `media` bucket and its policies
-- [ ] `src/types/database.ts` generated
-- [ ] [Demo data](#demo-data): `accounts.json`, `reset.mjs`, `00_helpers.sql`, and `10_people.sql` to `30_saved.sql` for these tables
-- [ ] The privacy check below passes for these tables
+- [x] Supabase CLI set up (`supabase/config.toml`). Linking to the shared project is the push step.
+- [x] Migration: `cities`, `place_types` and `suited_for_tags` with their starting rows, then `profiles`, `profile_locations`, `settings`, `blocks`, the sign-up trigger, the `private` schema, and the function-rights default from [Writing migrations](#writing-migrations). `blocks` comes this early because most read rules check it.
+- [x] Migration: `places`, `reviews`, `review_media`, `saves`, `collections`, `collection_places`, rules 2 to 4, 8 and 9, `average_rating`, `review_count`, `search_places()`, `create_review()`, `is_username_available()`
+- [x] The `media` bucket and its policies
+- [x] `src/types/database.ts` generated
+- [x] [Demo data](#demo-data): `accounts.json`, `reset.mjs`, `00_helpers.sql`, and `10_people.sql` to `30_saved.sql` for these tables
+- [x] The privacy check below passes for these tables (`supabase/tests/database/backend.test.sql`)
 
 ### B2. People (one person, one PR)
 
-- [ ] Migration: `follows`, `follow_requests`, `close_friends`, `interests` (with the starter list), `profile_interests`, `travel_goals`
-- [ ] Demo data: interests and goals in `10_people.sql`, and `40_following.sql`
-- [ ] Rules 5 to 7, the profile counts, `friends_rating`, `visible_status`, `visible_home`, `suggestion_reason`, `follow()`, `accept_follow_request()`, `suggested_friends()`, `add_interest()`, `popular_interests()`
-- [ ] The privacy check passes for these tables
+- [x] Migration: `follows`, `follow_requests`, `close_friends`, `interests` (with the starter list), `profile_interests`, `travel_goals`
+- [x] Demo data: interests and goals in `10_people.sql`, and `40_following.sql`
+- [x] Rules 5 to 7, the profile counts, `friends_rating`, `visible_status`, `visible_home`, `suggestion_reason`, `follow()`, `accept_follow_request()`, `suggested_friends()`, `add_interest()`, `popular_interests()`
+- [x] The privacy check passes for these tables
 
 ### B3. Likes, comments, Explore
 
-- [ ] Migration: `review_likes`, `review_comments`, `like_count`, `comment_count`
-- [ ] Demo data: `50_reactions.sql`
-- [ ] The `city_stats` view
-- [ ] `search_profiles()`, once people search has a page
+- [x] Migration: `review_likes`, `review_comments`, `like_count`, `comment_count`
+- [x] Demo data: `50_reactions.sql`
+- [x] The `city_stats` view
+- [x] `search_profiles()`. People search still needs a page.
 
 ### B4. Accounts
 
-- [ ] The `delete-account` Edge Function, wired to Settings → Account
+- [x] The `delete-account` Edge Function, wired to Settings → Account
 - [ ] Changing email and password
 
 ### The privacy check
@@ -538,11 +555,11 @@ The demo runs on the real backend, starting from the [demo data](#demo-data).
 
 ### The day before
 
-- [ ] Run the reset: `node supabase/seed/reset.mjs`.
+- [ ] Run the reset: `npm run demo:reset -- --remote` (see [Resetting](#resetting)).
 - [ ] Sign in as Folake, Kenji and Amara, and check Feed, Map, Explore, Saved and Profile.
 - [ ] Make sure the project isn't paused. Free projects pause after 7 days without use.
 - [ ] Leave "Confirm email" off, so people can sign up on the spot. Supabase's built-in email only reaches the team anyway.
-- [ ] Turn on the demo sign-in buttons in the build you'll demo from, with `EXPO_PUBLIC_DEMO_LOGINS=true`. Don't rely on `__DEV__`: it's off in preview builds. That build carries the demo password, so leave the setting off for any real release.
+- [ ] Turn on the demo sign-in buttons in the build you'll demo from, with `EXPO_PUBLIC_DEMO_LOGINS=true` and `EXPO_PUBLIC_DEMO_PASSWORD`. Don't rely on `__DEV__`: it's off in preview builds. That build carries the demo password, so leave the setting off for any real release.
 - [ ] Have a phone hotspot ready, and a screen recording of the main flows as a last resort.
 
 ### What won't be live
@@ -578,7 +595,7 @@ Each has a default, so building isn't blocked. Change the default here if the te
 | 4 | Are likes and comments on reviews or on places? | **Reviews.** The Feed card's heart likes the review it shows. | "Likes and comments" notifications are about your posts. The comments sheet shows reviews today. |
 | 5 | One review per person per place? | **Yes.** Posting about a place again edits your review. | Several reviews from one person would skew a place's rating. |
 | 6 | Videos in v1? | **No, photos only.** | The free plan has 1 GB of storage in all. That's a few thousand resized photos, but only a handful of videos. |
-| 7 | Where does a new place's location come from? | **Look up the typed address on the phone** with `geocodeAsync` from `expo-location` (a new package). It uses the phone's own geocoder, so there's no API key or bill. It works on iOS and Android but not the web, and Android asks for location permission first. If it finds nothing, the person drops a pin (later). | Without coordinates a place can't go on the map. |
+| 7 | Where does a new place's location come from? | **Built:** the photo's GPS data, which Upload already reads, or else the typed address looked up on the phone with `geocodeAsync` from `expo-location`. It uses the phone's own geocoder, so there's no API key or bill; it works on iOS and Android but not the web. Without either, the place saves without coordinates and stays off the map. | Without coordinates a place can't go on the map. |
 | 8 | Log in with email or username? | **Email.** Supabase Auth signs in by email, and looking up an email from a username would let anyone find people's emails. The username stays as the display handle. | The Login form asks for a username today. |
 | 9 | Can other people see your collections? | **Yes, unless they're private.** That's what Settings and Profile already do. | data-layer.md said private. This plan replaces that default. |
 | 10 | Who verifies places, and can people edit places they added? | **We verify in the dashboard. No edits in v1.** | |
@@ -589,6 +606,7 @@ Each has a default, so building isn't blocked. Change the default here if the te
 
 - **The project.** Ruby's "Supabase connect" commit added `.env`, so a project may already exist. Check with Ruby and use it rather than making a second one, and add everyone to it in the dashboard.
 - **The keys.** New projects only get the new publishable (`sb_publishable_…`) and secret (`sb_secret_…`) keys. If `.env` holds an older `anon` key, swap it for the publishable key: Supabase is removing the old keys by the end of 2026.
+- **`.env` needs `EXPO_PUBLIC_` names.** It has `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Supabase's Next.js names), and Expo only puts `EXPO_PUBLIC_` variables into the app. Rename them to `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 - **`.env` is tracked by git.** That's fine for the project URL and the publishable key: `EXPO_PUBLIC_` values can be read out of the app anyway, and Expo's docs allow committing `.env` when it only holds values like these. Never put the secret key or the database password in it; if either was ever committed, rotate it in the dashboard. data-layer.md says to pass the keys around in `.env.local` instead. Either works; pick one and make the other doc match.
 - **Client setup has one new step.** Expo's [Supabase guide](https://docs.expo.dev/guides/using-supabase/) now also adds the `expo-sqlite` config plugin to `app.json`. The rest of data-layer.md 2a step 3 still matches it.
 - **The free plan** gives each project a 500 MB database, 1 GB of file storage, 5 GB of data out a month (plus 5 GB served from cache) and 50,000 monthly users, with 2 free projects per account. **A project pauses after 7 days without much use.** Anyone on the team can resume it from the dashboard, but open the app the day before a demo to be sure.
