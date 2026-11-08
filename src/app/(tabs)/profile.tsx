@@ -27,6 +27,7 @@ import {
 import { getInterestsByIds } from '@/services/interests';
 import { getPlace } from '@/services/places';
 import { getReviewsByAuthor, type AuthoredReview } from '@/services/reviews';
+import { getSettings } from '@/services/settings';
 import { getProfile, getSuggestedFriends, getSuggestionReason, getVisibleStatus } from '@/services/users';
 import { getCountryFlag } from '@/utils/country-flags';
 import type { Collection } from '@/types/collection';
@@ -111,10 +112,11 @@ async function loadProfileData(viewerId: string): Promise<ProfileData> {
     (place): place is Place => place !== null,
   );
 
-  const [homeCityRecord, dreamTripRecord, interests] = await Promise.all([
+  const [homeCityRecord, dreamTripRecord, interests, mySettings] = await Promise.all([
     getCity(fetchedProfile.homeCityId),
     fetchedProfile.dreamTripCityId ? getCity(fetchedProfile.dreamTripCityId) : Promise.resolve(null),
     getInterestsByIds(fetchedProfile.interestIds),
+    getSettings(viewerId),
   ]);
 
   return {
@@ -122,7 +124,11 @@ async function loadProfileData(viewerId: string): Promise<ProfileData> {
     homeCity: homeCityRecord ? { name: homeCityRecord.name, flag: getCountryFlag(homeCityRecord.country) } : null,
     dreamTripName: dreamTripRecord?.name,
     interestNames: interests.map((interest) => interest.name),
-    visibleStatus: getVisibleStatus(fetchedProfile, viewerId),
+    // Viewing your own profile always returns the full status (getVisibleStatus
+    // short-circuits on viewerId === profile.id), so closeFriendIds doesn't
+    // actually change the result here -- passed through for when this same
+    // loading logic is reused for someone else's profile later.
+    visibleStatus: getVisibleStatus(fetchedProfile, viewerId, mySettings.closeFriendIds),
     followerCount: followers.length,
     followingCount: following.length,
     reviews: authoredReviews,
@@ -227,8 +233,7 @@ export default function ProfilePage() {
               size={96}
             />
           }
-          // TODO: Settings page isn't built yet.
-          onSettingsPress={() => {}}
+          onSettingsPress={() => router.push('/settings/index')}
           onInboxPress={() => setIsInboxOpen(true)}
         />
 

@@ -92,3 +92,12 @@ export async function declineFollowRequest(userId: string, fromId: string): Prom
   if (index !== -1) mockFollowRequests.splice(index, 1);
   return mockRequest(undefined);
 }
+
+// Turning Friends-only off accepts every request waiting on this user at once.
+export async function acceptAllFollowRequests(userId: string): Promise<void> {
+  const waiting = await getFollowRequests(userId);
+  for (const request of waiting) {
+    await acceptFollowRequest(userId, request.fromId);
+  }
+  return mockRequest(undefined);
+}

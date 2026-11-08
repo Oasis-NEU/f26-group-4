@@ -24,7 +24,8 @@ export type Profile = {
       everyone: StatusDetail;
     };
   };
-  closeFriendIds: string[]; // IDs of their close friends, picked from their followers
+  // closeFriendIds lives in Settings now, not here -- Settings is never
+  // fetched by anyone but its own owner, and this list shouldn't be either.
   goals?: TravelGoal[]; // yearly travel goals; progress is calculated, not stored
   interestIds: string[]; // src/services/interests.ts ids
   // Who follows whom now lives in src/services/follows.ts as a `follows` table,

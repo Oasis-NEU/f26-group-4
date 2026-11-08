@@ -1,5 +1,6 @@
 import { getFollowerIds, getFollowingIds } from './follows';
 import { mockRequest } from './mock-backend';
+import { getSettings } from './settings';
 
 import type { Profile, StatusDetail, TravelStatus, VisibleTravelStatus } from '@/types/profile';
 
@@ -24,7 +25,6 @@ export const mockUsers: Profile[] = [
       until: '2026-11-20',
       sharing: { closeFriends: 'full', everyone: 'country' },
     },
-    closeFriendIds: ['u2'],
     interestIds: ['interest_hiking', 'interest_photography'],
   },
   {
@@ -41,7 +41,6 @@ export const mockUsers: Profile[] = [
       month: '2026-12',
       sharing: { closeFriends: 'full', everyone: 'country' },
     },
-    closeFriendIds: [],
     interestIds: ['interest_food', 'interest_photography'],
   },
   {
@@ -53,7 +52,6 @@ export const mockUsers: Profile[] = [
     coverMode: 'auto',
     homeCityId: 'lagos-ng',
     status: { kind: 'home', sharing: { closeFriends: 'full', everyone: 'country' } },
-    closeFriendIds: [],
     interestIds: ['interest_museums', 'interest_hiking'],
   },
 ];
@@ -92,41 +90,48 @@ export function trimStatusForLevel(status: TravelStatus, level: StatusDetail): V
 // Trims a profile's status down to what a given viewer is allowed to see.
 // The viewer sees their own status in full; everyone else gets the detail
 // level the profile owner picked for close friends vs. everyone else.
+// `closeFriendIds` is the profile owner's own list (now stored in Settings,
+// not on Profile) -- callers fetch it via getSettings(profile.id) first, so
+// this function stays synchronous and Settings data never leaks further than
+// whoever already has permission to read it.
 // Anything that displays a status (cover photo, suggested-friends scoring,
 // later trip-overlap) must read the status through this, never the raw field.
-export function getVisibleStatus(profile: Profile, viewerId: string): VisibleTravelStatus | null {
+export function getVisibleStatus(profile: Profile, viewerId: string, closeFriendIds: string[]): VisibleTravelStatus | null {
   if (viewerId === profile.id) return profile.status;
 
-  const level = profile.closeFriendIds.includes(viewerId)
-    ? profile.status.sharing.closeFriends
-    : profile.status.sharing.everyone;
+  const level = closeFriendIds.includes(viewerId) ? profile.status.sharing.closeFriends : profile.status.sharing.everyone;
 
   return trimStatusForLevel(profile.status, level);
 }
 
-// People the user could follow: everyone except themselves and people they
-// already follow. Ones with shared interests or who are traveling in the
-// same country (as far as the viewer can see) come first.
+// People the user could follow: everyone except themselves, people they
+// already follow, and anyone they've blocked. Ones with shared interests or
+// who are traveling in the same country (as far as the viewer can see) come first.
 export async function getSuggestedFriends(userId: string): Promise<Profile[]> {
   const me = mockUsers.find((user) => user.id === userId);
   if (!me) return mockRequest([]);
 
-  const myStatus = getVisibleStatus(me, userId); // viewing yourself always returns the full status
-  const alreadyFollowing = await getFollowingIds(userId);
+  const [mySettings, alreadyFollowing] = await Promise.all([getSettings(userId), getFollowingIds(userId)]);
+  const myStatus = getVisibleStatus(me, userId, mySettings.closeFriendIds); // viewing yourself always returns the full status
 
-  const sameTravelCountry = (other: Profile) => {
-    const otherStatus = getVisibleStatus(other, userId);
+  const sameTravelCountry = async (other: Profile) => {
+    const otherCloseFriendIds = (await getSettings(other.id)).closeFriendIds;
+    const otherStatus = getVisibleStatus(other, userId, otherCloseFriendIds);
     return myStatus?.kind === 'traveling' && otherStatus?.kind === 'traveling' && otherStatus.country === myStatus.country;
   };
 
-  const score = (other: Profile) =>
-    other.interestIds.filter((id) => me.interestIds.includes(id)).length + (sameTravelCountry(other) ? 1 : 0);
+  const candidates = mockUsers.filter(
+    (user) => user.id !== userId && !alreadyFollowing.includes(user.id) && !mySettings.blockedIds.includes(user.id),
+  );
 
-  const suggestions = mockUsers
-    .filter((user) => user.id !== userId && !alreadyFollowing.includes(user.id))
-    .sort((a, b) => score(b) - score(a));
+  const scored = await Promise.all(
+    candidates.map(async (other) => ({
+      profile: other,
+      score: other.interestIds.filter((id) => me.interestIds.includes(id)).length + ((await sameTravelCountry(other)) ? 1 : 0),
+    })),
+  );
 
-  return mockRequest(suggestions);
+  return mockRequest(scored.sort((a, b) => b.score - a.score).map((entry) => entry.profile));
 }
 
 // The reason line shown under a suggested friend's name, e.g. "Also in Lisbon"
@@ -135,8 +140,13 @@ export async function getSuggestionReason(myId: string, other: Profile): Promise
   const me = mockUsers.find((user) => user.id === myId);
   if (!me) return undefined;
 
-  const myStatus = getVisibleStatus(me, myId);
-  const otherStatus = getVisibleStatus(other, myId);
+  const [myCloseFriendIds, otherCloseFriendIds] = await Promise.all([
+    getSettings(myId).then((s) => s.closeFriendIds),
+    getSettings(other.id).then((s) => s.closeFriendIds),
+  ]);
+
+  const myStatus = getVisibleStatus(me, myId, myCloseFriendIds);
+  const otherStatus = getVisibleStatus(other, myId, otherCloseFriendIds);
 
   if (
     myStatus &&

@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -159,7 +160,12 @@ export function EditStatusPanel({ visible, onClose, status, onChange }: EditStat
         </View>
       </View>
 
-      <Text style={styles.sectionLabel}>Who sees this</Text>
+      <View style={styles.sectionLabelRow}>
+        <Text style={styles.sectionLabel}>Who sees this</Text>
+        <Pressable onPress={() => router.push('/settings/close-friends')}>
+          <Text style={styles.manageLink}>Manage close friends ›</Text>
+        </Pressable>
+      </View>
 
       {(['closeFriends', 'everyone'] as const).map((audience) => (
         <View key={audience} style={styles.sharingGroup}>
@@ -271,11 +277,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
   },
-  sectionLabel: {
+  sectionLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 20,
     marginBottom: 8,
+  },
+  sectionLabel: {
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  manageLink: {
+    fontSize: 12,
+    color: '#2A9D8F',
+    fontWeight: '600',
   },
   sharingGroup: {
     marginBottom: 16,
