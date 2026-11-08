@@ -233,7 +233,7 @@ export default function ProfilePage() {
               size={96}
             />
           }
-          onSettingsPress={() => router.push('/settings/index')}
+          onSettingsPress={() => router.push('/settings')}
           onInboxPress={() => setIsInboxOpen(true)}
         />
 
