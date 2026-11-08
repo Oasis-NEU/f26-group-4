@@ -1,6 +1,10 @@
 import { Image } from 'expo-image';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CornerRating } from '@/components/ui';
+// THEME CODE -- design system. See profile-header.tsx for the convention.
+import { colors, radius, spacing, type } from '@/theme';
+
 // Shows the "places traveled/rated" section of a profile: a list of places
 // this user has posted about, with the place name and the rating they gave it.
 // Two layouts: "grid" (3 columns, used by "See all") and "horizontal" (the
@@ -43,13 +47,17 @@ export function ProfilePosts({ posts, variant = 'grid', onPostPress }: ProfilePo
           style={[styles.tile, isHorizontal && styles.horizontalTile]}
           onPress={() => onPostPress?.(item.id)}
         >
-          {item.thumbnail ? (
-            <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
-          ) : (
-            <View style={styles.thumbnailPlaceholder} />
-          )}
-          <Text numberOfLines={1}>{item.placeName}</Text>
-          <Text>{item.rating} ★</Text>
+          <View style={styles.thumbnailWrapper}>
+            {item.thumbnail ? (
+              <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
+            ) : (
+              <View style={styles.thumbnailPlaceholder} />
+            )}
+            <CornerRating rating={item.rating} />
+          </View>
+          <Text style={styles.placeName} numberOfLines={1}>
+            {item.placeName}
+          </Text>
         </Pressable>
       )}
     />
@@ -59,21 +67,29 @@ export function ProfilePosts({ posts, variant = 'grid', onPostPress }: ProfilePo
 const styles = StyleSheet.create({
   tile: {
     flex: 1 / 3,
-    padding: 4,
+    padding: spacing.xs,
   },
   horizontalTile: {
     width: 120,
     flex: undefined,
   },
+  thumbnailWrapper: {
+    position: 'relative',
+  },
   thumbnail: {
     width: '100%',
     aspectRatio: 1,
-    borderRadius: 12,
+    borderRadius: radius.image,
   },
   thumbnailPlaceholder: {
     width: '100%',
     aspectRatio: 1,
-    borderRadius: 12,
-    backgroundColor: '#e8e8e8',
+    borderRadius: radius.image,
+    backgroundColor: colors.fill,
+  },
+  placeName: {
+    marginTop: spacing.xs,
+    fontSize: type.small,
+    color: colors.text,
   },
 });

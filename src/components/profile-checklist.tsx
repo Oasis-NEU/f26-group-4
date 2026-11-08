@@ -1,5 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+// THEME CODE -- design system. See profile-header.tsx for the convention.
+import { colors, radius, spacing, type } from '@/theme';
+
 // The "Complete your profile" card on your own profile. Four steps, calculated
 // from the profile + counts each time (nothing about "completeness" is stored).
 // Hides itself once all four are done.
@@ -55,30 +58,33 @@ export function ProfileChecklist({ input }: ProfileChecklistProps) {
 
 const styles = StyleSheet.create({
   card: {
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-    gap: 8,
+    padding: spacing.lg,
+    borderRadius: radius.card,
+    backgroundColor: colors.fill,
+    gap: spacing.sm,
   },
   title: {
-    fontSize: 15,
+    fontSize: type.body,
     fontWeight: 'bold',
-    marginBottom: 4,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   checkbox: {
     width: 18,
     textAlign: 'center',
+    color: colors.text,
   },
   label: {
-    fontSize: 14,
+    fontSize: type.small,
+    color: colors.text,
   },
   labelDone: {
-    color: 'gray',
+    color: colors.textMuted,
     textDecorationLine: 'line-through',
   },
 });

@@ -16,6 +16,8 @@ import { ProfileInterests } from '@/components/profile-interests';
 import { ProfilePosts, type ProfilePostSummary } from '@/components/profile-posts';
 import { ProfileSkeleton } from '@/components/profile-skeleton';
 import { ProfileStats } from '@/components/profile-stats';
+// THEME CODE -- design system. See profile-header.tsx for the convention.
+import { colors, radius, spacing, type } from '@/theme';
 import { getProfileCity } from '@/services/profile-cities';
 import { getCollectionsForProfile } from '@/services/collections';
 import {
@@ -285,14 +287,14 @@ export default function ProfilePage() {
 
           {activeTab === 'collections' &&
             (collections.length > 0 ? (
-              <View style={styles.collectionsGrid}>
-                {collections.map((collection) => (
-                  <View key={collection.id} style={styles.collectionItem}>
-                    <CollectionCard
-                      collection={collection}
-                      onPress={() => router.push({ pathname: '/collection/[id]', params: { id: collection.id } })}
-                    />
-                  </View>
+              <View style={styles.collectionsList}>
+                {collections.map((collection, index) => (
+                  <CollectionCard
+                    key={collection.id}
+                    collection={collection}
+                    index={index}
+                    onPress={() => router.push({ pathname: '/collection/[id]', params: { id: collection.id } })}
+                  />
                 ))}
               </View>
             ) : (
@@ -334,27 +336,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: spacing.xl,
   },
   container: {
-    padding: 24,
-    gap: 16,
+    padding: spacing.xl,
+    gap: spacing.lg,
   },
   content: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 24,
-    gap: 16,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.xl,
+    gap: spacing.lg,
   },
   // Only when ProfileCover actually shows a band: extra top space so the
   // avatar overlapping its bottom edge (see AVATAR_OVERLAP) doesn't sit on
   // top of the name/username. No-cover profiles don't need this -- the
   // avatar there is laid out inline by ProfileCover itself, not overlapping.
   contentWithCover: {
-    paddingTop: 24 + AVATAR_OVERLAP,
+    paddingTop: spacing.xl + AVATAR_OVERLAP,
   },
   section: {
-    gap: 8,
+    gap: spacing.sm,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -362,16 +364,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: type.title,
     fontWeight: 'bold',
+    color: colors.text,
   },
   bio: {
-    fontSize: 15,
+    fontSize: type.body,
+    color: colors.text,
     textAlign: 'center',
   },
   message: {
-    fontSize: 16,
-    color: 'gray',
+    fontSize: type.body,
+    color: colors.textMuted,
   },
   friendsRow: {
     flexDirection: 'row',
@@ -379,36 +383,31 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.line,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
   tabButtonActive: {
-    borderBottomColor: '#2A9D8F',
+    borderBottomColor: colors.ink,
   },
   tabLabel: {
-    color: 'gray',
+    color: colors.textMuted,
     fontWeight: '600',
   },
   tabLabelActive: {
-    color: '#2A9D8F',
+    color: colors.text,
   },
-  collectionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  collectionItem: {
-    width: '47%',
+  collectionsList: {
+    gap: spacing.md,
   },
   mapTab: {
     height: 360,
-    borderRadius: 12,
+    borderRadius: radius.card,
     overflow: 'hidden',
   },
 });

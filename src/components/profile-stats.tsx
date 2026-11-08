@@ -1,5 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+// THEME CODE -- design system. See profile-header.tsx for the convention.
+import { colors, spacing, type } from '@/theme';
+
 // The "Places · Followers · Following" row under the profile header.
 // On someone else's profile, an optional strip underneath shows overlap
 // with the viewer, e.g. "You've both been to Paris, Rome, and 2 more".
@@ -55,23 +58,24 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 32,
+    gap: spacing.xl,
   },
   stat: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 16,
+    fontSize: type.heading,
     fontWeight: 'bold',
+    color: colors.text,
   },
   statLabel: {
-    fontSize: 13,
-    color: 'gray',
+    fontSize: type.small,
+    color: colors.textMuted,
   },
   overlap: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     textAlign: 'center',
-    fontSize: 13,
-    color: '#555',
+    fontSize: type.small,
+    color: colors.textMuted,
   },
 });

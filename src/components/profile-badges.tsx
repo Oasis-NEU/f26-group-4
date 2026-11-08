@@ -1,5 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Tag } from '@/components/ui';
+// THEME CODE -- design system. See profile-header.tsx for the convention.
+import { colors, radius, spacing, type } from '@/theme';
+
 import type { AuthoredReview } from '@/services/reviews';
 import type { TravelGoal } from '@/types/profile';
 
@@ -97,9 +101,7 @@ export function ProfileBadges({ reviews, goals }: ProfileBadgesProps) {
       {earnedBadges.length > 0 && (
         <View style={styles.badgeRow}>
           {earnedBadges.map((badge) => (
-            <View key={badge.id} style={styles.badgePill}>
-              <Text style={styles.badgePillText}>{badge.label}</Text>
-            </View>
+            <Tag key={badge.id} label={badge.label} showEmoji={false} />
           ))}
         </View>
       )}
@@ -120,52 +122,44 @@ export function ProfileBadges({ reviews, goals }: ProfileBadgesProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
+    gap: spacing.lg,
   },
   empty: {
-    color: 'gray',
+    color: colors.textMuted,
     textAlign: 'center',
-    padding: 24,
+    padding: spacing.xl,
   },
   goal: {
-    gap: 4,
+    gap: spacing.xs,
   },
   goalLabel: {
-    fontSize: 14,
+    fontSize: type.small,
     fontWeight: '600',
+    color: colors.text,
   },
   progressTrack: {
     height: 6,
-    borderRadius: 3,
-    backgroundColor: '#eee',
+    borderRadius: radius.round,
+    backgroundColor: colors.fill,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#2A9D8F',
+    backgroundColor: colors.ink,
   },
   badgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  badgePill: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#eee',
-  },
-  badgePillText: {
-    fontSize: 13,
-    fontWeight: '600',
+    gap: spacing.sm,
   },
   sectionLabel: {
-    fontSize: 14,
+    fontSize: type.small,
     fontWeight: 'bold',
-    marginBottom: 4,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   travelerTypeRow: {
-    fontSize: 14,
-    color: '#444',
+    fontSize: type.small,
+    color: colors.textMuted,
   },
 });
