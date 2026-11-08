@@ -15,8 +15,8 @@ export type Profile = {
   // auto: current travel city, else dream trip. custom: coverImage. none: no cover band at all.
   coverMode: 'auto' | 'custom' | 'none';
   coverImage?: string; // only used when coverMode is 'custom'
-  homeCityId: string; // a src/services/cities.ts id; their "home base"
-  dreamTripCityId?: string; // a cities.ts id; used for the cover fallback when home
+  homeCityId: string; // a src/services/profile-cities.ts id; their "home base"
+  dreamTripCityId?: string; // a profile-cities.ts id; used for the cover fallback when home
   status: TravelStatus & {
     sharing: {
       // how much of the status each audience can see
@@ -33,8 +33,8 @@ export type Profile = {
 };
 
 // Where the user is right now. City and country are picked from the same city
-// list as "Lives in"/"Dream trip" (src/services/cities.ts), so country is
-// always a full name, e.g. "France" -- never a typed-in value or a code.
+// list as "Lives in"/"Dream trip" (src/services/profile-cities.ts), so country
+// is always a full name, e.g. "France" -- never a typed-in value or a code.
 export type TravelStatus =
   | { kind: 'home' }
   | { kind: 'traveling'; city: string; country: string; until?: string } // until: "2026-11-20"

@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { EditCityPanel } from '@/components/edit-city-panel';
 import { EditPanelSheet } from '@/components/edit-panel-sheet';
-import { getCity } from '@/services/cities';
+import { getProfileCity } from '@/services/profile-cities';
 import { trimStatusForLevel } from '@/services/users';
 import { formatStatusText } from '@/utils/status-text';
 import type { Profile, StatusDetail, TravelStatus } from '@/types/profile';
@@ -74,7 +74,7 @@ export function EditStatusPanel({ visible, onClose, status, onChange }: EditStat
   }
 
   async function handleCitySelect(cityId: string) {
-    const record = await getCity(cityId);
+    const record = await getProfileCity(cityId);
     if (!record) return;
     setCity(record.name);
     setCountry(record.country);

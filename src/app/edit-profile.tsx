@@ -13,7 +13,7 @@ import { EditNameUsernamePanel } from '@/components/edit-name-username-panel';
 import { EditPhotoPanel } from '@/components/edit-photo-panel';
 import { EditStatusPanel } from '@/components/edit-status-panel';
 import { hasVisibleCover, ProfileCover } from '@/components/profile-cover';
-import { getCity, type City } from '@/services/cities';
+import { getProfileCity, type ProfileCity } from '@/services/profile-cities';
 import { getInterestsByIds } from '@/services/interests';
 import { getProfile, isUsernameAvailable, trimStatusForLevel, updateProfile } from '@/services/users';
 import { formatStatusText } from '@/utils/status-text';
@@ -89,8 +89,8 @@ export default function EditProfileScreen() {
   const [isDiscardOpen, setIsDiscardOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [homeCity, setHomeCity] = useState<City | null>(null);
-  const [dreamTripCity, setDreamTripCity] = useState<City | null>(null);
+  const [homeCity, setHomeCity] = useState<ProfileCity | null>(null);
+  const [dreamTripCity, setDreamTripCity] = useState<ProfileCity | null>(null);
 
   useEffect(() => {
     getProfile(CURRENT_USER_ID).then((fetched) => {
@@ -103,11 +103,11 @@ export default function EditProfileScreen() {
   const dreamTripCityId = draft?.dreamTripCityId;
 
   useEffect(() => {
-    (homeCityId ? getCity(homeCityId) : Promise.resolve(null)).then(setHomeCity);
+    (homeCityId ? getProfileCity(homeCityId) : Promise.resolve(null)).then(setHomeCity);
   }, [homeCityId]);
 
   useEffect(() => {
-    (dreamTripCityId ? getCity(dreamTripCityId) : Promise.resolve(null)).then(setDreamTripCity);
+    (dreamTripCityId ? getProfileCity(dreamTripCityId) : Promise.resolve(null)).then(setDreamTripCity);
   }, [dreamTripCityId]);
 
   if (!profile || !draft) {

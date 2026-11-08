@@ -15,7 +15,7 @@ import { ProfileHeader } from '@/components/profile-header';
 import { ProfileInterests } from '@/components/profile-interests';
 import { ProfilePosts, type ProfilePostSummary } from '@/components/profile-posts';
 import { ProfileStats } from '@/components/profile-stats';
-import { getCity } from '@/services/cities';
+import { getProfileCity } from '@/services/profile-cities';
 import { getCollectionsForProfile } from '@/services/collections';
 import {
   acceptFollowRequest,
@@ -113,8 +113,8 @@ async function loadProfileData(viewerId: string): Promise<ProfileData> {
   );
 
   const [homeCityRecord, dreamTripRecord, interests, mySettings] = await Promise.all([
-    getCity(fetchedProfile.homeCityId),
-    fetchedProfile.dreamTripCityId ? getCity(fetchedProfile.dreamTripCityId) : Promise.resolve(null),
+    getProfileCity(fetchedProfile.homeCityId),
+    fetchedProfile.dreamTripCityId ? getProfileCity(fetchedProfile.dreamTripCityId) : Promise.resolve(null),
     getInterestsByIds(fetchedProfile.interestIds),
     getSettings(viewerId),
   ]);
