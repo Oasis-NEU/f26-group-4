@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Link, router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -321,10 +321,6 @@ export default function ProfilePage() {
 
           {activeTab === 'badges' && <ProfileBadges reviews={reviews} goals={profile.goals} />}
 
-          {/* Temporary, so demo users can be switched until a real login gate exists. */}
-          <Link href="/login" style={styles.link}>
-            Log out
-          </Link>
         </View>
       </ScrollView>
 
@@ -434,11 +430,6 @@ const styles = StyleSheet.create({
     height: 360,
     borderRadius: 12,
     overflow: 'hidden',
-  },
-  link: {
-    marginTop: 8,
-    color: colors.link,
-    fontSize: 16,
   },
   skeletonAvatar: {
     alignSelf: 'center',

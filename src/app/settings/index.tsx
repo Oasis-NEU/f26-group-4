@@ -3,7 +3,6 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
-import { ConfirmModal } from '@/components/confirm-modal';
 import { SettingsRow } from '@/components/settings-row';
 import { getSettings } from '@/services/settings';
 import { getProfile } from '@/services/users';
@@ -15,7 +14,6 @@ const CURRENT_USER_ID = 'u1';
 export default function SettingsIndexScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -69,23 +67,6 @@ export default function SettingsIndexScreen() {
         <View style={styles.divider} />
         <SettingsRow title="Help & about" onPress={() => router.push('/settings/help')} />
       </View>
-
-      <Pressable style={styles.logoutButton} onPress={() => setIsLogoutOpen(true)}>
-        <Text style={styles.logoutText}>Log out</Text>
-      </Pressable>
-
-      <ConfirmModal
-        visible={isLogoutOpen}
-        title="Log out?"
-        message="You can log back in anytime."
-        confirmLabel="Log out"
-        destructive
-        onConfirm={() => {
-          setIsLogoutOpen(false);
-          router.replace('/login');
-        }}
-        onCancel={() => setIsLogoutOpen(false)}
-      />
     </ScrollView>
   );
 }
@@ -144,16 +125,5 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#f0f0f0',
     marginLeft: 16,
-  },
-  logoutButton: {
-    marginTop: 24,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
