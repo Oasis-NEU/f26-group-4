@@ -1,16 +1,33 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+import { ConfirmModal } from '@/components/confirm-modal';
 import { SettingsRow } from '@/components/settings-row';
 import { useProfile } from '@/hooks/use-profiles';
-import { useUserId } from '@/hooks/use-session';
+import { useSession, useUserId } from '@/hooks/use-session';
 import { useSettings } from '@/hooks/use-settings';
 
 export default function SettingsIndexScreen() {
   const userId = useUserId();
+  const { signOut } = useSession();
   const { data: profile } = useProfile(userId);
   const { data: settings } = useSettings();
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
+
+  // Signing out flips the login gate in _layout.tsx: the signed-in screens
+  // are removed and Log in shows, so there's no history to go back into.
+  async function handleLogOut() {
+    setIsLogoutOpen(false);
+    setLogoutError('');
+    try {
+      await signOut();
+    } catch {
+      setLogoutError("Couldn't log out. Try again.");
+    }
+  }
 
   if (!profile || !settings) return null;
 
@@ -50,6 +67,21 @@ export default function SettingsIndexScreen() {
         <View style={styles.divider} />
         <SettingsRow title="Help & about" onPress={() => router.push('/settings/help')} />
       </View>
+
+      <Pressable style={styles.logoutButton} onPress={() => setIsLogoutOpen(true)}>
+        <Text style={styles.logoutText}>Log out</Text>
+      </Pressable>
+      {!!logoutError && <Text style={styles.error}>{logoutError}</Text>}
+
+      <ConfirmModal
+        visible={isLogoutOpen}
+        title="Log out?"
+        message="You can log back in anytime."
+        confirmLabel="Log out"
+        destructive
+        onConfirm={handleLogOut}
+        onCancel={() => setIsLogoutOpen(false)}
+      />
     </ScrollView>
   );
 }
@@ -108,5 +140,22 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#f0f0f0',
     marginLeft: 16,
+  },
+  logoutButton: {
+    marginTop: 24,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  error: {
+    marginTop: 12,
+    color: '#e53e3e',
+    fontSize: 13,
+    textAlign: 'center',
   },
 });
