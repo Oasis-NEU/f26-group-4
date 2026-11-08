@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { useIsSaved, useToggleSave } from '@/hooks/use-saves';
 import { Place } from '@/types/place';
 import { getCountryFlag } from '@/utils/country-flags';
 import { colors, radius, spacing, type } from '@/theme';
@@ -15,10 +15,11 @@ type PlaceDetailsProps = {
 };
 
 export function PlaceDetails({ place }: PlaceDetailsProps) {
-  // Whether the bookmark button looks filled in. Only remembered while the app is open.
-  // TODO: once collections exist, this should check whether the place is actually saved,
-  // and tapping it should open the "save to collection" sheet instead of just toggling.
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  // Whether the place is saved. It comes from the shared list of saved ids, so
+  // it matches the bookmark on every other screen.
+  // TODO: tapping it should open the "save to collection" sheet instead of just toggling.
+  const isBookmarked = useIsSaved(place.id);
+  const toggleSave = useToggleSave();
 
   // Some sizes depend on how big the phone is, so they have to be measured
   const window = useWindowDimensions();
@@ -31,11 +32,14 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
   const postWidth = (window.width - 16) / 2.5 - 12;
 
   // place.proximity is in meters. Anything over 1000 reads better in kilometers.
+  // It's missing until the app knows where the phone is (expo-location), and then
+  // the badge just doesn't show.
   // TODO: is there a way to have this automatically convert to user's preffered units?
   // maybe the user could even prefer to have it in minutes of walking instead of distance
-  let distanceText = place.proximity + ' m away';
-  if (place.proximity >= 1000) {
-    distanceText = (place.proximity / 1000).toFixed(1) + ' km away';
+  let distanceText: string | undefined;
+  if (place.proximity !== undefined) {
+    distanceText =
+      place.proximity >= 1000 ? (place.proximity / 1000).toFixed(1) + ' km away' : place.proximity + ' m away';
   }
 
   // Empty string when we don't have a flag for that country, so the text doesn't look off
@@ -55,7 +59,7 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
   }
 
   function handleBookmark() {
-    setIsBookmarked(!isBookmarked);
+    toggleSave.mutate({ placeId: place.id, save: !isBookmarked });
   }
 
   function handleShare() {
@@ -106,9 +110,11 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
         </View>
 
         {/* How far away it is, in the bottom-left corner of the photo */}
-        <View style={[styles.overlayButton, styles.distanceBadge]}>
-          <Text style={styles.overlayButtonText}>{distanceText}</Text>
-        </View>
+        {distanceText !== undefined && (
+          <View style={[styles.overlayButton, styles.distanceBadge]}>
+            <Text style={styles.overlayButtonText}>{distanceText}</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.body}>

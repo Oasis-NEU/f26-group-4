@@ -5,8 +5,16 @@ import { Button, ScrollView, StyleSheet, Text } from 'react-native';
 // THEME CODE -- design system. See the note above the styles at the bottom.
 import { colors } from '@/theme';
 import { AuthInput } from '@/components/auth-input';
+import { useCheckUsername } from '@/hooks/use-profiles';
+import { useSession } from '@/hooks/use-session';
+
+// The database's rule for usernames (supabase/migrations, profiles.username).
+const USERNAME_PATTERN = /^[a-z0-9._]{3,30}$/;
 
 export default function CreateAccountPage() {
+  const { signUp } = useSession();
+  const isUsernameAvailable = useCheckUsername();
+
   // Remember what the person types in each box.
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -16,26 +24,53 @@ export default function CreateAccountPage() {
 
   // Message displayed below the button.
   const [message, setMessage] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
 
   // Runs when Create account is pressed.
-  function handleCreateAccount() {
-    if (
-      !email.trim() ||
-      !name.trim() ||
-      !username.trim() ||
-      !password.trim() ||
-      !confirmPassword.trim()
-    ) {
+  async function handleCreateAccount() {
+    const wantedUsername = username.trim().toLowerCase();
+
+    if (!email.trim() || !name.trim() || !wantedUsername || !password || !confirmPassword) {
       setMessage('Please fill in every field.');
       return;
     }
-
+    if (!USERNAME_PATTERN.test(wantedUsername)) {
+      setMessage('Usernames are 3 to 30 letters, numbers, dots or underscores.');
+      return;
+    }
+    if (password.length < 6) {
+      setMessage('Passwords need at least 6 characters.');
+      return;
+    }
     if (password !== confirmPassword) {
       setMessage('The passwords do not match.');
       return;
     }
 
-    setMessage('Form complete! Account creation is not connected yet.');
+    setIsBusy(true);
+    setMessage('');
+    try {
+      if (!(await isUsernameAvailable(wantedUsername))) {
+        setMessage('That username is taken. Try another.');
+        setIsBusy(false);
+        return;
+      }
+      const { needsEmailConfirmation } = await signUp({ email, password, username: wantedUsername, name });
+      // Without email confirmation, signing up also signs in, and the root
+      // layout moves to the tabs by itself.
+      if (needsEmailConfirmation) {
+        setMessage('Check your email to confirm your account, then log in.');
+        setIsBusy(false);
+      }
+    } catch (error) {
+      const text = error instanceof Error ? error.message : '';
+      setMessage(
+        /already registered|already exists/i.test(text)
+          ? 'An account with that email already exists. Log in instead.'
+          : "Couldn't create the account. Check your details and try again.",
+      );
+      setIsBusy(false);
+    }
   }
 
   return (
@@ -47,47 +82,23 @@ export default function CreateAccountPage() {
     >
       <Text style={styles.title}>Create an account</Text>
 
-      <AuthInput
-        label="Email"
-        value={email}
-        onChangeText={setEmail}
-      />
+      <AuthInput label="Email" value={email} onChangeText={setEmail} />
 
-      <AuthInput
-        label="Name"
-        value={name}
-        onChangeText={setName}
-      />
+      <AuthInput label="Name" value={name} onChangeText={setName} />
 
-      <AuthInput
-        label="Username"
-        value={username}
-        onChangeText={setUsername}
-      />
+      <AuthInput label="Username" value={username} onChangeText={setUsername} />
 
-      <AuthInput
-        label="Password"
-        value={password}
-        onChangeText={setPassword}
-        isPassword={true}
-      />
+      <AuthInput label="Password" value={password} onChangeText={setPassword} isPassword={true} />
 
-      <AuthInput
-        label="Confirm password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        isPassword={true}
-      />
+      <AuthInput label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} isPassword={true} />
 
       <Button
-        title="Create account"
+        title={isBusy ? 'Creating account…' : 'Create account'}
         onPress={handleCreateAccount}
+        disabled={isBusy}
       />
 
-      <Text
-        style={styles.message}
-        accessibilityLiveRegion="polite"
-      >
+      <Text style={styles.message} accessibilityLiveRegion="polite">
         {message}
       </Text>
 

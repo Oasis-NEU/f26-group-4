@@ -1,176 +1,168 @@
-// Where collection data comes from. Fake data for now, same idea as places.ts:
-// when Supabase is set up, only this file changes.
+// Saves and collections, from Supabase. The mock collections now live in
+// supabase/seed/30_saved.sql.
+//
+// The database keeps two rules whatever the app does: putting a place in a
+// collection also saves it, and unsaving a place takes it out of all your
+// collections.
+//
+// Auto-sorting saves into collections (by country, city or place type) is
+// still to come: docs/backend-plan.md, "Tables for later". Open questions:
+// what happens when a place matches two collections, whether the setting is
+// per user or per collection, and where saves go when it's off.
 
-import { mockRequest } from './mock-backend';
-import { mockPlaces } from './places';
+import { currentUserId, supabase } from '@/lib/supabase';
 
-import { Collection } from '@/types/collection';
-import { Place } from '@/types/place';
+import { getMediaUrl } from './media';
+import { PLACE_SELECT, toPlace, UUID_PATTERN, type PlaceRow } from './place-rows';
 
-// Small helper so the mock data below doesn't repeat whole place objects.
-// Not exported, because only this file uses it.
-function placesWithIds(ids: string[]): Place[] {
-  return mockPlaces.filter((place) => ids.includes(place.id));
-}
-
-const mockCollections: Collection[] = [
-  {
-    id: 'col_europe',
-    name: 'Europe Trip',
-    places: [], // this one's places live in the sub-collections below
-    coverImage: 'https://picsum.photos/id/1036/800/600',
-    ownerId: 'u1',
-    subCollections: [
-      {
-        id: 'col_europe_france',
-        name: 'France',
-        country: 'France',
-        places: placesWithIds(['place_001', 'place_002']),
-        coverImage: 'https://picsum.photos/id/1018/800/600',
-        ownerId: 'u1',
-        isAuto: true, // made automatically because the user posted places in France
-      },
-      {
-        id: 'col_europe_italy',
-        name: 'Italy',
-        country: 'Italy',
-        places: placesWithIds(['place_004', 'place_005']),
-        coverImage: 'https://picsum.photos/id/292/800/600',
-        ownerId: 'u1',
-        isAuto: true, // same, for Italy
-      },
-    ],
-  },
-  {
-    id: 'col_cafes',
-    name: 'Coffee Shops',
-    places: placesWithIds(['place_001', 'place_003', 'place_006']),
-    coverImage: 'https://picsum.photos/id/225/800/600',
-    ownerId: 'u1',
-  },
-  {
-    id: 'col_someday',
-    name: 'Someday',
-    places: placesWithIds(['place_005']),
-    ownerId: 'u1',
-    isPrivate: true, // a personal wishlist -- only the owner should see this one
-  },
-];
-
-// Places the user bookmarked but hasn't put in a collection yet.
-const mockLooseSavedPlaces: Place[] = placesWithIds(['place_003', 'place_006']);
+import type { Collection } from '@/types/collection';
+import type { Place } from '@/types/place';
 
 // The id used for the built-in "All saved" collection. It's always the first card
 // on the Saved page, and it can't be renamed or deleted.
 export const ALL_SAVED_ID = 'all_saved';
 
-// Every collection the user has made.
+const COLLECTION_SELECT = `id, owner_id, parent_id, name, cover_path, is_private, created_at, collection_places(added_at, place:places(${PLACE_SELECT}))`;
+
+type CollectionRow = {
+  id: string;
+  owner_id: string;
+  parent_id: string | null;
+  name: string;
+  cover_path: string | null;
+  is_private: boolean | null;
+  created_at: string;
+  collection_places: { added_at: string; place: PlaceRow | null }[];
+};
+
+function toCollection(row: CollectionRow): Collection {
+  const places = [...row.collection_places]
+    .sort((a, b) => a.added_at.localeCompare(b.added_at))
+    .flatMap((item) => (item.place ? [toPlace(item.place)] : []));
+  // A collection's country is worked out from its places: only when they share one.
+  const countries = new Set(places.map((place) => place.country));
+
+  return {
+    id: row.id,
+    name: row.name,
+    places,
+    country: countries.size === 1 ? [...countries][0] : undefined,
+    coverImage: getMediaUrl(row.cover_path), // missing: the card uses the first place's image
+    ownerId: row.owner_id,
+    isPrivate: row.is_private ?? false,
+  };
+}
+
+// Top-level collections, each with its sub-collections inside.
+function toTree(rows: CollectionRow[]): Collection[] {
+  const byId = new Map(rows.map((row) => [row.id, toCollection(row)]));
+  const top: Collection[] = [];
+  for (const row of rows) {
+    const collection = byId.get(row.id)!;
+    const parent = row.parent_id ? byId.get(row.parent_id) : undefined;
+    if (parent) {
+      parent.subCollections = [...(parent.subCollections ?? []), collection];
+    } else {
+      top.push(collection);
+    }
+  }
+  return top;
+}
+
+async function collectionsOwnedBy(ownerId: string): Promise<Collection[]> {
+  const { data, error } = await supabase
+    .from('collections')
+    .select(COLLECTION_SELECT)
+    .eq('owner_id', ownerId)
+    .order('created_at');
+  if (error) throw error;
+  return toTree(data as unknown as CollectionRow[]);
+}
+
+// Every collection the signed-in user has made. Other people's public
+// collections are readable too, so this asks for yours by owner.
 export async function getCollections(): Promise<Collection[]> {
-  return mockRequest(mockCollections);
+  return collectionsOwnedBy(await currentUserId());
 }
 
-// A profile's collections, as `viewerId` is allowed to see them: only that
-// profile's own collections, and -- unless the viewer IS the owner -- with
-// private ones filtered out. Used by the Profile page instead of
-// getCollections(), which has no concept of "whose" collections they are and
-// is left alone so the Saved tab (always a self-view) keeps working as-is.
-export async function getCollectionsForProfile(ownerId: string, viewerId: string): Promise<Collection[]> {
-  const isOwner = ownerId === viewerId;
-  const visible = mockCollections.filter(
-    (collection) => collection.ownerId === ownerId && (isOwner || !collection.isPrivate),
-  );
-  return mockRequest(visible);
+// A profile's collections, as the signed-in user may see them: row level
+// security leaves out private ones, unless they're yours.
+export async function getCollectionsForProfile(ownerId: string): Promise<Collection[]> {
+  return collectionsOwnedBy(ownerId);
 }
 
-// One collection by its id. Looks inside sub-collections too, so opening
-// "France" from inside "Europe Trip" finds it.
+// One collection by its id, with its sub-collections. "All saved" is built
+// from your saves.
 export async function getCollection(id: string): Promise<Collection | null> {
-  // "All saved" isn't a real collection anyone made -- it's every saved place
-  // gathered together, so it gets built here instead of being looked up.
   if (id === ALL_SAVED_ID) {
-    const everything = await getAllSavedPlaces();
-    return mockRequest({ id: ALL_SAVED_ID, name: 'All saved', places: everything });
+    return { id: ALL_SAVED_ID, name: 'All saved', places: await getAllSavedPlaces() };
   }
+  if (!UUID_PATTERN.test(id)) return null;
 
-  for (const collection of mockCollections) {
-    if (collection.id === id) {
-      return mockRequest(collection);
-    }
-
-    // Check this collection's sub-collections before moving to the next one.
-    if (collection.subCollections !== undefined) {
-      for (const sub of collection.subCollections) {
-        if (sub.id === id) {
-          return mockRequest(sub);
-        }
-      }
-    }
-  }
-
-  return mockRequest(null);
+  const { data, error } = await supabase
+    .from('collections')
+    .select(COLLECTION_SELECT)
+    .or(`id.eq.${id},parent_id.eq.${id}`)
+    .order('created_at');
+  if (error) throw error;
+  return toTree(data as unknown as CollectionRow[]).find((collection) => collection.id === id) ?? null;
 }
 
-// The loose saved places, shown in their own section on the Saved page.
-export async function getSavedPlaces(): Promise<Place[]> {
-  return mockRequest(mockLooseSavedPlaces);
+// ---------------------------------------------------------------------------
+// Saving. "Bookmarking" and "saving" are the same action.
+// ---------------------------------------------------------------------------
+
+// Ids of every place the signed-in user has saved.
+export async function getSavedPlaceIds(): Promise<string[]> {
+  const userId = await currentUserId();
+  const { data, error } = await supabase.from('saves').select('place_id').eq('user_id', userId);
+  if (error) throw error;
+  return data.map((row) => row.place_id);
 }
 
-// Every place saved anywhere, for the "All saved" card.
-// A place can be in two collections, so duplicates get removed.
+export async function savePlace(placeId: string): Promise<void> {
+  // user_id fills itself in from the session.
+  const { error } = await supabase.from('saves').insert({ place_id: placeId });
+  if (error && error.code !== '23505') throw error; // 23505: already saved, which is fine
+}
+
+// Unsaving also takes the place out of all your collections (a database rule).
+export async function unsavePlace(placeId: string): Promise<void> {
+  const userId = await currentUserId();
+  const { error } = await supabase.from('saves').delete().eq('user_id', userId).eq('place_id', placeId);
+  if (error) throw error;
+}
+
+// Every place saved anywhere, newest save first, for the "All saved" card.
 export async function getAllSavedPlaces(): Promise<Place[]> {
-  const everything: Place[] = [...mockLooseSavedPlaces];
-
-  for (const collection of mockCollections) {
-    everything.push(...collection.places);
-
-    if (collection.subCollections !== undefined) {
-      for (const sub of collection.subCollections) {
-        everything.push(...sub.places);
-      }
-    }
-  }
-
-  // Keep the first copy of each id and skip the rest.
-  const seenIds: string[] = [];
-  const unique: Place[] = [];
-  for (const place of everything) {
-    if (!seenIds.includes(place.id)) {
-      seenIds.push(place.id);
-      unique.push(place);
-    }
-  }
-
-  return mockRequest(unique);
+  const userId = await currentUserId();
+  const { data, error } = await supabase
+    .from('saves')
+    .select(`created_at, place:places(${PLACE_SELECT})`)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data as unknown as { place: PlaceRow | null }[]).flatMap((row) => (row.place ? [toPlace(row.place)] : []));
 }
 
-// ---------------------------------------------------------------------------
-// NOT BUILT YET -- saving a place
-// ---------------------------------------------------------------------------
-//
-// "Bookmarking" and "saving" are the same action. One tap adds the place to the
-// Saved page; tapping again removes it. There is no separate bookmark.
-//
-// The part I want on top of that: AUTO-SORTING. If the user turns the setting on,
-// saving a place should drop it straight into the collection it belongs to instead
-// of leaving it loose. So if they already have a "France" collection and they save
-// a place in Chamonix, it lands in "France" by itself.
-//
-// Matching should work on more than country:
-//   - country   e.g. a "France" collection catches anything with country "France"
-//   - city      e.g. a "Florence" collection catches places in Florence
-//   - activity  e.g. a "Cafes" collection catches places with placeType "cafe"
-//
-// Open questions for the team, not decided yet:
-//   - What happens when a place matches two collections? Both? Ask? Most specific?
-//   - Is the setting on per user, or per collection?
-//   - When it's off, where do saved places go? (Right now: mockLooseSavedPlaces.)
-//
-// This can't be written until there's a signed-in user and a real database, because
-// saving has to be stored somewhere. Rough shape of what goes here eventually:
-//
-//   export async function savePlace(placeId: string) { ... }
-//   export async function unsavePlace(placeId: string) { ... }
-//   export async function isPlaceSaved(placeId: string) { ... }
-//
-// Once those exist, src/components/place-details.tsx should call them instead of
-// using its own useState -- see the TODO on the Save button in that file.
+// The loose saved places: saved, but not in any of your collections.
+export async function getSavedPlaces(): Promise<Place[]> {
+  const userId = await currentUserId();
+  const [all, collected] = await Promise.all([
+    getAllSavedPlaces(),
+    supabase.from('collection_places').select('place_id, collections!inner(owner_id)').eq('collections.owner_id', userId),
+  ]);
+  if (collected.error) throw collected.error;
+  const collectedIds = new Set(collected.data.map((row) => row.place_id));
+  return all.filter((place) => !collectedIds.has(place.id));
+}
+
+// Takes a place out of one collection. It stays saved.
+export async function removeFromCollection(collectionId: string, placeId: string): Promise<void> {
+  const { error } = await supabase
+    .from('collection_places')
+    .delete()
+    .eq('collection_id', collectionId)
+    .eq('place_id', placeId);
+  if (error) throw error;
+}

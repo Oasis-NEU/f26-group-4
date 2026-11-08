@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { EditPanelSheet } from '@/components/edit-panel-sheet';
 import {
-  addInterest,
-  getInterestsByIds,
-  getPopularInterests,
-  searchInterests,
-  suggestInterestsFromPosts,
-} from '@/services/interests';
+  useAddInterest,
+  useInterestsByIds,
+  usePopularInterests,
+  useSearchInterests,
+  useSuggestedInterests,
+} from '@/hooks/use-interests';
 import type { Interest } from '@/types/interest';
+
+const NO_INTERESTS: Interest[] = [];
 
 const MAX_INTERESTS = 6;
 // An interest only counts as "popular" once ~5 people have picked it; below
@@ -34,32 +36,14 @@ function slugify(name: string): string {
 
 export function EditInterestsPanel({ visible, onClose, userId, selectedIds, onChange }: EditInterestsPanelProps) {
   const [query, setQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Interest[]>([]);
-  const [popular, setPopular] = useState<Interest[]>([]);
-  const [suggested, setSuggested] = useState<Interest[]>([]);
-  const [selectedInterests, setSelectedInterests] = useState<Interest[]>([]);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!visible) return;
-    getPopularInterests(20).then(setPopular);
-    suggestInterestsFromPosts(userId).then(setSuggested);
-  }, [visible, userId]);
-
-  useEffect(() => {
-    getInterestsByIds(selectedIds).then(setSelectedInterests);
-  }, [selectedIds]);
-
-  useEffect(() => {
-    if (!visible) return;
-    let ignore = false;
-    searchInterests(query).then((results) => {
-      if (!ignore) setSearchResults(results);
-    });
-    return () => {
-      ignore = true;
-    };
-  }, [query, visible]);
+  // "Popular" and "From your posts" only load while the panel is open.
+  const popular = usePopularInterests(20, visible).data ?? NO_INTERESTS;
+  const suggested = useSuggestedInterests(visible).data ?? NO_INTERESTS;
+  const selectedInterests = useInterestsByIds(selectedIds).data ?? NO_INTERESTS;
+  const searchResults = useSearchInterests(query).data ?? NO_INTERESTS;
+  const addInterest = useAddInterest();
 
   function toggle(interest: Interest) {
     setError('');
@@ -85,9 +69,13 @@ export function EditInterestsPanel({ visible, onClose, userId, selectedIds, onCh
       setError('You can pick up to 6. Remove one first.');
       return;
     }
-    const created = await addInterest(trimmed, userId);
-    onChange([...selectedIds, created.id]);
-    setQuery('');
+    try {
+      const created = await addInterest.mutateAsync(trimmed);
+      onChange([...selectedIds, created.id]);
+      setQuery('');
+    } catch {
+      setError("Couldn't add that interest. Try again.");
+    }
   }
 
   const hasExactMatch = searchResults.some((interest) => interest.slug === slugify(query));

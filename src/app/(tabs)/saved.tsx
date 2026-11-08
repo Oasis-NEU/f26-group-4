@@ -1,17 +1,12 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CollectionCard } from '@/components/collection-card';
 import { SavedPlaceRow } from '@/components/saved-place-row';
-import {
-  ALL_SAVED_ID,
-  getAllSavedPlaces,
-  getCollections,
-  getSavedPlaces,
-} from '@/services/collections';
+import { ALL_SAVED_ID, useCollections } from '@/hooks/use-collections';
+import { useAllSavedPlaces, useLooseSavedPlaces } from '@/hooks/use-saves';
 import { Collection } from '@/types/collection';
-import { Place } from '@/types/place';
 import { colors, spacing, type } from '@/theme';
 import { FilterPill } from '@/components/ui';
 
@@ -22,25 +17,18 @@ import { FilterPill } from '@/components/ui';
 // control at the top. This uses filter pills instead for now.
 
 export default function SavedPage() {
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [savedPlaces, setSavedPlaces] = useState<Place[]>([]);
-  const [allSavedPlaces, setAllSavedPlaces] = useState<Place[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // The three lists come from the shared cache. Saving or unsaving anywhere
+  // refreshes them, so this tab is up to date whenever you come back to it.
+  const collectionsQuery = useCollections();
+  const looseQuery = useLooseSavedPlaces();
+  const allSavedQuery = useAllSavedPlaces();
+  const isLoading = collectionsQuery.isPending || looseQuery.isPending || allSavedQuery.isPending;
+  const collections = collectionsQuery.data ?? [];
+  const savedPlaces = looseQuery.data ?? [];
+  const allSavedPlaces = allSavedQuery.data ?? [];
 
   // Which filter pill is selected. 'All' means don't filter anything out.
   const [selectedFilter, setSelectedFilter] = useState('All');
-
-  useEffect(() => {
-    // Ask for all three lists, then put them in state.
-    getCollections().then((result) => setCollections(result));
-    getSavedPlaces().then((result) => setSavedPlaces(result));
-    getAllSavedPlaces().then((result) => {
-      setAllSavedPlaces(result);
-      setIsLoading(false);
-    });
-    // TODO: reload this when the tab comes back into view (useFocusEffect), or a place
-    // bookmarked somewhere else won't show up here until the app restarts.
-  }, []);
 
   if (isLoading) {
     return (

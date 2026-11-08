@@ -81,7 +81,10 @@ export function PlacesMap({ places, friendUsernames = [], camera, onSelectPlace,
       }}
       onPress={() => onSelectPlace(null)}
     >
-      {places.map((place) => (
+      {/* A place posted without a location has nowhere to go on the map. */}
+      {places
+        .filter((place) => place.latitude !== undefined && place.longitude !== undefined)
+        .map((place) => (
         <StackMarker
           key={place.id}
           Marker={Marker}
@@ -111,7 +114,8 @@ function StackMarker({
 
   return (
     <Marker
-      coordinate={{ latitude: place.latitude, longitude: place.longitude }}
+      // PlacesMap only passes places that have coordinates.
+      coordinate={{ latitude: place.latitude!, longitude: place.longitude! }}
       onPress={(e) => {
         e.stopPropagation(); // so the map's own onPress doesn't immediately close the card
         onPress();

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput } from 'react-native';
 
 import { EditPanelSheet } from '@/components/edit-panel-sheet';
-import { isUsernameAvailable } from '@/services/users';
+import { useCheckUsername } from '@/hooks/use-profiles';
 
 // Name is 1-40 characters. Username is 3-24 characters (a-z, 0-9, _, .),
 // stored lowercase, and checked for availability ~0.5s after the user stops
@@ -16,14 +16,14 @@ type AvailabilityState = 'idle' | 'checking' | 'available' | 'taken';
 type EditNameUsernamePanelProps = {
   visible: boolean;
   onClose: () => void;
-  userId: string; // excluded from the "taken" check, so keeping your own username is fine
   name: string;
   username: string;
   onChange: (name: string, username: string) => void;
 };
 
-export function EditNameUsernamePanel({ visible, onClose, userId, name, username, onChange }: EditNameUsernamePanelProps) {
+export function EditNameUsernamePanel({ visible, onClose, name, username, onChange }: EditNameUsernamePanelProps) {
   const [availability, setAvailability] = useState<AvailabilityState>('idle');
+  const checkUsername = useCheckUsername();
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const usernameFormatError =
@@ -43,7 +43,8 @@ export function EditNameUsernamePanel({ visible, onClose, userId, name, username
 
     const checkingTimer = setTimeout(() => setAvailability('checking'), 0);
     checkTimer.current = setTimeout(() => {
-      isUsernameAvailable(username, userId).then((available) => {
+      // Your own current username counts as available.
+      checkUsername(username).then((available) => {
         setAvailability(available ? 'available' : 'taken');
       });
     }, CHECK_DELAY_MS);

@@ -1,35 +1,23 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
-import { getSettings, unblockUser } from '@/services/settings';
-import { getProfile } from '@/services/users';
+import { useProfilesByIds } from '@/hooks/use-profiles';
+import { useSettings, useUnblockUser } from '@/hooks/use-settings';
 import type { Profile } from '@/types/profile';
 
-const CURRENT_USER_ID = 'u1';
+const NO_IDS: string[] = [];
+const NO_PROFILES: Profile[] = [];
 
 export default function BlockedScreen() {
-  const [blocked, setBlocked] = useState<Profile[]>([]);
+  const settings = useSettings();
+  const blockedIds = settings.data?.blockedIds ?? NO_IDS;
+  const profiles = useProfilesByIds(blockedIds);
+  const unblock = useUnblockUser();
 
-  const load = useCallback(async () => {
-    const settings = await getSettings(CURRENT_USER_ID);
-    const profiles = (await Promise.all(settings.blockedIds.map((id) => getProfile(id)))).filter(
-      (profile): profile is Profile => profile !== null,
-    );
-    setBlocked(profiles);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
-
-  async function handleUnblock(userId: string) {
-    setBlocked((current) => current.filter((profile) => profile.id !== userId));
-    await unblockUser(CURRENT_USER_ID, userId);
-  }
+  // Unblocking takes someone out of blockedIds straight away, so they drop off
+  // here before the list reloads.
+  const blocked = (profiles.data ?? NO_PROFILES).filter((profile) => blockedIds.includes(profile.id));
+  const isLoading = settings.isPending || profiles.isPending || profiles.isPlaceholderData;
 
   return (
     <View style={styles.screen}>
@@ -37,7 +25,7 @@ export default function BlockedScreen() {
         data={blocked}
         keyExtractor={(profile) => profile.id}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.empty}>You haven&apos;t blocked anyone.</Text>}
+        ListEmptyComponent={isLoading ? undefined : <Text style={styles.empty}>You haven&apos;t blocked anyone.</Text>}
         renderItem={({ item }) => (
           <View style={styles.row}>
             <Avatar name={item.name} username={item.username} uri={item.profilePicture} userId={item.id} avatarHue={item.avatarHue} size={44} />
@@ -45,7 +33,7 @@ export default function BlockedScreen() {
               <Text style={styles.name}>{item.name}</Text>
               <Text style={styles.username}>@{item.username}</Text>
             </View>
-            <Pressable style={styles.unblockButton} onPress={() => handleUnblock(item.id)}>
+            <Pressable style={styles.unblockButton} onPress={() => unblock.mutate(item.id)}>
               <Text style={styles.unblockText}>Unblock</Text>
             </Pressable>
           </View>

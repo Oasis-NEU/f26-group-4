@@ -1,35 +1,33 @@
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { ConfirmModal } from '@/components/confirm-modal';
 import { SettingsRow } from '@/components/settings-row';
-import { getSettings } from '@/services/settings';
-import { getProfile } from '@/services/users';
-import type { Profile } from '@/types/profile';
-import type { Settings } from '@/types/settings';
-
-const CURRENT_USER_ID = 'u1';
+import { useProfile } from '@/hooks/use-profiles';
+import { useSession, useUserId } from '@/hooks/use-session';
+import { useSettings } from '@/hooks/use-settings';
 
 export default function SettingsIndexScreen() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const userId = useUserId();
+  const { signOut } = useSession();
+  const { data: profile } = useProfile(userId);
+  const { data: settings } = useSettings();
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
 
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
-      Promise.all([getProfile(CURRENT_USER_ID), getSettings(CURRENT_USER_ID)]).then(([fetchedProfile, fetchedSettings]) => {
-        if (!isActive) return;
-        setProfile(fetchedProfile);
-        setSettings(fetchedSettings);
-      });
-      return () => {
-        isActive = false;
-      };
-    }, []),
-  );
+  // Signing out flips the login gate in _layout.tsx: the signed-in screens
+  // are removed and Log in shows, so there's no history to go back into.
+  async function handleLogOut() {
+    setIsLogoutOpen(false);
+    setLogoutError('');
+    try {
+      await signOut();
+    } catch {
+      setLogoutError("Couldn't log out. Try again.");
+    }
+  }
 
   if (!profile || !settings) return null;
 
@@ -73,6 +71,7 @@ export default function SettingsIndexScreen() {
       <Pressable style={styles.logoutButton} onPress={() => setIsLogoutOpen(true)}>
         <Text style={styles.logoutText}>Log out</Text>
       </Pressable>
+      {!!logoutError && <Text style={styles.error}>{logoutError}</Text>}
 
       <ConfirmModal
         visible={isLogoutOpen}
@@ -80,10 +79,7 @@ export default function SettingsIndexScreen() {
         message="You can log back in anytime."
         confirmLabel="Log out"
         destructive
-        onConfirm={() => {
-          setIsLogoutOpen(false);
-          router.replace('/login');
-        }}
+        onConfirm={handleLogOut}
         onCancel={() => setIsLogoutOpen(false)}
       />
     </ScrollView>
@@ -155,5 +151,11 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  error: {
+    marginTop: 12,
+    color: '#e53e3e',
+    fontSize: 13,
+    textAlign: 'center',
   },
 });

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,19 +13,16 @@ import { EditNameUsernamePanel } from '@/components/edit-name-username-panel';
 import { EditPhotoPanel } from '@/components/edit-photo-panel';
 import { EditStatusPanel } from '@/components/edit-status-panel';
 import { hasVisibleCover, ProfileCover } from '@/components/profile-cover';
-import { getProfileCity, type ProfileCity } from '@/services/profile-cities';
-import { getInterestsByIds } from '@/services/interests';
-import { getProfile, isUsernameAvailable, trimStatusForLevel, updateProfile } from '@/services/users';
-import { formatStatusText } from '@/utils/status-text';
-import type { Profile } from '@/types/profile';
+import { useProfileCity } from '@/hooks/use-cities';
+import { useInterestsByIds } from '@/hooks/use-interests';
+import { useCheckUsername, useProfile, useUpdateProfile } from '@/hooks/use-profiles';
+import { useUserId } from '@/hooks/use-session';
+import { formatStatusText, trimStatusForLevel } from '@/utils/status-text';
+import type { OwnTravelStatus, Profile, TravelStatus } from '@/types/profile';
 
 // Edit profile: a modal route (see _layout.tsx) styled like the profile
 // itself, with a ✎ on each part. Tapping one opens a panel for just that
-// part; nothing saves until Save is tapped.
-//
-// There's no auth/session yet, so which profile this edits is hardcoded here,
-// same as the Profile tab.
-const CURRENT_USER_ID = 'u1';
+// part; nothing saves until Save is tapped. It always edits the signed-in user's profile.
 
 type PanelName = 'cover' | 'photo' | 'nameUsername' | 'homeCity' | 'dreamTrip' | 'status' | 'bio' | 'interests';
 
@@ -56,18 +53,15 @@ function diffProfile(original: Profile, draft: Profile): Partial<Omit<Profile, '
 }
 
 // The bits of a status ProfileCover/the status card need, regardless of kind.
-function statusForPreview(status: Profile['status']): { kind: 'home' | 'traveling' | 'planning'; city?: string } {
+function statusForPreview(status: TravelStatus): { kind: 'home' | 'traveling' | 'planning'; city?: string } {
   if (status.kind === 'home') return { kind: 'home' };
   return { kind: status.kind, city: status.city };
 }
 
 // Resolves interestIds to names for the Interests field's chip row.
 function InterestChipRow({ ids }: { ids: string[] }) {
-  const [names, setNames] = useState<string[]>([]);
-
-  useEffect(() => {
-    getInterestsByIds(ids).then((interests) => setNames(interests.map((interest) => interest.name)));
-  }, [ids]);
+  const { data } = useInterestsByIds(ids);
+  const names = (data ?? []).map((interest) => interest.name);
 
   if (names.length === 0) return <Text style={styles.fieldValue}>Pick 1-6 interests</Text>;
 
@@ -83,47 +77,41 @@ function InterestChipRow({ ids }: { ids: string[] }) {
 }
 
 export default function EditProfileScreen() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [draft, setDraft] = useState<Profile | null>(null);
-  const [openPanel, setOpenPanel] = useState<PanelName | null>(null);
-  const [isDiscardOpen, setIsDiscardOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [homeCity, setHomeCity] = useState<ProfileCity | null>(null);
-  const [dreamTripCity, setDreamTripCity] = useState<ProfileCity | null>(null);
+  const userId = useUserId();
+  const { data: profile, isError } = useProfile(userId);
 
-  useEffect(() => {
-    getProfile(CURRENT_USER_ID).then((fetched) => {
-      setProfile(fetched);
-      setDraft(fetched);
-    });
-  }, []);
-
-  const homeCityId = draft?.homeCityId;
-  const dreamTripCityId = draft?.dreamTripCityId;
-
-  useEffect(() => {
-    (homeCityId ? getProfileCity(homeCityId) : Promise.resolve(null)).then(setHomeCity);
-  }, [homeCityId]);
-
-  useEffect(() => {
-    (dreamTripCityId ? getProfileCity(dreamTripCityId) : Promise.resolve(null)).then(setDreamTripCity);
-  }, [dreamTripCityId]);
-
-  if (!profile || !draft) {
+  if (!profile) {
     return (
       <SafeAreaView style={styles.screen}>
-        <Text style={styles.loading}>Loading…</Text>
+        <Text style={styles.loading}>{isError ? "Couldn't load your profile." : 'Loading…'}</Text>
       </SafeAreaView>
     );
   }
 
+  // The form starts from the saved profile once it's loaded.
+  return <EditProfileForm profile={profile} />;
+}
+
+function EditProfileForm({ profile }: { profile: Profile }) {
+  // The edits so far. Only Save sends them.
+  const [draft, setDraft] = useState<Profile>(profile);
+  const [openPanel, setOpenPanel] = useState<PanelName | null>(null);
+  const [isDiscardOpen, setIsDiscardOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const homeCity = useProfileCity(draft.homeCityId).data ?? null;
+  const dreamTripCity = useProfileCity(draft.dreamTripCityId).data ?? null;
+  const updateProfile = useUpdateProfile();
+  const checkUsername = useCheckUsername();
+
+  // Your own profile always has its status; "home" covers the moment before it loads.
+  const status: OwnTravelStatus = draft.status ?? { kind: 'home', sharing: { closeFriends: 'full', everyone: 'country' } };
   const hasChanges = JSON.stringify(profile) !== JSON.stringify(draft);
   const canSave = hasChanges && isDraftValid(draft) && !isSaving;
-  const showsCover = hasVisibleCover(draft.coverMode, draft.coverImage, statusForPreview(draft.status), dreamTripCity?.name);
+  const showsCover = hasVisibleCover(draft.coverMode, draft.coverImage, statusForPreview(status), dreamTripCity?.name);
 
   function updateDraft(changes: Partial<Profile>) {
-    setDraft((current) => (current ? { ...current, ...changes } : current));
+    setDraft((current) => ({ ...current, ...changes }));
   }
 
   function handleCancel() {
@@ -135,24 +123,29 @@ export default function EditProfileScreen() {
   }
 
   async function handleSave() {
-    if (!canSave || !profile || !draft) return;
+    if (!canSave) return;
     setIsSaving(true);
     setSaveError('');
 
-    const available = await isUsernameAvailable(draft.username, draft.id);
-    if (!available) {
-      setSaveError(`@${draft.username} is taken. Try another.`);
-      setIsSaving(false);
-      setOpenPanel('nameUsername');
-      return;
-    }
+    try {
+      const available = await checkUsername(draft.username);
+      if (!available) {
+        setSaveError(`@${draft.username} is taken. Try another.`);
+        setIsSaving(false);
+        setOpenPanel('nameUsername');
+        return;
+      }
 
-    await updateProfile(draft.id, diffProfile(profile, draft));
-    router.back();
+      await updateProfile.mutateAsync(diffProfile(profile, draft));
+      router.back();
+    } catch {
+      setSaveError("Couldn't save your changes. Try again.");
+      setIsSaving(false);
+    }
   }
 
-  const closeFriendsPreview = formatStatusText(trimStatusForLevel(draft.status, draft.status.sharing.closeFriends));
-  const everyonePreview = formatStatusText(trimStatusForLevel(draft.status, draft.status.sharing.everyone));
+  const closeFriendsPreview = formatStatusText(trimStatusForLevel(status, status.sharing.closeFriends));
+  const everyonePreview = formatStatusText(trimStatusForLevel(status, status.sharing.everyone));
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -171,7 +164,7 @@ export default function EditProfileScreen() {
           <ProfileCover
             coverMode={draft.coverMode}
             coverImage={draft.coverImage}
-            visibleStatus={statusForPreview(draft.status)}
+            visibleStatus={statusForPreview(status)}
             dreamTrip={dreamTripCity?.name}
             isOwnProfile
             avatar={
@@ -225,13 +218,13 @@ export default function EditProfileScreen() {
           <Pressable style={styles.statusCard} onPress={() => setOpenPanel('status')}>
             <View style={styles.statusTopRow}>
               <Text style={styles.statusLabel}>
-                {draft.status.kind === 'home' ? '🏠 HOME' : draft.status.kind === 'traveling' ? '✈ TRAVELING' : '🗓 PLANNING'}
+                {status.kind === 'home' ? '🏠 HOME' : status.kind === 'traveling' ? '✈ TRAVELING' : '🗓 PLANNING'}
               </Text>
               <Text style={styles.chevron}>›</Text>
             </View>
-            {draft.status.kind !== 'home' && (
+            {status.kind !== 'home' && (
               <Text style={styles.statusCity}>
-                {draft.status.city}, {draft.status.country}
+                {status.city}, {status.country}
               </Text>
             )}
             <View style={styles.perforation} />
@@ -288,7 +281,6 @@ export default function EditProfileScreen() {
       <EditNameUsernamePanel
         visible={openPanel === 'nameUsername'}
         onClose={() => setOpenPanel(null)}
-        userId={draft.id}
         name={draft.name}
         username={draft.username}
         onChange={(name, username) => updateDraft({ name, username })}
@@ -298,7 +290,7 @@ export default function EditProfileScreen() {
         visible={openPanel === 'homeCity'}
         title="Lives in"
         selectedCityId={draft.homeCityId}
-        onSelect={(cityId) => updateDraft({ homeCityId: cityId })}
+        onSelect={(city) => updateDraft({ homeCityId: city.id })}
         onClose={() => setOpenPanel(null)}
       />
 
@@ -306,15 +298,15 @@ export default function EditProfileScreen() {
         visible={openPanel === 'dreamTrip'}
         title="Dream trip"
         selectedCityId={draft.dreamTripCityId}
-        onSelect={(cityId) => updateDraft({ dreamTripCityId: cityId })}
+        onSelect={(city) => updateDraft({ dreamTripCityId: city.id })}
         onClose={() => setOpenPanel(null)}
       />
 
       <EditStatusPanel
         visible={openPanel === 'status'}
         onClose={() => setOpenPanel(null)}
-        status={draft.status}
-        onChange={(status) => updateDraft({ status })}
+        status={status}
+        onChange={(next) => updateDraft({ status: next })}
       />
 
       <EditBioPanel

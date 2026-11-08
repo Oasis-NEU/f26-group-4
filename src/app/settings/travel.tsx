@@ -1,13 +1,11 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { OptionPills } from '@/components/option-pills';
 import { SettingsRow } from '@/components/settings-row';
-import { getProfile, updateProfile } from '@/services/users';
+import { useProfile, useUpdateProfile } from '@/hooks/use-profiles';
+import { useUserId } from '@/hooks/use-session';
 import type { TravelGoal } from '@/types/profile';
 
-const CURRENT_USER_ID = 'u1';
 const CURRENT_YEAR = new Date().getFullYear();
 
 const METRIC_OPTIONS: { value: TravelGoal['metric']; label: string }[] = [
@@ -23,30 +21,24 @@ const TARGET_OPTIONS: { value: '3' | '5' | '10'; label: string }[] = [
 ];
 
 export default function TravelScreen() {
-  const [goal, setGoal] = useState<TravelGoal | null>(null);
+  const userId = useUserId();
+  const { data: profile } = useProfile(userId);
+  const updateProfile = useUpdateProfile();
 
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
-      getProfile(CURRENT_USER_ID).then((profile) => {
-        if (!isActive || !profile) return;
-        setGoal(profile.goals?.find((g) => g.year === CURRENT_YEAR) ?? { year: CURRENT_YEAR, metric: 'countries', target: 3 });
-      });
-      return () => {
-        isActive = false;
-      };
-    }, []),
-  );
+  if (!profile) return null;
 
-  async function saveGoal(next: TravelGoal) {
-    setGoal(next);
-    const profile = await getProfile(CURRENT_USER_ID);
-    if (!profile) return;
-    const otherGoals = (profile.goals ?? []).filter((g) => g.year !== CURRENT_YEAR);
-    await updateProfile(CURRENT_USER_ID, { goals: [...otherGoals, next] });
+  const savedGoal: TravelGoal = profile.goals?.find((g) => g.year === CURRENT_YEAR) ?? {
+    year: CURRENT_YEAR,
+    metric: 'countries',
+    target: 3,
+  };
+  // While a change is saving, show it already. If saving fails, the saved goal comes back.
+  const goal = (updateProfile.isPending ? updateProfile.variables.goals?.[0] : undefined) ?? savedGoal;
+
+  function saveGoal(next: TravelGoal) {
+    // Goals are saved one per year, so this only touches this year's.
+    updateProfile.mutate({ goals: [next] });
   }
-
-  if (!goal) return null;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -66,6 +58,7 @@ export default function TravelScreen() {
         </View>
       </View>
       <Text style={styles.footnote}>Shown on the Badges tab. Progress is calculated from your posts.</Text>
+      {updateProfile.isError && <Text style={styles.error}>Couldn&apos;t save. Try again.</Text>}
 
       <Text style={styles.sectionLabel}>UNITS</Text>
       <View style={styles.card}>
@@ -113,5 +106,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     marginLeft: 4,
+  },
+  error: {
+    marginTop: 12,
+    color: '#e53e3e',
+    fontSize: 13,
+    textAlign: 'center',
   },
 });

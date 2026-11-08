@@ -15,15 +15,17 @@ export type Profile = {
   // auto: current travel city, else dream trip. custom: coverImage. none: no cover band at all.
   coverMode: 'auto' | 'custom' | 'none';
   coverImage?: string; // only used when coverMode is 'custom'
-  homeCityId: string; // a src/services/profile-cities.ts id; their "home base"
+  // A src/services/profile-cities.ts id; their "home base". Missing until they set
+  // one, or when their "Lives in" setting hides the city from you.
+  homeCityId?: string;
   dreamTripCityId?: string; // a profile-cities.ts id; used for the cover fallback when home
-  status: TravelStatus & {
-    sharing: {
-      // how much of the status each audience can see
-      closeFriends: StatusDetail;
-      everyone: StatusDetail;
-    };
-  };
+  // Your own status, in full, with how much of it each audience sees. Only your
+  // own profile has it: the database never sends someone's whole status to
+  // anyone else (docs/backend-plan.md, profile_locations).
+  status?: OwnTravelStatus;
+  // The status as the signed-in user may see it, already trimmed by the
+  // database. null means it's hidden from you. Use this one for display.
+  visibleStatus?: VisibleTravelStatus | null;
   // closeFriendIds lives in Settings now, not here -- Settings is never
   // fetched by anyone but its own owner, and this list shouldn't be either.
   goals?: TravelGoal[]; // yearly travel goals; progress is calculated, not stored
@@ -35,6 +37,14 @@ export type Profile = {
 // Where the user is right now. City and country are picked from the same city
 // list as "Lives in"/"Dream trip" (src/services/profile-cities.ts), so country
 // is always a full name, e.g. "France" -- never a typed-in value or a code.
+// Your own status, plus how much of it each audience can see.
+export type OwnTravelStatus = TravelStatus & {
+  sharing: {
+    closeFriends: StatusDetail;
+    everyone: StatusDetail;
+  };
+};
+
 export type TravelStatus =
   | { kind: 'home' }
   | { kind: 'traveling'; city: string; country: string; until?: string } // until: "2026-11-20"

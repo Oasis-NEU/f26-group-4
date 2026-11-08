@@ -4,10 +4,9 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { EditCityPanel } from '@/components/edit-city-panel';
 import { EditPanelSheet } from '@/components/edit-panel-sheet';
-import { getProfileCity } from '@/services/profile-cities';
-import { trimStatusForLevel } from '@/services/users';
-import { formatStatusText } from '@/utils/status-text';
-import type { Profile, StatusDetail, TravelStatus } from '@/types/profile';
+import type { ProfileCity } from '@/services/profile-cities';
+import { formatStatusText, trimStatusForLevel } from '@/utils/status-text';
+import type { OwnTravelStatus, StatusDetail, TravelStatus } from '@/types/profile';
 
 // Status panel, styled like a boarding pass: the top part sets Home/
 // Traveling/Planning + city + date, the "torn-off" bottom part always shows
@@ -31,8 +30,8 @@ const SHARING_OPTIONS: { level: StatusDetail; label: string }[] = [
 type EditStatusPanelProps = {
   visible: boolean;
   onClose: () => void;
-  status: Profile['status'];
-  onChange: (status: Profile['status']) => void;
+  status: OwnTravelStatus;
+  onChange: (status: OwnTravelStatus) => void;
 };
 
 export function EditStatusPanel({ visible, onClose, status, onChange }: EditStatusPanelProps) {
@@ -73,12 +72,10 @@ export function EditStatusPanel({ visible, onClose, status, onChange }: EditStat
     commit({ kind: newKind, city, country, until, month, sharing });
   }
 
-  async function handleCitySelect(cityId: string) {
-    const record = await getProfileCity(cityId);
-    if (!record) return;
-    setCity(record.name);
-    setCountry(record.country);
-    commit({ kind, city: record.name, country: record.country, until, month, sharing });
+  function handleCitySelect(picked: ProfileCity) {
+    setCity(picked.name);
+    setCountry(picked.country);
+    commit({ kind, city: picked.name, country: picked.country, until, month, sharing });
   }
 
   function handleDateChange(text: string) {

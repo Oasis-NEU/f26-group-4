@@ -1,11 +1,11 @@
-import { useCallback, useState } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { useState } from 'react';
+import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
 import { CollectionCard } from '@/components/collection-card';
-import { FollowRequestsSheet, type FollowRequestItem } from '@/components/follow-requests-sheet';
+import { FollowRequestsSheet } from '@/components/follow-requests-sheet';
 import { FriendSuggestion } from '@/components/friend-suggestion';
 import { PlacesMap, WORLD_CAMERA } from '@/components/places-map';
 import { ProfileBadges } from '@/components/profile-badges';
@@ -18,175 +18,84 @@ import { ProfileSkeleton } from '@/components/profile-skeleton';
 import { ProfileStats } from '@/components/profile-stats';
 // THEME CODE -- design system. See profile-header.tsx for the convention.
 import { colors, radius, spacing, type } from '@/theme';
-import { getProfileCity } from '@/services/profile-cities';
-import { getCollectionsForProfile } from '@/services/collections';
+import { useProfileCity } from '@/hooks/use-cities';
+import { useCollectionsForProfile } from '@/hooks/use-collections';
 import {
-  acceptFollowRequest,
-  declineFollowRequest,
-  getFollowerIds,
-  getFollowingIds,
-  getFollowRequests,
-} from '@/services/follows';
-import { getInterestsByIds } from '@/services/interests';
-import { getPlace } from '@/services/places';
-import { getReviewsByAuthor, type AuthoredReview } from '@/services/reviews';
-import { getSettings } from '@/services/settings';
-import { getProfile, getSuggestedFriends, getSuggestionReason, getVisibleStatus } from '@/services/users';
+  useAcceptFollowRequest,
+  useDeclineFollowRequest,
+  useFollow,
+  useFollowerIds,
+  useFollowingIds,
+  useFollowRequests,
+  useSuggestedFriends,
+} from '@/hooks/use-follows';
+import { useInterestsByIds } from '@/hooks/use-interests';
+import { usePlacesByIds } from '@/hooks/use-places';
+import { useProfile } from '@/hooks/use-profiles';
+import { useReviewsByUser } from '@/hooks/use-reviews';
+import { useUserId } from '@/hooks/use-session';
 import { getCountryFlag } from '@/utils/country-flags';
-import type { Collection } from '@/types/collection';
-import type { Place } from '@/types/place';
-import type { Profile, VisibleTravelStatus } from '@/types/profile';
 
-// Profile tab: the logged-in user's own profile.
-// There's no auth/session yet, so which profile is "mine" is hardcoded here.
-// Swap this for the real signed-in user's id once a session exists.
-const CURRENT_USER_ID = 'u1';
+// Profile tab: the signed-in user's own profile.
 
-type SuggestedFriend = { profile: Profile; reason?: string };
 type ProfileTab = 'collections' | 'map' | 'badges';
 
-type ProfileData = {
-  profile: Profile | null;
-  homeCity: { name: string; flag: string } | null; // resolved from profile.homeCityId
-  dreamTripName?: string; // resolved from profile.dreamTripCityId
-  interestNames: string[]; // resolved from profile.interestIds
-  visibleStatus: VisibleTravelStatus | null;
-  followerCount: number;
-  followingCount: number;
-  reviews: AuthoredReview[];
-  suggestedFriends: SuggestedFriend[];
-  followRequests: FollowRequestItem[];
-  collections: Collection[];
-  places: Place[];
-};
-
-// Everything this screen needs, fetched together. Kept outside the component
-// so useFocusEffect can call it without re-creating it every render.
-async function loadProfileData(viewerId: string): Promise<ProfileData> {
-  const [fetchedProfile, followers, following, authoredReviews, friends, requests, fetchedCollections] =
-    await Promise.all([
-      getProfile(viewerId),
-      getFollowerIds(viewerId),
-      getFollowingIds(viewerId),
-      getReviewsByAuthor(viewerId),
-      getSuggestedFriends(viewerId),
-      getFollowRequests(viewerId),
-      getCollectionsForProfile(viewerId, viewerId),
-    ]);
-
-  if (!fetchedProfile) {
-    return {
-      profile: null,
-      homeCity: null,
-      interestNames: [],
-      visibleStatus: null,
-      followerCount: followers.length,
-      followingCount: following.length,
-      reviews: authoredReviews,
-      suggestedFriends: [],
-      followRequests: [],
-      collections: fetchedCollections,
-      places: [],
-    };
-  }
-
-  // These four are independent of each other -- each only needs something
-  // already fetched above (friends/requests/reviews/profile), not each
-  // other's results -- so they run as one batch instead of four sequential
-  // round trips through the mock backend's simulated network delay.
-  const [suggestedFriends, followRequests, places, homeCityRecord, dreamTripRecord, interests, mySettings] =
-    await Promise.all([
-      Promise.all(friends.map(async (friend) => ({ profile: friend, reason: await getSuggestionReason(viewerId, friend) }))),
-      Promise.all(
-        requests.map(async (request): Promise<FollowRequestItem | null> => {
-          const requester = await getProfile(request.fromId);
-          if (!requester) return null;
-          return {
-            fromId: request.fromId,
-            name: requester.name,
-            username: requester.username,
-            photoUrl: requester.profilePicture,
-            avatarHue: requester.avatarHue,
-            reason: await getSuggestionReason(viewerId, requester),
-          };
-        }),
-      ).then((items) => items.filter((item): item is FollowRequestItem => item !== null)),
-      Promise.all(authoredReviews.map((review) => getPlace(review.placeID))).then((items) =>
-        items.filter((place): place is Place => place !== null),
-      ),
-      getProfileCity(fetchedProfile.homeCityId),
-      fetchedProfile.dreamTripCityId ? getProfileCity(fetchedProfile.dreamTripCityId) : Promise.resolve(null),
-      getInterestsByIds(fetchedProfile.interestIds),
-      getSettings(viewerId),
-    ]);
-
-  return {
-    profile: fetchedProfile,
-    homeCity: homeCityRecord ? { name: homeCityRecord.name, flag: getCountryFlag(homeCityRecord.country) } : null,
-    dreamTripName: dreamTripRecord?.name,
-    interestNames: interests.map((interest) => interest.name),
-    // Viewing your own profile always returns the full status (getVisibleStatus
-    // short-circuits on viewerId === profile.id), so closeFriendIds doesn't
-    // actually change the result here -- passed through for when this same
-    // loading logic is reused for someone else's profile later.
-    visibleStatus: getVisibleStatus(fetchedProfile, viewerId, mySettings.closeFriendIds),
-    followerCount: followers.length,
-    followingCount: following.length,
-    reviews: authoredReviews,
-    suggestedFriends,
-    followRequests,
-    collections: fetchedCollections,
-    places,
-  };
-}
+const NO_IDS: string[] = [];
 
 export default function ProfilePage() {
-  const [data, setData] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const userId = useUserId();
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ProfileTab>('collections');
 
-  const refresh = useCallback(async () => {
-    const fresh = await loadProfileData(CURRENT_USER_ID);
-    setData(fresh);
-  }, []);
+  // Each piece comes from the shared cache, so a change anywhere (editing your
+  // profile, accepting a request, posting a review) refreshes it here by itself.
+  // Suggestion reasons, requesters' details and the trimmed status all come
+  // from the database, so there's no second round of lookups for them.
+  const profileQuery = useProfile(userId);
+  const followersQuery = useFollowerIds(userId);
+  const followingQuery = useFollowingIds(userId);
+  const reviewsQuery = useReviewsByUser(userId);
+  const suggestionsQuery = useSuggestedFriends();
+  const requestsQuery = useFollowRequests();
+  const collectionsQuery = useCollectionsForProfile(userId);
 
-  // Refetch whenever the tab comes back into focus, e.g. after closing the edit modal.
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
+  const profile = profileQuery.data;
+  const reviews = reviewsQuery.data ?? [];
+  // The places you've reviewed, for the Map tab, in one request.
+  const placesQuery = usePlacesByIds(reviews.map((review) => review.placeID));
+  const homeCityQuery = useProfileCity(profile?.homeCityId);
+  const dreamTripQuery = useProfileCity(profile?.dreamTripCityId);
+  const interestsQuery = useInterestsByIds(profile?.interestIds ?? NO_IDS);
 
-      setIsLoading(true);
-      loadProfileData(CURRENT_USER_ID).then((fresh) => {
-        if (!isActive) return;
-        setData(fresh);
-        setIsLoading(false);
-      });
+  const follow = useFollow();
+  const acceptRequest = useAcceptFollowRequest();
+  const declineRequest = useDeclineFollowRequest();
 
-      return () => {
-        isActive = false;
-      };
-    }, []),
-  );
+  if (profileQuery.isError) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.message}>Couldn&apos;t load your profile.</Text>
+      </View>
+    );
+  }
 
-  if (isLoading || !data?.profile) {
+  if (profileQuery.isPending || !profile) {
     return <ProfileSkeleton />;
   }
 
-  const {
-    profile,
-    homeCity,
-    dreamTripName,
-    interestNames,
-    visibleStatus,
-    followerCount,
-    followingCount,
-    reviews,
-    suggestedFriends,
-    followRequests,
-    collections,
-    places,
-  } = data;
+  const homeCity = homeCityQuery.data
+    ? { name: homeCityQuery.data.name, flag: getCountryFlag(homeCityQuery.data.country) }
+    : null;
+  const dreamTripName = dreamTripQuery.data?.name;
+  const interestNames = (interestsQuery.data ?? []).map((interest) => interest.name);
+  // Already trimmed by the database for whoever is looking; yours comes back in full.
+  const visibleStatus = profile.visibleStatus ?? null;
+  const followerCount = followersQuery.data?.length ?? 0;
+  const followingCount = followingQuery.data?.length ?? 0;
+  const suggestedFriends = suggestionsQuery.data ?? [];
+  const followRequests = requestsQuery.data ?? [];
+  const collections = collectionsQuery.data ?? [];
+  const places = placesQuery.data ?? [];
 
   const showsCover = hasVisibleCover(profile.coverMode, profile.coverImage, visibleStatus, dreamTripName);
 
@@ -265,7 +174,13 @@ export default function ProfilePage() {
               <Text style={styles.sectionTitle}>Suggested friends</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.friendsRow}>
                 {suggestedFriends.map(({ profile: friend, reason }) => (
-                  <FriendSuggestion key={friend.id} profile={friend} reason={reason} />
+                  <FriendSuggestion
+                    key={friend.id}
+                    profile={friend}
+                    reason={reason}
+                    // Follows them, or sends a request if their account is friends-only.
+                    onAddPress={() => follow.mutate(friend.id)}
+                  />
                 ))}
               </ScrollView>
             </View>
@@ -321,10 +236,10 @@ export default function ProfilePage() {
         onClose={() => setIsInboxOpen(false)}
         requests={followRequests}
         onAccept={(fromId) => {
-          acceptFollowRequest(CURRENT_USER_ID, fromId).then(refresh);
+          acceptRequest.mutate(fromId);
         }}
         onDecline={(fromId) => {
-          declineFollowRequest(CURRENT_USER_ID, fromId).then(refresh);
+          declineRequest.mutate(fromId);
         }}
       />
     </SafeAreaView>

@@ -33,7 +33,7 @@ type RatingPickerProps = {
   onChange: (rating: 1 | 2 | 3 | 4 | 5) => void;
 };
 
-function RatingPicker({ rating, label = 'Rating', onChange }: RatingPickerProps) {
+function RatingPicker({ rating, label = 'Choose a star rating *', onChange }: RatingPickerProps) {
   const stars = [1, 2, 3, 4, 5] as const;
 
   return (
@@ -55,7 +55,7 @@ function RatingPicker({ rating, label = 'Rating', onChange }: RatingPickerProps)
         ))}
       </View>
 
-      <Text>{rating === 0 ? 'Choose a rating' : `${rating} out of 5`}</Text>
+
     </View>
   );
 }
