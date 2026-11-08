@@ -1,5 +1,8 @@
 import { FlatList, Platform, StyleSheet, Text } from 'react-native';
 
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors } from '@/theme';
+
 import { MapPlacePreview } from '@/components/map-place-preview';
 import type { Place } from '@/types/place';
 
@@ -71,6 +74,16 @@ export function PlacesMap({ places, camera, onSelectPlace, onViewDetails }: Plac
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   map: {
     flex: 1,
@@ -80,6 +93,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   notice: {
-    color: '#666',
+    color: colors.textMuted,
   },
 });

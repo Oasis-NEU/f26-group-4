@@ -5,6 +5,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { SavedPlaceRow } from '@/components/saved-place-row';
 import { getCollection } from '@/services/collections';
 import { Collection } from '@/types/collection';
+import { colors, spacing, type } from '@/theme';
 
 // Inside one collection, e.g. /collection/col_europe.
 // Shows the collection's own places, and its sub-collections as labelled groups.
@@ -102,11 +103,11 @@ export default function CollectionPage() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   pageContent: {
-    padding: 16,
-    gap: 12,
+    padding: spacing.lg,
+    gap: spacing.md,
   },
   centered: {
     flex: 1,
@@ -114,15 +115,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   group: {
-    gap: 12,
+    gap: spacing.md,
   },
   groupHeading: {
-    fontSize: 18,
     fontWeight: 'bold',
-    paddingTop: 8,
+    fontSize: type.heading,
+    letterSpacing: -0.5,
+    paddingTop: spacing.sm,
+    color: colors.text,
   },
   emptyText: {
-    fontSize: 15,
-    color: '#555555',
+    fontSize: type.body,
+    color: colors.textMuted,
   },
 });

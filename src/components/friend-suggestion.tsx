@@ -1,6 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors, radius, spacing, type } from '@/theme';
+
 import type { Profile } from '@/types/profile';
 
 // One suggested friend in the Profile page's horizontal "Suggested friends" row:
@@ -39,29 +42,42 @@ export function FriendSuggestion({ profile, reason, onAddPress }: FriendSuggesti
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     width: 90,
   },
   name: {
-    fontSize: 13,
+    fontSize: type.label,
+    color: colors.text,
     textAlign: 'center',
   },
   reason: {
-    fontSize: 11,
-    color: 'gray',
+    fontSize: type.tiny,
+    color: colors.textMuted,
     textAlign: 'center',
   },
   addButton: {
-    marginTop: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    marginTop: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.round,
+    backgroundColor: colors.secondaryFill,
   },
   addButtonText: {
-    fontSize: 12,
+    fontWeight: '600',
+    fontSize: type.small,
+    color: colors.secondaryText,
   },
 });

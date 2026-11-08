@@ -1,4 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors, type } from '@/theme';
 
 // Shows a rating out of 5 as stars, with the number next to them.
 // Used on place cards, the Map preview and Place details.
@@ -58,6 +60,16 @@ function RatingPicker({ rating, label = 'Rating', onChange }: RatingPickerProps)
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
@@ -65,21 +77,24 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   label: {
-    color: '#666',
+    color: colors.textMuted,
   },
   stars: {
-    color: '#F5A623',
-    fontSize: 16,
+    color: colors.starFriends,
+    fontSize: type.body,
   },
   number: {
     fontWeight: '600',
+    color: colors.text,
   },
   picker: {
     marginBottom: 20,
   },
   pickerLabel: {
-    fontSize: 16,
+    fontWeight: '500',
+    fontSize: type.body,
     marginBottom: 6,
+    color: colors.text,
   },
   pickerRow: {
     flexDirection: 'row',
@@ -93,6 +108,6 @@ const styles = StyleSheet.create({
   },
   pickerStar: {
     fontSize: 36,
-    color: '#946200',
+    color: colors.starFriends,
   },
 });

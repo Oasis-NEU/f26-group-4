@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CollectionCard } from '@/components/collection-card';
 import { SavedPlaceRow } from '@/components/saved-place-row';
@@ -12,6 +12,8 @@ import {
 } from '@/services/collections';
 import { Collection } from '@/types/collection';
 import { Place } from '@/types/place';
+import { colors, spacing, type } from '@/theme';
+import { FilterPill } from '@/components/ui';
 
 // The Saved tab: the user's collections, and the places they've saved
 // but not put in a collection yet.
@@ -121,13 +123,12 @@ export default function SavedPage() {
         showsHorizontalScrollIndicator={false}
       >
         {filters.map((filter) => (
-          <Pressable
+          <FilterPill
             key={filter}
-            style={[styles.filterPill, selectedFilter === filter && styles.filterPillSelected]}
+            label={filter}
+            selected={selectedFilter === filter}
             onPress={() => setSelectedFilter(filter)}
-          >
-            <Text style={styles.filterText}>{filter}</Text>
-          </Pressable>
+          />
         ))}
       </ScrollView>
 
@@ -137,6 +138,7 @@ export default function SavedPage() {
       {selectedFilter === 'All' && (
         <CollectionCard
           collection={allSavedCard}
+          index={0}
           onPress={() => openCollection(allSavedCard.id)}
         />
       )}
@@ -144,10 +146,13 @@ export default function SavedPage() {
       {visibleCollections.length === 0 && selectedFilter !== 'All' ? (
         <Text style={styles.emptyText}>No collections in {selectedFilter}.</Text>
       ) : (
-        visibleCollections.map((collection) => (
+        // `index` here is the position in the list -- it picks which of the
+        // three gradients the tile uses, so neighbouring tiles don't match.
+        visibleCollections.map((collection, index) => (
           <CollectionCard
             key={collection.id}
             collection={collection}
+            index={index + 1}
             onPress={() => openCollection(collection.id)}
           />
         ))
@@ -171,11 +176,11 @@ export default function SavedPage() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   pageContent: {
-    padding: 16,
-    gap: 12,
+    padding: spacing.lg,
+    gap: spacing.md,
   },
   centered: {
     flex: 1,
@@ -183,37 +188,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pageTitle: {
-    fontSize: 28,
     fontWeight: 'bold',
+    fontSize: type.screenTitle,
+    letterSpacing: -1,
+    color: colors.text,
   },
   filterRow: {
     // A horizontal list inside a vertical one. marginHorizontal cancels out the
     // page padding so the pills can scroll all the way to the screen edge.
-    marginHorizontal: -16,
+    marginHorizontal: -spacing.lg,
   },
   filterRowContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  filterPill: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  filterPillSelected: {
-    backgroundColor: '#c8c8c8',
-  },
-  filterText: {
-    fontSize: 13,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
   },
   sectionHeading: {
-    fontSize: 18,
     fontWeight: 'bold',
-    paddingTop: 8,
+    fontSize: type.heading,
+    letterSpacing: -0.5,
+    paddingTop: spacing.sm,
+    color: colors.text,
   },
   emptyText: {
-    fontSize: 15,
-    color: '#555555',
+    fontSize: type.body,
+    color: colors.textMuted,
   },
 });

@@ -2,6 +2,9 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors } from '@/theme';
+
 // A row of images you swipe sideways, with page dots underneath.
 // The first image is the place's cover image, followed by its media.
 // Cards use a fixed 4:5 shape so the feed doesn't jump while images load.
@@ -39,6 +42,16 @@ export function MediaStrip({ images, width }: MediaStripProps) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   dots: {
     position: 'absolute',
@@ -54,6 +67,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.5)',
   },
   dotActive: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
   },
 });

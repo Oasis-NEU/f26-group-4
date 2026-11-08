@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors, radius, spacing, type } from '@/theme';
+
 import { formatStatusText } from '@/utils/status-text';
 import type { Profile, VisibleTravelStatus } from '@/types/profile';
 
@@ -69,49 +72,68 @@ export function ProfileHeader({
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     gap: 4,
   },
   name: {
-    fontSize: 20,
     fontWeight: 'bold',
+    fontSize: 20,
+    letterSpacing: -0.6,
+    color: colors.text,
   },
   username: {
-    color: 'gray',
+    fontSize: type.label,
+    color: colors.textMuted,
   },
   statusPill: {
-    marginTop: 4,
-    fontSize: 13,
-    color: '#444',
+    marginTop: spacing.xs,
+    fontSize: type.small,
+    color: colors.textMuted,
   },
   buttonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
+  // The one filled-black button in this file -- "Follow" is the main action on
+  // someone else's profile, and black-fill-with-white-text is how this design
+  // system marks the primary action (see colors.textOnDark).
   primaryButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#2A9D8F',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.round,
+    backgroundColor: colors.ink,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: colors.textOnDark,
     fontWeight: '600',
   },
+  // Pale blue fill, same treatment as every other secondary button ("Remove",
+  // "Cancel") -- nothing in this design system is outlined.
   secondaryButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.round,
+    backgroundColor: colors.secondaryFill,
   },
   standaloneButton: {
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   secondaryButtonText: {
+    color: colors.secondaryText,
     fontWeight: '600',
   },
 });
