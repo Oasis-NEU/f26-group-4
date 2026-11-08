@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { type ComponentRef, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -87,7 +87,7 @@ export default function UploadPage() {
 
   const latestLookup = useRef(0);
   const posting = useRef(false);
-  const scrollView = useRef<ScrollView>(null);
+  const scrollView = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const errors = attempted ? validatePost(fields) : {};
   const hasErrors = Object.keys(errors).length > 0;
@@ -255,6 +255,7 @@ export default function UploadPage() {
   return (
     <ScrollView
       ref={scrollView}
+      contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
@@ -272,7 +273,7 @@ export default function UploadPage() {
       )}
 
       <View
-        pointerEvents={isPosting ? 'none' : 'auto'}
+        style={{ pointerEvents: isPosting ? 'none' : 'auto' }}
         accessibilityElementsHidden={isPosting}
         importantForAccessibility={
           isPosting ? 'no-hide-descendants' : 'auto'

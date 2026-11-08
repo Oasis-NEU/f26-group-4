@@ -61,7 +61,7 @@ export async function createPost(
     reviewText: fields.reviewText.trim(),
     media: fields.media.map((item) => ({
       ...item,
-      caption: item.caption.trim(),
+      caption: (item.caption ?? '').trim(),
     })),
     suitedFor: [...fields.suitedFor],
     id: String(nextId++),

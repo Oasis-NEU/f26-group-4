@@ -1,4 +1,4 @@
-import type { Media } from '../../types';
+import type { Media } from '@/types/media';
 
 // Information entered on the upload page.
 export type UploadFields = {

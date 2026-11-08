@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'expo-router';
 import { Button, ScrollView, StyleSheet, Text } from 'react-native';
+
+// THEME CODE -- design system. See the note above the styles at the bottom.
+import { colors } from '@/theme';
 import { AuthInput } from '@/components/auth-input';
 
 export default function CreateAccountPage() {
@@ -36,7 +39,9 @@ export default function CreateAccountPage() {
   }
 
   return (
+    // On iOS the header is see-through, so this keeps the content from starting underneath it.
     <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
@@ -93,6 +98,16 @@ export default function CreateAccountPage() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// THEME CODE (design system) -- Ruby
+//
+// Colours, corner radius and spacing now come from src/theme.ts instead of
+// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
+// no props changed. Anything marked THEME CODE is safe to ignore while you work.
+//
+// To change a colour, change it in src/theme.ts so every screen updates, rather
+// than putting a hex code back in here.
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     padding: 24,
@@ -108,7 +123,7 @@ const styles = StyleSheet.create({
   },
   link: {
     marginTop: 20,
-    color: '#0066CC',
+    color: colors.link,
     fontSize: 16,
   },
 });

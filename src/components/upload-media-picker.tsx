@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
-import type { Media } from '../../types';
+import type { Media } from '@/types/media';
 import { AuthInput } from './auth-input';
 
 type PhotoLocation = {
@@ -141,7 +141,7 @@ export function UploadMediaPicker({
       if (result.canceled) return;
 
       const selectedMedia: Media[] = result.assets.map((file) => ({
-        imgURL: file.uri,
+        url: file.uri,
         caption: '',
         type: file.type === 'video' ? 'video' : 'photo',
       }));
@@ -203,7 +203,7 @@ export function UploadMediaPicker({
       <ScrollView horizontal>
         {media.map((item, index) => (
           <View
-            key={`${item.imgURL}-${index}`}
+            key={`${item.url}-${index}`}
             style={styles.card}
           >
             {item.type === 'video' ? (
@@ -212,7 +212,7 @@ export function UploadMediaPicker({
               </View>
             ) : (
               <Image
-                source={{ uri: item.imgURL }}
+                source={{ uri: item.url }}
                 style={styles.image}
                 accessibilityLabel={item.caption || 'Selected photo'}
               />
@@ -223,7 +223,7 @@ export function UploadMediaPicker({
             ) : (
               <AuthInput
                 label="Caption"
-                value={item.caption}
+                value={item.caption ?? ''}
                 onChangeText={(text) => changeCaption(index, text)}
               />
             )}
