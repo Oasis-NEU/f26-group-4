@@ -5,12 +5,12 @@ import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-na
 import { Avatar } from '@/components/avatar';
 import { getFollowerIds } from '@/services/follows';
 import { addCloseFriend, getSettings, removeCloseFriend } from '@/services/settings';
+import { useUserId } from '@/hooks/use-session';
 import { getProfile } from '@/services/users';
 import type { Profile } from '@/types/profile';
 
-const CURRENT_USER_ID = 'u1';
-
 export default function CloseFriendsScreen() {
+  const userId = useUserId();
   const [followers, setFollowers] = useState<Profile[]>([]);
   const [closeFriendIds, setCloseFriendIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
@@ -18,7 +18,7 @@ export default function CloseFriendsScreen() {
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      Promise.all([getFollowerIds(CURRENT_USER_ID), getSettings(CURRENT_USER_ID)]).then(async ([followerIds, settings]) => {
+      Promise.all([getFollowerIds(userId), getSettings()]).then(async ([followerIds, settings]) => {
         const profiles = (await Promise.all(followerIds.map((id) => getProfile(id)))).filter(
           (profile): profile is Profile => profile !== null,
         );
@@ -29,16 +29,16 @@ export default function CloseFriendsScreen() {
       return () => {
         isActive = false;
       };
-    }, []),
+    }, [userId]),
   );
 
   async function toggle(friendId: string) {
     const isCloseFriend = closeFriendIds.includes(friendId);
     setCloseFriendIds((current) => (isCloseFriend ? current.filter((id) => id !== friendId) : [...current, friendId]));
     if (isCloseFriend) {
-      await removeCloseFriend(CURRENT_USER_ID, friendId);
+      await removeCloseFriend(friendId);
     } else {
-      await addCloseFriend(CURRENT_USER_ID, friendId);
+      await addCloseFriend(friendId);
     }
   }
 

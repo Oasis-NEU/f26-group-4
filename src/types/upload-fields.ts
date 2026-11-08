@@ -26,4 +26,9 @@ export type UploadFields = {
 
   // Multiple tags, such as "solo" and "adventure".
   suitedFor: string[];
+
+  // Where a new place is, from the photo's GPS data or by looking up the address.
+  // Optional: a place without them just stays off the map.
+  latitude?: number;
+  longitude?: number;
 };

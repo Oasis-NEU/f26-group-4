@@ -7,6 +7,7 @@ import { CommentsModal } from '@/components/comments-modal';
 import { LikeButton } from '@/components/like-button';
 import { MediaStrip } from '@/components/media-strip';
 import { RatingStars } from '@/components/rating-stars';
+import { useReviewLike } from '@/hooks/use-review-like';
 import type { Place } from '@/types/place';
 
 // One place in the feed: header, swipeable media, action row, info, and text.
@@ -23,15 +24,21 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress, onBook
   // The cover image first, then every photo people posted (videos can't play in the strip)
   const photos = place.media.filter((item) => item.type === 'photo').map((item) => item.url);
   const images = [place.coverImage, ...photos];
-  // The newest friend review shows when there is one, otherwise the description
-  // Likes aren't stored anywhere yet, so this only lasts while the card is on screen
-  const [isLiked, setIsLiked] = useState(false);
+  // The newest review shows when there is one, otherwise the description.
+  const newestReview = place.reviews?.[place.reviews.length - 1];
+  // The heart likes that review (docs/backend-plan.md, open decision 4).
+  const { isLiked, toggleLike } = useReviewLike(newestReview);
   const [showComments, setShowComments] = useState(false);
   const comments = place.reviews ?? [];
 
-  // Opens the place in the phone's maps app: Apple Maps on iOS, the default maps app on Android
+  // Opens the place in the phone's maps app: Apple Maps on iOS, the default maps app on Android.
+  // A place without coordinates opens by its address instead.
   function openInMaps() {
     const { latitude: lat, longitude: lng, name } = place;
+    if (lat === undefined || lng === undefined) {
+      Linking.openURL(place.directions).catch(() => {});
+      return;
+    }
     const label = encodeURIComponent(name);
     const url = Platform.select({
       ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
@@ -41,8 +48,6 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress, onBook
       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`)
     );
   }
-
-  const newestReview = place.reviews?.[place.reviews.length - 1];
 
   return (
     <View style={styles.card}>
@@ -61,7 +66,7 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress, onBook
       <MediaStrip images={images} width={width} onPress={onPress} onSwipePastEnd={onPress} />
 
       <View style={styles.actions}>
-        <LikeButton isLiked={isLiked} onPress={() => setIsLiked((prev) => !prev)} />
+        {newestReview && <LikeButton isLiked={isLiked} onPress={toggleLike} />}
         <CommentButton count={comments.length} onPress={() => setShowComments(true)} />
         <BookmarkButton isSaved={place.bookmark} onPress={onBookmarkPress} />
       </View>

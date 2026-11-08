@@ -6,8 +6,6 @@ import { SettingsRow } from '@/components/settings-row';
 import { getSettings, updateSettings } from '@/services/settings';
 import type { Settings } from '@/types/settings';
 
-const CURRENT_USER_ID = 'u1';
-
 export default function NotificationsScreen() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState('');
@@ -15,7 +13,7 @@ export default function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      getSettings(CURRENT_USER_ID).then((s) => {
+      getSettings().then((s) => {
         if (isActive) setSettings(s);
       });
       return () => {
@@ -31,7 +29,7 @@ export default function NotificationsScreen() {
     setSettings({ ...settings, notifications });
     setError('');
     try {
-      await updateSettings(CURRENT_USER_ID, { notifications });
+      await updateSettings({ notifications });
     } catch {
       setSettings(previous);
       setError("Couldn't save. Try again.");

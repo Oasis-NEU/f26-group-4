@@ -43,8 +43,8 @@ export function EditInterestsPanel({ visible, onClose, userId, selectedIds, onCh
   useEffect(() => {
     if (!visible) return;
     getPopularInterests(20).then(setPopular);
-    suggestInterestsFromPosts(userId).then(setSuggested);
-  }, [visible, userId]);
+    suggestInterestsFromPosts().then(setSuggested);
+  }, [visible]);
 
   useEffect(() => {
     getInterestsByIds(selectedIds).then(setSelectedInterests);
@@ -85,7 +85,7 @@ export function EditInterestsPanel({ visible, onClose, userId, selectedIds, onCh
       setError('You can pick up to 6. Remove one first.');
       return;
     }
-    const created = await addInterest(trimmed, userId);
+    const created = await addInterest(trimmed);
     onChange([...selectedIds, created.id]);
     setQuery('');
   }

@@ -4,13 +4,21 @@
 
 import type { VisibleTravelStatus } from '@/types/profile';
 
+// A date-only string ("2026-11-20" or "2026-12") as midnight in the phone's own
+// timezone. new Date("2026-11-20") reads it as midnight UTC instead, which is
+// still the day before anywhere west of London ("until Nov 19").
+function localDate(isoDate: string): Date {
+  const [year, month, day = 1] = isoDate.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 // "Nov 20" from "2026-11-20"; "December" from "2026-12".
 function formatUntil(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return localDate(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function formatMonth(isoMonth: string): string {
-  return new Date(`${isoMonth}-01`).toLocaleDateString('en-US', { month: 'long' });
+  return localDate(isoMonth).toLocaleDateString('en-US', { month: 'long' });
 }
 
 // Null when there's nothing to show (status hidden from this viewer).

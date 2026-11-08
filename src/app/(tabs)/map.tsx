@@ -10,7 +10,8 @@ import { MapPlacePreview } from '@/components/map-place-preview';
 import { PlacesMap, WORLD_CAMERA, type MapCamera } from '@/components/places-map';
 import { SearchFilterBar } from '@/components/search-filter-bar';
 import { getFriendUsernames } from '@/services/users';
-import { getPlaces, PLACE_TYPES, SUITED_FOR } from '@/services/places';
+import { useFilterOptions } from '@/hooks/use-filter-options';
+import { getPlaces } from '@/services/places';
 import type { Place } from '@/types/place';
 
 // Map: one photo-stack marker per place. Tapping a marker shows a preview card on this page, and the card's
@@ -27,10 +28,11 @@ export default function MapScreen() {
   const [query, setQuery] = useState('');
   const [placeTypes, setPlaceTypes] = useState<string[]>([]);
   const [suitedFor, setSuitedFor] = useState<string[]>([]);
+  const filterOptions = useFilterOptions();
 
-  // TODO: use the signed-in user once there is one (the Profile page also hard-codes 'u1')
+  // The people the signed-in user follows, so their photos come first on the pins.
   useEffect(() => {
-    getFriendUsernames('u1').then(setFriendUsernames);
+    getFriendUsernames().then(setFriendUsernames).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -73,8 +75,8 @@ export default function MapScreen() {
         suitedFor={suitedFor}
         onChangePlaceTypes={setPlaceTypes}
         onChangeSuitedFor={setSuitedFor}
-        placeTypeOptions={PLACE_TYPES}
-        suitedForOptions={SUITED_FOR}
+        placeTypeOptions={filterOptions.placeTypes}
+        suitedForOptions={filterOptions.suitedFor}
       />
 
       {/* The map shows right away; pins are added when they arrive */}

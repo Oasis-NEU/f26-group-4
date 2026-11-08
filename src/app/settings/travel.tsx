@@ -4,10 +4,10 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { OptionPills } from '@/components/option-pills';
 import { SettingsRow } from '@/components/settings-row';
+import { useUserId } from '@/hooks/use-session';
 import { getProfile, updateProfile } from '@/services/users';
 import type { TravelGoal } from '@/types/profile';
 
-const CURRENT_USER_ID = 'u1';
 const CURRENT_YEAR = new Date().getFullYear();
 
 const METRIC_OPTIONS: { value: TravelGoal['metric']; label: string }[] = [
@@ -23,27 +23,26 @@ const TARGET_OPTIONS: { value: '3' | '5' | '10'; label: string }[] = [
 ];
 
 export default function TravelScreen() {
+  const userId = useUserId();
   const [goal, setGoal] = useState<TravelGoal | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      getProfile(CURRENT_USER_ID).then((profile) => {
+      getProfile(userId).then((profile) => {
         if (!isActive || !profile) return;
         setGoal(profile.goals?.find((g) => g.year === CURRENT_YEAR) ?? { year: CURRENT_YEAR, metric: 'countries', target: 3 });
       });
       return () => {
         isActive = false;
       };
-    }, []),
+    }, [userId]),
   );
 
   async function saveGoal(next: TravelGoal) {
     setGoal(next);
-    const profile = await getProfile(CURRENT_USER_ID);
-    if (!profile) return;
-    const otherGoals = (profile.goals ?? []).filter((g) => g.year !== CURRENT_YEAR);
-    await updateProfile(CURRENT_USER_ID, { goals: [...otherGoals, next] });
+    // Goals are saved one per year, so this only touches this year's.
+    await updateProfile({ goals: [next] });
   }
 
   if (!goal) return null;

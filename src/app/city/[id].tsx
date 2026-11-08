@@ -12,8 +12,8 @@ import type { Place } from '@/types/place';
 
 // Everything we have in one city. This is what an Explore tile opens.
 //
-// The city comes in through the URL: /city/Florence. `name` below is that part
-// of the address, and it has to match the [name] in this file's name.
+// The city comes in through the URL: /city/florence-it. `id` below is that part
+// of the address, and it has to match the [id] in this file's name.
 
 // The two ways of looking at the same places. `as const` keeps them as the
 // exact strings "feed" and "list" rather than widening them to `string`, which
@@ -22,7 +22,7 @@ const VIEWS = ['feed', 'list'] as const;
 type ViewMode = (typeof VIEWS)[number];
 
 export default function CityScreen() {
-  const { name } = useLocalSearchParams<{ name: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   // PlaceCard takes the card width and works its own media height out from it.
   const { width } = useWindowDimensions();
   const navigation = useNavigation();
@@ -36,7 +36,7 @@ export default function CityScreen() {
 
   // The city and its places are two separate requests, so Promise.all fires
   // them together rather than waiting for the first to come back.
-  const fetchCity = useCallback(() => Promise.all([getCity(name), getCityPlaces(name)]), [name]);
+  const fetchCity = useCallback(() => Promise.all([getCity(id), getCityPlaces(id)]), [id]);
 
   useEffect(() => {
     // `ignore` stops a request for the old city from landing after you have
@@ -60,8 +60,8 @@ export default function CityScreen() {
   // useLayoutEffect rather than useEffect so the title is set before the screen
   // draws, otherwise you see the old title flash first.
   useLayoutEffect(() => {
-    navigation.setOptions({ title: name });
-  }, [navigation, name]);
+    navigation.setOptions({ title: city?.name ?? '' });
+  }, [navigation, city]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -87,7 +87,7 @@ export default function CityScreen() {
   if (error || city === null) {
     return (
       <View style={styles.center}>
-        <Text style={styles.message}>We don&apos;t have anything in {name} yet.</Text>
+        <Text style={styles.message}>We don&apos;t have anything in this city yet.</Text>
       </View>
     );
   }

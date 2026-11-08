@@ -5,7 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlaceCard } from '@/components/place-card';
 import { SearchFilterBar } from '@/components/search-filter-bar';
-import { getPlaces, PLACE_TYPES, SUITED_FOR, toggleBookmark } from '@/services/places';
+import { useFilterOptions } from '@/hooks/use-filter-options';
+import { getPlaces, toggleBookmark } from '@/services/places';
 import type { Place } from '@/types/place';
 
 // Feed: one place card per place, in a vertical list
@@ -22,6 +23,7 @@ export default function FeedScreen() {
   const [query, setQuery] = useState('');
   const [placeTypes, setPlaceTypes] = useState<string[]>([]);
   const [suitedFor, setSuitedFor] = useState<string[]>([]);
+  const filterOptions = useFilterOptions();
 
   const load = useCallback(async () => {
     setError(false);
@@ -75,8 +77,8 @@ export default function FeedScreen() {
         suitedFor={suitedFor}
         onChangePlaceTypes={setPlaceTypes}
         onChangeSuitedFor={setSuitedFor}
-        placeTypeOptions={PLACE_TYPES}
-        suitedForOptions={SUITED_FOR}
+        placeTypeOptions={filterOptions.placeTypes}
+        suitedForOptions={filterOptions.suitedFor}
         right={
           <Pressable onPress={() => router.push('/upload')} accessibilityRole="button" accessibilityLabel="New post" hitSlop={8}>
             <Text style={styles.plus}>+</Text>

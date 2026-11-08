@@ -63,6 +63,28 @@ function emptyFields(): UploadFields {
   };
 }
 
+// A new place's coordinates: the photo's GPS data if there was any, otherwise
+// the typed address looked up on the phone (iOS and Android only). Without
+// either, the post still saves; the place just stays off the map.
+async function findCoordinates(fields: UploadFields): Promise<{ latitude?: number; longitude?: number }> {
+  if (fields.latitude !== undefined && fields.longitude !== undefined) {
+    return { latitude: fields.latitude, longitude: fields.longitude };
+  }
+  if (Platform.OS === 'web') return {};
+
+  try {
+    if (Platform.OS === 'android') {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) return {};
+    }
+    const address = [fields.address, fields.city, fields.country].filter((part) => part.trim()).join(', ');
+    const [match] = await Location.geocodeAsync(address);
+    return match ? { latitude: match.latitude, longitude: match.longitude } : {};
+  } catch {
+    return {};
+  }
+}
+
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
 
@@ -110,6 +132,9 @@ export default function UploadPage() {
     if (posting.current) return;
 
     const lookupId = ++latestLookup.current;
+
+    // Keep the photo's coordinates for the new place, so it can go on the map.
+    setFields((current) => ({ ...current, latitude: coordinates.latitude, longitude: coordinates.longitude }));
 
     setIsFindingLocation(true);
     setLocationMessage('Finding the photo’s location…');
@@ -206,7 +231,7 @@ export default function UploadPage() {
     setIsPosting(true);
 
     try {
-      await createPost(fields);
+      await createPost({ ...fields, ...(await findCoordinates(fields)) });
       setSaved(true);
       scrollView.current?.scrollTo({ y: 0, animated: true });
     } catch {

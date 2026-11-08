@@ -31,11 +31,14 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
   const postWidth = (window.width - 16) / 2.5 - 12;
 
   // place.proximity is in meters. Anything over 1000 reads better in kilometers.
+  // It's missing until the app knows where the phone is (expo-location), and then
+  // the badge just doesn't show.
   // TODO: is there a way to have this automatically convert to user's preffered units?
   // maybe the user could even prefer to have it in minutes of walking instead of distance
-  let distanceText = place.proximity + ' m away';
-  if (place.proximity >= 1000) {
-    distanceText = (place.proximity / 1000).toFixed(1) + ' km away';
+  let distanceText: string | undefined;
+  if (place.proximity !== undefined) {
+    distanceText =
+      place.proximity >= 1000 ? (place.proximity / 1000).toFixed(1) + ' km away' : place.proximity + ' m away';
   }
 
   // Empty string when we don't have a flag for that country, so the text doesn't look off
@@ -106,9 +109,11 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
         </View>
 
         {/* How far away it is, in the bottom-left corner of the photo */}
-        <View style={[styles.overlayButton, styles.distanceBadge]}>
-          <Text style={styles.overlayButtonText}>{distanceText}</Text>
-        </View>
+        {distanceText !== undefined && (
+          <View style={[styles.overlayButton, styles.distanceBadge]}>
+            <Text style={styles.overlayButtonText}>{distanceText}</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.body}>

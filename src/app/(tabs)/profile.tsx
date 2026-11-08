@@ -23,6 +23,7 @@ import { getCollectionsForProfile } from '@/services/collections';
 import {
   acceptFollowRequest,
   declineFollowRequest,
+  followUser,
   getFollowerIds,
   getFollowingIds,
   getFollowRequests,
@@ -30,19 +31,15 @@ import {
 import { getInterestsByIds } from '@/services/interests';
 import { getPlace } from '@/services/places';
 import { getReviewsByAuthor, type AuthoredReview } from '@/services/reviews';
-import { getSettings } from '@/services/settings';
-import { getProfile, getSuggestedFriends, getSuggestionReason, getVisibleStatus } from '@/services/users';
+import { useUserId } from '@/hooks/use-session';
+import { getProfile, getSuggestedFriends, type SuggestedFriend } from '@/services/users';
 import { getCountryFlag } from '@/utils/country-flags';
 import type { Collection } from '@/types/collection';
 import type { Place } from '@/types/place';
 import type { Profile, VisibleTravelStatus } from '@/types/profile';
 
-// Profile tab: the logged-in user's own profile.
-// There's no auth/session yet, so which profile is "mine" is hardcoded here.
-// Swap this for the real signed-in user's id once a session exists.
-const CURRENT_USER_ID = 'u1';
+// Profile tab: the signed-in user's own profile.
 
-type SuggestedFriend = { profile: Profile; reason?: string };
 type ProfileTab = 'collections' | 'map' | 'badges';
 
 type ProfileData = {
@@ -62,16 +59,18 @@ type ProfileData = {
 
 // Everything this screen needs, fetched together. Kept outside the component
 // so useFocusEffect can call it without re-creating it every render.
+// Suggestion reasons, requesters' details and the trimmed status all come
+// from the database now, so there's no second round of lookups for them.
 async function loadProfileData(viewerId: string): Promise<ProfileData> {
-  const [fetchedProfile, followers, following, authoredReviews, friends, requests, fetchedCollections] =
+  const [fetchedProfile, followers, following, authoredReviews, suggestedFriends, followRequests, fetchedCollections] =
     await Promise.all([
       getProfile(viewerId),
       getFollowerIds(viewerId),
       getFollowingIds(viewerId),
       getReviewsByAuthor(viewerId),
-      getSuggestedFriends(viewerId),
-      getFollowRequests(viewerId),
-      getCollectionsForProfile(viewerId, viewerId),
+      getSuggestedFriends(),
+      getFollowRequests(),
+      getCollectionsForProfile(viewerId),
     ]);
 
   if (!fetchedProfile) {
@@ -90,46 +89,23 @@ async function loadProfileData(viewerId: string): Promise<ProfileData> {
     };
   }
 
-  // These four are independent of each other -- each only needs something
-  // already fetched above (friends/requests/reviews/profile), not each
-  // other's results -- so they run as one batch instead of four sequential
-  // round trips through the mock backend's simulated network delay.
-  const [suggestedFriends, followRequests, places, homeCityRecord, dreamTripRecord, interests, mySettings] =
-    await Promise.all([
-      Promise.all(friends.map(async (friend) => ({ profile: friend, reason: await getSuggestionReason(viewerId, friend) }))),
-      Promise.all(
-        requests.map(async (request): Promise<FollowRequestItem | null> => {
-          const requester = await getProfile(request.fromId);
-          if (!requester) return null;
-          return {
-            fromId: request.fromId,
-            name: requester.name,
-            username: requester.username,
-            photoUrl: requester.profilePicture,
-            avatarHue: requester.avatarHue,
-            reason: await getSuggestionReason(viewerId, requester),
-          };
-        }),
-      ).then((items) => items.filter((item): item is FollowRequestItem => item !== null)),
-      Promise.all(authoredReviews.map((review) => getPlace(review.placeID))).then((items) =>
-        items.filter((place): place is Place => place !== null),
-      ),
-      getProfileCity(fetchedProfile.homeCityId),
-      fetchedProfile.dreamTripCityId ? getProfileCity(fetchedProfile.dreamTripCityId) : Promise.resolve(null),
-      getInterestsByIds(fetchedProfile.interestIds),
-      getSettings(viewerId),
-    ]);
+  // These only need the profile and reviews fetched above, so they run as one batch.
+  const [places, homeCityRecord, dreamTripRecord, interests] = await Promise.all([
+    Promise.all(authoredReviews.map((review) => getPlace(review.placeID))).then((items) =>
+      items.filter((place): place is Place => place !== null),
+    ),
+    fetchedProfile.homeCityId ? getProfileCity(fetchedProfile.homeCityId) : Promise.resolve(null),
+    fetchedProfile.dreamTripCityId ? getProfileCity(fetchedProfile.dreamTripCityId) : Promise.resolve(null),
+    getInterestsByIds(fetchedProfile.interestIds),
+  ]);
 
   return {
     profile: fetchedProfile,
     homeCity: homeCityRecord ? { name: homeCityRecord.name, flag: getCountryFlag(homeCityRecord.country) } : null,
     dreamTripName: dreamTripRecord?.name,
     interestNames: interests.map((interest) => interest.name),
-    // Viewing your own profile always returns the full status (getVisibleStatus
-    // short-circuits on viewerId === profile.id), so closeFriendIds doesn't
-    // actually change the result here -- passed through for when this same
-    // loading logic is reused for someone else's profile later.
-    visibleStatus: getVisibleStatus(fetchedProfile, viewerId, mySettings.closeFriendIds),
+    // Already trimmed by the database for whoever is looking; yours comes back in full.
+    visibleStatus: fetchedProfile.visibleStatus ?? null,
     followerCount: followers.length,
     followingCount: following.length,
     reviews: authoredReviews,
@@ -141,15 +117,16 @@ async function loadProfileData(viewerId: string): Promise<ProfileData> {
 }
 
 export default function ProfilePage() {
+  const userId = useUserId();
   const [data, setData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ProfileTab>('collections');
 
   const refresh = useCallback(async () => {
-    const fresh = await loadProfileData(CURRENT_USER_ID);
+    const fresh = await loadProfileData(userId);
     setData(fresh);
-  }, []);
+  }, [userId]);
 
   // Refetch whenever the tab comes back into focus, e.g. after closing the edit modal.
   useFocusEffect(
@@ -157,16 +134,17 @@ export default function ProfilePage() {
       let isActive = true;
 
       setIsLoading(true);
-      loadProfileData(CURRENT_USER_ID).then((fresh) => {
-        if (!isActive) return;
-        setData(fresh);
-        setIsLoading(false);
-      });
+      loadProfileData(userId)
+        .then((fresh) => {
+          if (!isActive) return;
+          setData(fresh);
+        })
+        .finally(() => isActive && setIsLoading(false));
 
       return () => {
         isActive = false;
       };
-    }, []),
+    }, [userId]),
   );
 
   if (isLoading || !data?.profile) {
@@ -265,7 +243,13 @@ export default function ProfilePage() {
               <Text style={styles.sectionTitle}>Suggested friends</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.friendsRow}>
                 {suggestedFriends.map(({ profile: friend, reason }) => (
-                  <FriendSuggestion key={friend.id} profile={friend} reason={reason} />
+                  <FriendSuggestion
+                    key={friend.id}
+                    profile={friend}
+                    reason={reason}
+                    // Follows them, or sends a request if their account is friends-only.
+                    onAddPress={() => followUser(friend.id).then(refresh)}
+                  />
                 ))}
               </ScrollView>
             </View>
@@ -321,10 +305,10 @@ export default function ProfilePage() {
         onClose={() => setIsInboxOpen(false)}
         requests={followRequests}
         onAccept={(fromId) => {
-          acceptFollowRequest(CURRENT_USER_ID, fromId).then(refresh);
+          acceptFollowRequest(fromId).then(refresh);
         }}
         onDecline={(fromId) => {
-          declineFollowRequest(CURRENT_USER_ID, fromId).then(refresh);
+          declineFollowRequest(fromId).then(refresh);
         }}
       />
     </SafeAreaView>

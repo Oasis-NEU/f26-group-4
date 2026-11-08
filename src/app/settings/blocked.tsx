@@ -7,13 +7,11 @@ import { getSettings, unblockUser } from '@/services/settings';
 import { getProfile } from '@/services/users';
 import type { Profile } from '@/types/profile';
 
-const CURRENT_USER_ID = 'u1';
-
 export default function BlockedScreen() {
   const [blocked, setBlocked] = useState<Profile[]>([]);
 
   const load = useCallback(async () => {
-    const settings = await getSettings(CURRENT_USER_ID);
+    const settings = await getSettings();
     const profiles = (await Promise.all(settings.blockedIds.map((id) => getProfile(id)))).filter(
       (profile): profile is Profile => profile !== null,
     );
@@ -28,7 +26,7 @@ export default function BlockedScreen() {
 
   async function handleUnblock(userId: string) {
     setBlocked((current) => current.filter((profile) => profile.id !== userId));
-    await unblockUser(CURRENT_USER_ID, userId);
+    await unblockUser(userId);
   }
 
   return (

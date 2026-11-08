@@ -5,20 +5,20 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Avatar } from '@/components/avatar';
 import { SettingsRow } from '@/components/settings-row';
 import { getSettings } from '@/services/settings';
+import { useUserId } from '@/hooks/use-session';
 import { getProfile } from '@/services/users';
 import type { Profile } from '@/types/profile';
 import type { Settings } from '@/types/settings';
 
-const CURRENT_USER_ID = 'u1';
-
 export default function SettingsIndexScreen() {
+  const userId = useUserId();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      Promise.all([getProfile(CURRENT_USER_ID), getSettings(CURRENT_USER_ID)]).then(([fetchedProfile, fetchedSettings]) => {
+      Promise.all([getProfile(userId), getSettings()]).then(([fetchedProfile, fetchedSettings]) => {
         if (!isActive) return;
         setProfile(fetchedProfile);
         setSettings(fetchedSettings);
@@ -26,7 +26,7 @@ export default function SettingsIndexScreen() {
       return () => {
         isActive = false;
       };
-    }, []),
+    }, [userId]),
   );
 
   if (!profile || !settings) return null;

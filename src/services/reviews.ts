@@ -1,32 +1,49 @@
-// Reviews-by-author, for the Profile page ("Places I've been" + badges/goals).
-//
-// There's no standalone review list yet -- reviews live nested under each
-// place in src/services/places.ts (Ruby/Henry/Jess's file). This flattens
-// them instead of duplicating the data.
-//
-// NOTE: none of the current mock reviews have `authorId` set, so this returns
-// [] for every user until a few get tagged with one. That's a change to
-// places.ts, done later alongside the rest of the teammate-owned-file work.
+// Reviews by one person (the Profile page's "Places I've been", badges and
+// goals), and likes. A review is a post: it's what Upload creates (posts.ts).
 
-import { mockRequest } from './mock-backend';
-import { mockPlaces } from './places';
+import { currentUserId, supabase } from '@/lib/supabase';
+
+import { getPersonal, REVIEW_SELECT, toReview, type ReviewRow } from './place-rows';
 
 import type { Review } from '@/types/review';
 
 export type AuthoredReview = Review & { placeName: string };
 
-// Every review this user wrote, newest first (reviews without a createdAt sort last).
+type AuthoredRow = ReviewRow & {
+  place: {
+    id: string;
+    name: string;
+    place_type: string;
+    address: string;
+    website: string | null;
+    city: { name: string; country: string } | null;
+  } | null;
+};
+
+// Every review this user wrote, newest first.
 export async function getReviewsByAuthor(authorId: string): Promise<AuthoredReview[]> {
-  const reviews: AuthoredReview[] = [];
+  const [{ data, error }, personal] = await Promise.all([
+    supabase
+      .from('reviews')
+      .select(`${REVIEW_SELECT}, place:places(id, name, place_type, address, website, city:cities(name, country))`)
+      .eq('author_id', authorId)
+      .order('created_at', { ascending: false }),
+    getPersonal(),
+  ]);
+  if (error) throw error;
+  return (data as unknown as AuthoredRow[]).flatMap((row) =>
+    row.place ? [{ ...toReview(row, row.place, personal), placeName: row.place.name }] : [],
+  );
+}
 
-  for (const place of mockPlaces) {
-    for (const review of place.reviews ?? []) {
-      if (review.authorId === authorId) {
-        reviews.push({ ...review, placeName: place.name });
-      }
-    }
-  }
+export async function likeReview(reviewId: string): Promise<void> {
+  // user_id fills itself in from the session.
+  const { error } = await supabase.from('review_likes').insert({ review_id: reviewId });
+  if (error && error.code !== '23505') throw error; // 23505: already liked, which is fine
+}
 
-  reviews.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-  return mockRequest(reviews);
+export async function unlikeReview(reviewId: string): Promise<void> {
+  const userId = await currentUserId();
+  const { error } = await supabase.from('review_likes').delete().eq('review_id', reviewId).eq('user_id', userId);
+  if (error) throw error;
 }

@@ -24,4 +24,6 @@ export type Review = {
     // visitDate: string; // would have to have an option to keep it private
     authorId?: string; // id of the user who wrote it, e.g. "u1"; used by the Profile page. Optional until login works
     createdAt?: string; // when it was posted, e.g. "2026-10-14"; for newest-first order and yearly goals
+    likeCount?: number; // how many people liked it
+    likedByMe?: boolean; // whether the signed-in user liked it
 };

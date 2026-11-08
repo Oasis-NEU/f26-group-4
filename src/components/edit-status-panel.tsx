@@ -7,7 +7,7 @@ import { EditPanelSheet } from '@/components/edit-panel-sheet';
 import { getProfileCity } from '@/services/profile-cities';
 import { trimStatusForLevel } from '@/services/users';
 import { formatStatusText } from '@/utils/status-text';
-import type { Profile, StatusDetail, TravelStatus } from '@/types/profile';
+import type { OwnTravelStatus, StatusDetail, TravelStatus } from '@/types/profile';
 
 // Status panel, styled like a boarding pass: the top part sets Home/
 // Traveling/Planning + city + date, the "torn-off" bottom part always shows
@@ -31,8 +31,8 @@ const SHARING_OPTIONS: { level: StatusDetail; label: string }[] = [
 type EditStatusPanelProps = {
   visible: boolean;
   onClose: () => void;
-  status: Profile['status'];
-  onChange: (status: Profile['status']) => void;
+  status: OwnTravelStatus;
+  onChange: (status: OwnTravelStatus) => void;
 };
 
 export function EditStatusPanel({ visible, onClose, status, onChange }: EditStatusPanelProps) {

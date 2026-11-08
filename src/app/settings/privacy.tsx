@@ -5,14 +5,13 @@ import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { ConfirmModal } from '@/components/confirm-modal';
 import { OptionPills } from '@/components/option-pills';
 import { SettingsRow } from '@/components/settings-row';
-import { acceptAllFollowRequests, getFollowRequests } from '@/services/follows';
+import { getFollowRequests } from '@/services/follows';
 import { trimStatusForLevel } from '@/services/users';
 import { getSettings, updateSettings } from '@/services/settings';
 import { formatStatusText } from '@/utils/status-text';
 import type { Audience, Settings } from '@/types/settings';
 import type { StatusDetail, TravelStatus } from '@/types/profile';
 
-const CURRENT_USER_ID = 'u1';
 
 // Used just to show a live "they'd see: ..." example under the default
 // sharing pills -- these aren't anyone's real status.
@@ -56,7 +55,7 @@ export default function PrivacyScreen() {
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      Promise.all([getSettings(CURRENT_USER_ID), getFollowRequests(CURRENT_USER_ID)]).then(([s, requests]) => {
+      Promise.all([getSettings(), getFollowRequests()]).then(([s, requests]) => {
         if (!isActive) return;
         setSettings(s);
         setPendingRequestCount(requests.length);
@@ -73,7 +72,7 @@ export default function PrivacyScreen() {
     setSettings({ ...settings, ...changes });
     setError('');
     try {
-      await updateSettings(CURRENT_USER_ID, changes);
+      await updateSettings(changes);
     } catch {
       setSettings(previous);
       setError("Couldn't save. Try again.");
@@ -87,9 +86,9 @@ export default function PrivacyScreen() {
 
   async function confirmTurnOff() {
     setConfirmAction(null);
-    await acceptAllFollowRequests(CURRENT_USER_ID);
-    setPendingRequestCount(0);
+    // Turning friends-only off also accepts every waiting request (a database rule).
     await patch({ accountType: 'public' });
+    setPendingRequestCount(0);
   }
 
   if (!settings) return null;

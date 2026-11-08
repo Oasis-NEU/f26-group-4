@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CityTile } from '@/components/city-tile';
 import { FilterPill, SearchField } from '@/components/ui';
 import { getCities, type City } from '@/services/cities';
-import { PLACE_TYPES } from '@/services/places';
+import { useFilterOptions } from '@/hooks/use-filter-options';
 import { colors, spacing, type } from '@/theme';
 
 // Explore: a grid of cities. Each tile is a filter -- tap Florence and you get
@@ -61,6 +61,7 @@ export function ExplorePage() {
   const [error, setError] = useState(false);
 
   const [query, setQuery] = useState('');
+  const filterOptions = useFilterOptions();
   // Which category pill is on. `null` is the "Explore" pill -- no filter.
   const [placeType, setPlaceType] = useState<string | null>(null);
 
@@ -88,7 +89,7 @@ export function ExplorePage() {
   const columns = useMemo(() => splitIntoColumns(cities, columnWidth), [cities, columnWidth]);
 
   function openCity(city: City) {
-    router.push({ pathname: '/city/[name]', params: { name: city.name } });
+    router.push({ pathname: '/city/[id]', params: { id: city.id } });
   }
 
   return (
@@ -107,7 +108,7 @@ export function ExplorePage() {
           keyboardShouldPersistTaps="handled"
         >
           <FilterPill label="Explore" selected={placeType === null} onPress={() => setPlaceType(null)} />
-          {PLACE_TYPES.map((option) => (
+          {filterOptions.placeTypes.map((option) => (
             <FilterPill
               key={option}
               label={option}
@@ -149,7 +150,7 @@ export function ExplorePage() {
           {columns.map((column, columnIndex) => (
             <View key={columnIndex} style={styles.column}>
               {column.map(({ city, height }) => (
-                <CityTile key={city.name} city={city} height={height} onPress={() => openCity(city)} />
+                <CityTile key={city.id} city={city} height={height} onPress={() => openCity(city)} />
               ))}
             </View>
           ))}
