@@ -356,7 +356,7 @@ The mock session follows [01-login.md](pages/01-login.md). `signInAsMockUser(id)
 
 ## Phase 2: Supabase
 
-**Built** on the `supabase-backend` branch: the database, sign-in, and every service. [backend-plan.md](backend-plan.md) has the design, and its "What changed while building" section. The README's "The backend (Supabase)" section says how to run it locally. The steps below are kept as the record; where they disagree with backend-plan.md or the code, those win.
+**Built** on the `supabase-backend` branch: the database, sign-in, and every service. [backend-plan.md](backend-plan.md) has the design, and its "What changed while building" section. The README's "The backend (Supabase)" section has the setup: everyone uses the shared project, and running Supabase locally is for database work. The steps below are kept as the record; where they disagree with backend-plan.md or the code, those win.
 
 
 ### 2a. Setup (one person, one PR)

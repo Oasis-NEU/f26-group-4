@@ -31,12 +31,16 @@ Run lint and typecheck before declaring any task done.
 
 ## Data, auth & Supabase
 
-Before writing code that loads or saves data, signs people in, or touches Supabase, read `docs/data-layer.md`. It sets where state lives (React Query hooks over `src/services/`, context only for the session), the service and hook names to build against, and which phase is already built.
+The app talks to the team's shared Supabase project. `.env` (committed) holds its URL and publishable key, so app work needs no setup: no Docker, no Supabase CLI, no Supabase account. Don't install Docker or run Supabase CLI commands that touch a database (`supabase start`, `link`, `db push`, `db reset`, `seed`) unless the user says they're doing database work on the local stack. The README's "The backend (Supabase)" section has the setup.
 
-Before changing the database (tables, privacy rules, functions, storage, demo data), read `docs/backend-plan.md`, especially "Writing migrations": every new table needs RLS, policies and grants, and functions that skip RLS live in the `private` schema. The schema lives in `supabase/migrations/`; never edit a migration that's been pushed.
+Before writing code that loads or saves data, signs people in, or touches Supabase, read `docs/data-layer.md`. It sets where state lives (React Query hooks over `src/services/`, context only for the session), the service and hook names to build against, and which phase is already built. Only files in `src/services/` (and `src/hooks/use-session.tsx`) import the Supabase client.
+
+Changing the database (a table, column, privacy rule, function, storage or demo data) is the tech lead's job. If a feature needs one, write it as a new migration for them to review and push (`npx supabase migration new <what-changed>` only creates the file in `supabase/migrations/`; it needs no Docker or login), and read `docs/backend-plan.md` first, especially "Writing migrations": every new table needs RLS, policies and grants, and functions that skip RLS live in the `private` schema. Never edit a migration that's already been pushed, and never put the secret key or database password in the app or in any `.env`.
+
+For database work on the local stack (needs Docker Desktop running):
 
 ```bash
-npx supabase start        # local Supabase in Docker (needs Docker Desktop running)
+npx supabase start        # local Supabase in Docker
 npm run demo:reset        # rebuild the demo accounts and data on the local stack
 npx supabase test db      # the database tests in supabase/tests/
 npx supabase db advisors  # Supabase's security and performance checks

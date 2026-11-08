@@ -91,17 +91,38 @@ type PlaceCardProps = {
 
 ## The backend (Supabase)
 
-The app's data lives in [Supabase](https://supabase.com): sign-in, the database and photos. [docs/backend-plan.md](docs/backend-plan.md) explains the tables, who can see what, and the demo data.
+The app's data lives in the team's shared [Supabase](https://supabase.com) project: sign-in, the database and photos. [docs/backend-plan.md](docs/backend-plan.md) explains the tables, who can see what, and the demo data.
 
-**Using the team's shared project.** `.env` holds its URL and publishable key (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`). That key is meant to ship in the app; never put the secret key or database password in any `.env`.
+### Setting up
 
-**Running your own copy** (for database work, or to try things without touching the shared data). You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) running:
+There's nothing to install for Supabase: no Docker, no Supabase account. `.env` already holds the project's URL and publishable key. That key is meant to ship in the app; the database's privacy rules are what protect the data.
+
+1. Pull, then run `npm install`.
+2. Rebuild your development build once, with `npx expo run:ios` or `npx expo run:android`. The app now uses two native modules, `expo-sqlite` (keeps you signed in) and `expo-image-manipulator` (shrinks photos before upload). The web version doesn't need a rebuild.
+3. Sign in. Either make your own account with **Create account** (there's no confirmation email), or use the demo characters. For their sign-in buttons, make a file called `.env.local` in the project folder (git ignores it) with these two lines, using the demo password from the group chat:
+
+   ```
+   EXPO_PUBLIC_DEMO_LOGINS=true
+   EXPO_PUBLIC_DEMO_PASSWORD=<the demo password>
+   ```
+
+   Then restart `npx expo start`. Log in shows a button for Folake, Kenji and Amara.
+
+Everyone shares the same data, so your test posts, saves and follows show up for the whole team. That's fine. If the demo characters get messy, the tech lead resets them.
+
+### Changing the database
+
+Only the tech lead changes the database. If your feature needs a new table or column, ask them, or open a PR with a new migration for them to review and push. `npx supabase migration new <what-changed>` makes the file in `supabase/migrations/` (it needs no Docker or login); docs/backend-plan.md, "Writing migrations", says what goes in it. Don't run `npx supabase db push`, and never put the secret key or database password in the app or in any `.env`.
+
+### Running Supabase on your own computer
+
+For database work only: trying a migration without touching the shared project. It needs [Docker Desktop](https://www.docker.com/products/docker-desktop/) running.
 
 ```bash
 npx supabase start
 ```
 
-Then make a `.env.local` (git ignores it) with the local URL and publishable key that `npx supabase status` prints, plus the demo sign-in settings:
+Add the local URL and publishable key that `npx supabase status` prints to `.env.local`, and give the demo password any value:
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
@@ -116,9 +137,7 @@ Load the demo accounts and data, which also resets them whenever you want a clea
 npm run demo:reset
 ```
 
-`.env.local` wins over `.env`; delete it to go back to the shared project. `npx supabase test db` runs the database tests.
-
-**Native builds.** The app now uses `expo-sqlite` (keeps you signed in) and `expo-image-manipulator` (shrinks photos before upload). Both are native modules, so rebuild your development build once: `npx expo run:ios` or `npx expo run:android`. The web and Expo Go don't need this.
+`.env.local` wins over `.env`, so delete its URL and key lines to go back to the shared project. `npx supabase test db` runs the database tests, and `npx supabase stop` shuts the local copy down.
 
 ## Getting data
 
