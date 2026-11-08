@@ -111,25 +111,33 @@ export async function getSuggestedFriends(userId: string): Promise<Profile[]> {
   const me = mockUsers.find((user) => user.id === userId);
   if (!me) return mockRequest([]);
 
-  const [mySettings, alreadyFollowing] = await Promise.all([getSettings(userId), getFollowingIds(userId)]);
-  const myStatus = getVisibleStatus(me, userId, mySettings.closeFriendIds); // viewing yourself always returns the full status
+  const others = mockUsers.filter((user) => user.id !== userId);
 
-  const sameTravelCountry = async (other: Profile) => {
-    const otherCloseFriendIds = (await getSettings(other.id)).closeFriendIds;
+  // Everyone's settings fetched together in one round, instead of fetching
+  // yours first and then each candidate's in a second, later round.
+  const [mySettings, alreadyFollowing, othersSettings] = await Promise.all([
+    getSettings(userId),
+    getFollowingIds(userId),
+    Promise.all(others.map((other) => getSettings(other.id))),
+  ]);
+
+  const myStatus = getVisibleStatus(me, userId, mySettings.closeFriendIds); // viewing yourself always returns the full status
+  const settingsByUserId = new Map(others.map((other, index) => [other.id, othersSettings[index]]));
+
+  const sameTravelCountry = (other: Profile) => {
+    const otherCloseFriendIds = settingsByUserId.get(other.id)!.closeFriendIds;
     const otherStatus = getVisibleStatus(other, userId, otherCloseFriendIds);
     return myStatus?.kind === 'traveling' && otherStatus?.kind === 'traveling' && otherStatus.country === myStatus.country;
   };
 
-  const candidates = mockUsers.filter(
-    (user) => user.id !== userId && !alreadyFollowing.includes(user.id) && !mySettings.blockedIds.includes(user.id),
+  const candidates = others.filter(
+    (user) => !alreadyFollowing.includes(user.id) && !mySettings.blockedIds.includes(user.id),
   );
 
-  const scored = await Promise.all(
-    candidates.map(async (other) => ({
-      profile: other,
-      score: other.interestIds.filter((id) => me.interestIds.includes(id)).length + ((await sameTravelCountry(other)) ? 1 : 0),
-    })),
-  );
+  const scored = candidates.map((other) => ({
+    profile: other,
+    score: other.interestIds.filter((id) => me.interestIds.includes(id)).length + (sameTravelCountry(other) ? 1 : 0),
+  }));
 
   // No mockRequest() wrap here -- the awaits above already paid the simulated
   // network delay; wrapping an already-fetched result in another one just

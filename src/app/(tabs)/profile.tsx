@@ -6,9 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/avatar';
 import { CollectionCard } from '@/components/collection-card';
 import { FollowRequestsSheet, type FollowRequestItem } from '@/components/follow-requests-sheet';
-// THEME CODE -- design system. See the note above the styles at the bottom.
-import { colors } from '@/theme';
-
 import { FriendSuggestion } from '@/components/friend-suggestion';
 import { PlacesMap, WORLD_CAMERA } from '@/components/places-map';
 import { ProfileBadges } from '@/components/profile-badges';
@@ -17,6 +14,7 @@ import { AVATAR_OVERLAP, hasVisibleCover, ProfileCover } from '@/components/prof
 import { ProfileHeader } from '@/components/profile-header';
 import { ProfileInterests } from '@/components/profile-interests';
 import { ProfilePosts, type ProfilePostSummary } from '@/components/profile-posts';
+import { ProfileSkeleton } from '@/components/profile-skeleton';
 import { ProfileStats } from '@/components/profile-stats';
 import { getProfileCity } from '@/services/profile-cities';
 import { getCollectionsForProfile } from '@/services/collections';
@@ -170,13 +168,7 @@ export default function ProfilePage() {
   );
 
   if (isLoading || !data?.profile) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.skeletonAvatar} />
-        <View style={styles.skeletonLine} />
-        <View style={[styles.skeletonLine, styles.skeletonLineShort]} />
-      </View>
-    );
+    return <ProfileSkeleton />;
   }
 
   const {
@@ -337,16 +329,6 @@ export default function ProfilePage() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// THEME CODE (design system) -- Ruby
-//
-// Colours, corner radius and spacing now come from src/theme.ts instead of
-// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
-// no props changed. Anything marked THEME CODE is safe to ignore while you work.
-//
-// To change a colour, change it in src/theme.ts so every screen updates, rather
-// than putting a hex code back in here.
-// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -428,22 +410,5 @@ const styles = StyleSheet.create({
     height: 360,
     borderRadius: 12,
     overflow: 'hidden',
-  },
-  skeletonAvatar: {
-    alignSelf: 'center',
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.fill,
-  },
-  skeletonLine: {
-    marginTop: 16,
-    height: 16,
-    borderRadius: 4,
-    backgroundColor: colors.fill,
-  },
-  skeletonLineShort: {
-    width: '50%',
-    alignSelf: 'center',
   },
 });
