@@ -1,26 +1,40 @@
-import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 // THEME CODE -- design system. See the note above the styles at the bottom.
 import { colors, radius, spacing, type } from '@/theme';
 
 import type { Profile } from '@/types/profile';
 
 // One suggested friend in the Profile page's horizontal "Suggested friends" row:
-// an avatar, their name, and an Add button.
+// an avatar, their name, a reason line (e.g. "4 mutuals", "Also in Lisbon"),
+// and an Add button.
 
 type FriendSuggestionProps = {
   profile: Profile; // the suggested person
+  reason?: string; // why they're suggested, e.g. "4 mutuals"
   onAddPress?: () => void; // called when "Add" is tapped
 };
 
-export function FriendSuggestion({ profile, onAddPress }: FriendSuggestionProps) {
+export function FriendSuggestion({ profile, reason, onAddPress }: FriendSuggestionProps) {
   return (
     <View style={styles.container}>
-      <Image source={{ uri: profile.profilePicture }} style={styles.avatar} />
+      <Avatar
+        name={profile.name}
+        username={profile.username}
+        uri={profile.profilePicture}
+        userId={profile.id}
+        avatarHue={profile.avatarHue}
+        size={56}
+      />
       <Text style={styles.name} numberOfLines={1}>
         {profile.name}
       </Text>
+      {reason && (
+        <Text style={styles.reason} numberOfLines={1}>
+          {reason}
+        </Text>
+      )}
       <Pressable onPress={onAddPress} style={styles.addButton}>
         <Text style={styles.addButtonText}>Add</Text>
       </Pressable>
@@ -41,16 +55,17 @@ export function FriendSuggestion({ profile, onAddPress }: FriendSuggestionProps)
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    gap: 4,
-    width: 80,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    gap: spacing.xs,
+    width: 90,
   },
   name: {
-    fontSize: 13,
+    fontSize: type.label,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  reason: {
+    fontSize: type.tiny,
+    color: colors.textMuted,
     textAlign: 'center',
   },
   addButton: {

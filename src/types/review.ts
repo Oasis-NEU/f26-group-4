@@ -22,4 +22,6 @@ export type Review = {
     media: Media[]; // the photos attached to the review -- a review is a post
     // tagFriends: string[];
     // visitDate: string; // would have to have an option to keep it private
+    authorId?: string; // id of the user who wrote it, e.g. "u1"; used by the Profile page. Optional until login works
+    createdAt?: string; // when it was posted, e.g. "2026-10-14"; for newest-first order and yearly goals
 };

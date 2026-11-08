@@ -1,37 +1,72 @@
-import { Image } from 'expo-image';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 // THEME CODE -- design system. See the note above the styles at the bottom.
 import { colors, radius, spacing, type } from '@/theme';
 
-import type { Profile } from '@/types/profile';
+import { formatStatusText } from '@/utils/status-text';
+import type { Profile, VisibleTravelStatus } from '@/types/profile';
 
-// Shows who this profile belongs to: picture, name, username, and where
-// they live vs. where they're currently traveling. Shows an "Edit profile"
-// button only when the person viewing it is looking at their own profile.
+// Shows who this profile belongs to: name, username, where they live, and
+// their travel status (already privacy-trimmed by the caller -- see
+// getVisibleStatus in services/users.ts). Shows "Edit profile" on your own
+// profile, or "Follow"/"Following" + Share on someone else's.
+// The avatar itself is rendered by the caller, overlapping ProfileCover --
+// see ProfileCover's `avatar` prop.
 
 type ProfileHeaderProps = {
   profile: Profile; // the profile data to display
+  homeCity: { name: string; flag: string } | null; // resolved from profile.homeCityId by the caller (see cities.ts)
+  visibleStatus: VisibleTravelStatus | null; // already trimmed for the current viewer
   isOwnProfile?: boolean; // true if the logged-in user is viewing their own profile
+  isFollowing?: boolean; // only used when !isOwnProfile
   onEditPress?: () => void; // called when "Edit profile" is tapped
+  onFollowPress?: () => void; // called when "Follow"/"Following" is tapped
+  onSharePress?: () => void; // called when "Share" is tapped
+  notifyBell?: ReactNode; // the NotifyBell, rendered next to Following when the caller has it ready
 };
 
-export function ProfileHeader({ profile, isOwnProfile, onEditPress }: ProfileHeaderProps) {
+export function ProfileHeader({
+  profile,
+  homeCity,
+  visibleStatus,
+  isOwnProfile,
+  isFollowing,
+  onEditPress,
+  onFollowPress,
+  onSharePress,
+  notifyBell,
+}: ProfileHeaderProps) {
+  const pill = formatStatusText(visibleStatus);
+
   return (
     <View style={styles.container}>
-      <Image source={{ uri: profile.profilePicture }} style={styles.avatar} />
       <Text style={styles.name}>{profile.name}</Text>
       <Text style={styles.username}>@{profile.username}</Text>
 
-      {/* TODO: turn currentCountry into an actual flag emoji once we know how
-          (needs a country name/code -> emoji lookup); showing the country name for now */}
-      <Text>Lives in {profile.homeCountry}</Text>
-      <Text>Currently in {profile.currentCountry}</Text>
+      {homeCity && (
+        <Text>
+          Lives in {homeCity.name} {homeCity.flag}
+        </Text>
+      )}
+      {pill && <Text style={styles.statusPill}>{pill}</Text>}
 
-      {isOwnProfile && (
-        <Pressable onPress={onEditPress} style={styles.editButton}>
+      {isOwnProfile ? (
+        <Pressable onPress={onEditPress} style={[styles.secondaryButton, styles.standaloneButton]}>
           <Text>Edit profile</Text>
         </Pressable>
+      ) : (
+        <View style={styles.buttonRow}>
+          <Pressable onPress={onFollowPress} style={isFollowing ? styles.secondaryButton : styles.primaryButton}>
+            <Text style={isFollowing ? styles.secondaryButtonText : styles.primaryButtonText}>
+              {isFollowing ? 'Following' : 'Follow'}
+            </Text>
+          </Pressable>
+          {isFollowing && notifyBell}
+          <Pressable onPress={onSharePress} style={styles.secondaryButton}>
+            <Text>Share</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
@@ -52,11 +87,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-  },
   name: {
     fontWeight: 'bold',
     fontSize: 20,
@@ -67,13 +97,43 @@ const styles = StyleSheet.create({
     fontSize: type.label,
     color: colors.textMuted,
   },
-  editButton: {
-    // Was an outlined button. Nothing in this design system is outlined -- the
-    // pale blue fill is what makes it read as a button.
+  statusPill: {
+    marginTop: spacing.xs,
+    fontSize: type.small,
+    color: colors.textMuted,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginTop: spacing.sm,
+  },
+  // The one filled-black button in this file -- "Follow" is the main action on
+  // someone else's profile, and black-fill-with-white-text is how this design
+  // system marks the primary action (see colors.textOnDark).
+  primaryButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.round,
+    backgroundColor: colors.ink,
+  },
+  primaryButtonText: {
+    color: colors.textOnDark,
+    fontWeight: '600',
+  },
+  // Pale blue fill, same treatment as every other secondary button ("Remove",
+  // "Cancel") -- nothing in this design system is outlined.
+  secondaryButton: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.round,
     backgroundColor: colors.secondaryFill,
+  },
+  standaloneButton: {
+    marginTop: spacing.sm,
+  },
+  secondaryButtonText: {
+    color: colors.secondaryText,
+    fontWeight: '600',
   },
 });

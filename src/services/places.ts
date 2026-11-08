@@ -65,6 +65,8 @@ export const mockPlaces: Place[] = [
         city: 'Les Deux Alpes',
         country: 'France',
         media: [],
+        authorId: 'u2', // Kenji
+        createdAt: '2026-08-01',
       },
       {
         id: 'review_023',
@@ -131,6 +133,8 @@ export const mockPlaces: Place[] = [
         city: 'Geneva',
         country: 'Switzerland',
         media: [],
+        authorId: 'u3', // Amara
+        createdAt: '2026-07-15',
       },
       {
         id: 'review_033',
@@ -187,6 +191,8 @@ export const mockPlaces: Place[] = [
         city: 'Florence',
         country: 'Italy',
         media: [{ type: 'photo', url: '', caption: 'The back room' }],
+        authorId: 'u1', // Folake
+        createdAt: '2026-09-20',
       },
       {
         id: 'review_042',
@@ -253,6 +259,8 @@ export const mockPlaces: Place[] = [
         city: 'Florence',
         country: 'Italy',
         media: [{ type: 'photo', url: '', caption: 'Wisteria tunnel' }],
+        authorId: 'u1', // Folake
+        createdAt: '2026-10-05',
       },
       {
         id: 'review_052',
@@ -319,6 +327,8 @@ export const mockPlaces: Place[] = [
         city: 'Berlin',
         country: 'Germany',
         media: [{ type: 'photo', url: '', caption: 'Shared table' }],
+        authorId: 'u1', // Folake
+        createdAt: '2026-10-12',
       },
       {
         id: 'review_062',
