@@ -3,13 +3,14 @@ import { Link, router, useFocusEffect } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/avatar';
 import { CollectionCard } from '@/components/collection-card';
 import { FollowRequestsSheet, type FollowRequestItem } from '@/components/follow-requests-sheet';
 import { FriendSuggestion } from '@/components/friend-suggestion';
 import { PlacesMap, WORLD_CAMERA } from '@/components/places-map';
 import { ProfileBadges } from '@/components/profile-badges';
 import { ProfileChecklist, type ChecklistInput } from '@/components/profile-checklist';
-import { ProfileCover } from '@/components/profile-cover';
+import { AVATAR_OVERLAP, ProfileCover } from '@/components/profile-cover';
 import { ProfileHeader } from '@/components/profile-header';
 import { ProfileInterests } from '@/components/profile-interests';
 import { ProfilePosts, type ProfilePostSummary } from '@/components/profile-posts';
@@ -183,12 +184,13 @@ export default function ProfilePage() {
           dreamTrip={profile.dreamTrip}
           isOwnProfile
           pendingRequestCount={followRequests.length}
+          avatar={<Avatar name={profile.name} photoUrl={profile.profilePicture} size={96} />}
           // TODO: Settings page isn't built yet.
           onSettingsPress={() => {}}
           onInboxPress={() => setIsInboxOpen(true)}
         />
 
-        <View style={styles.container}>
+        <View style={styles.content}>
           <ProfileHeader
             profile={profile}
             visibleStatus={visibleStatus}
@@ -300,6 +302,14 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 24,
+    gap: 16,
+  },
+  // Same as `container`, but with extra top space so the avatar overlapping
+  // the bottom of ProfileCover (see AVATAR_OVERLAP) doesn't sit on top of the name/username.
+  content: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    paddingTop: 24 + AVATAR_OVERLAP,
     gap: 16,
   },
   section: {

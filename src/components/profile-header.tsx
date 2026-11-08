@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Avatar } from '@/components/avatar';
 import { getCountryFlag } from '@/utils/country-flags';
 import type { Profile, VisibleTravelStatus } from '@/types/profile';
 
-// Shows who this profile belongs to: picture, name, username, where they live,
-// and their travel status (already privacy-trimmed by the caller -- see
+// Shows who this profile belongs to: name, username, where they live, and
+// their travel status (already privacy-trimmed by the caller -- see
 // getVisibleStatus in services/users.ts). Shows "Edit profile" on your own
 // profile, or "Follow"/"Following" + Share on someone else's.
+// The avatar itself is rendered by the caller, overlapping ProfileCover --
+// see ProfileCover's `avatar` prop.
 
 // getCountryFlag (src/utils/country-flags.ts) looks up by full country name,
 // but Profile stores 2-letter codes, so codes are converted here first.
@@ -83,7 +84,6 @@ export function ProfileHeader({
 
   return (
     <View style={styles.container}>
-      <Avatar name={profile.name} photoUrl={profile.profilePicture} size={96} />
       <Text style={styles.name}>{profile.name}</Text>
       <Text style={styles.username}>@{profile.username}</Text>
 

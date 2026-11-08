@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { FlatList, Pressable, StyleSheet, Text } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 // Shows the "places traveled/rated" section of a profile: a list of places
 // this user has posted about, with the place name and the rating they gave it.
@@ -43,7 +43,11 @@ export function ProfilePosts({ posts, variant = 'grid', onPostPress }: ProfilePo
           style={[styles.tile, isHorizontal && styles.horizontalTile]}
           onPress={() => onPostPress?.(item.id)}
         >
-          {item.thumbnail && <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />}
+          {item.thumbnail ? (
+            <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
+          ) : (
+            <View style={styles.thumbnailPlaceholder} />
+          )}
           <Text numberOfLines={1}>{item.placeName}</Text>
           <Text>{item.rating} ★</Text>
         </Pressable>
@@ -64,6 +68,12 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: '100%',
     aspectRatio: 1,
-    borderRadius: 4,
+    borderRadius: 12,
+  },
+  thumbnailPlaceholder: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    backgroundColor: '#e8e8e8',
   },
 });

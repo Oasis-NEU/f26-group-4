@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 // The banner at the top of a profile. Shows a photo if the user picked one;
@@ -11,7 +12,17 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 // planned in src/services/users.ts) -- this component never decides privacy,
 // it only decides city vs. dream trip vs. nothing.
 //
+// `avatar` (the profile picture / initials circle) is passed in rather than
+// built here, so this component doesn't need to know about Profile or Avatar
+// directly -- it just positions whatever's handed to it so it overlaps the
+// bottom edge of the cover, matching the wireframe.
+//
 // Settings (☰) + inbox are own-profile only. Back + ••• menu are for everyone else's.
+
+// How far the avatar hangs below the cover into the content area. Half of the
+// 96px avatar used on the profile screen -- keep ProfileHeader's top spacing
+// in sync with this if the avatar size ever changes.
+export const AVATAR_OVERLAP = 48;
 
 type VisibleStatusForCover = {
   kind: 'home' | 'traveling' | 'planning';
@@ -22,6 +33,7 @@ type ProfileCoverProps = {
   coverImage?: string; // a manual photo the user picked; wins over everything else
   visibleStatus: VisibleStatusForCover | null; // null when status is hidden from this viewer entirely
   dreamTrip?: string; // fallback city when home, or when the city isn't visible
+  avatar?: ReactNode; // rendered overlapping the cover's bottom edge, centered
   isOwnProfile: boolean;
   pendingRequestCount?: number; // own profile only; the inbox icon's red badge
   onSettingsPress?: () => void;
@@ -42,6 +54,7 @@ export function ProfileCover({
   coverImage,
   visibleStatus,
   dreamTrip,
+  avatar,
   isOwnProfile,
   pendingRequestCount = 0,
   onSettingsPress,
@@ -86,6 +99,8 @@ export function ProfileCover({
           </>
         )}
       </View>
+
+      {avatar && <View style={styles.avatarOverlap}>{avatar}</View>}
     </View>
   );
 }
@@ -150,5 +165,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: '700',
+  },
+  avatarOverlap: {
+    position: 'absolute',
+    bottom: -AVATAR_OVERLAP,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
 });
