@@ -19,7 +19,7 @@ import { ProfileStats } from '@/components/profile-stats';
 // THEME CODE -- design system. See profile-header.tsx for the convention.
 import { colors, radius, spacing, type } from '@/theme';
 import { useProfileCity } from '@/hooks/use-cities';
-import { useCollectionsForProfile } from '@/hooks/use-collections';
+import { ALL_SAVED_ID, useCollectionsForProfile } from '@/hooks/use-collections';
 import {
   useAcceptFollowRequest,
   useDeclineFollowRequest,
@@ -34,7 +34,9 @@ import { usePlacesByIds } from '@/hooks/use-places';
 import { useProfile } from '@/hooks/use-profiles';
 import { useReviewsByUser } from '@/hooks/use-reviews';
 import { useUserId } from '@/hooks/use-session';
+import { useAllSavedPlaces } from '@/hooks/use-saves';
 import { getCountryFlag } from '@/utils/country-flags';
+import type { Collection } from '@/types/collection';
 
 // Profile tab: the signed-in user's own profile.
 
@@ -58,6 +60,9 @@ export default function ProfilePage() {
   const suggestionsQuery = useSuggestedFriends();
   const requestsQuery = useFollowRequests();
   const collectionsQuery = useCollectionsForProfile(userId);
+  // "All saved" isn't a real collection -- same as the Saved tab, it's built
+  // here from every place you've saved, not just the ones in a named collection.
+  const allSavedQuery = useAllSavedPlaces();
 
   const profile = profileQuery.data;
   const reviews = reviewsQuery.data ?? [];
@@ -96,6 +101,11 @@ export default function ProfilePage() {
   const followRequests = requestsQuery.data ?? [];
   const collections = collectionsQuery.data ?? [];
   const places = placesQuery.data ?? [];
+
+  // "All saved" always comes first, same as the Saved tab, so places you've
+  // bookmarked but never put in a named collection still show up somewhere.
+  const allSavedCard: Collection = { id: ALL_SAVED_ID, name: 'All saved', places: allSavedQuery.data ?? [] };
+  const displayCollections = [allSavedCard, ...collections];
 
   const showsCover = hasVisibleCover(profile.coverMode, profile.coverImage, visibleStatus, dreamTripName);
 
@@ -200,24 +210,21 @@ export default function ProfilePage() {
             ))}
           </View>
 
-          {activeTab === 'collections' &&
-            (collections.length > 0 ? (
-              <View style={styles.collectionsList}>
-                {collections.map((collection, index) => (
-                  <CollectionCard
-                    key={collection.id}
-                    collection={collection}
-                    index={index}
-                    // Past a handful, full-size tiles turn a quick glance into a
-                    // long scroll -- shrink them so more fit without feeling chunky.
-                    compact={collections.length > 4}
-                    onPress={() => router.push({ pathname: '/collection/[id]', params: { id: collection.id } })}
-                  />
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.message}>No collections yet.</Text>
-            ))}
+          {activeTab === 'collections' && (
+            <View style={styles.collectionsList}>
+              {displayCollections.map((collection, index) => (
+                <CollectionCard
+                  key={collection.id}
+                  collection={collection}
+                  index={index}
+                  // Past a handful, full-size tiles turn a quick glance into a
+                  // long scroll -- shrink them so more fit without feeling chunky.
+                  compact={displayCollections.length > 4}
+                  onPress={() => router.push({ pathname: '/collection/[id]', params: { id: collection.id } })}
+                />
+              ))}
+            </View>
+          )}
 
           {activeTab === 'map' && (
             <View style={styles.mapTab}>
