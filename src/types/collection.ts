@@ -11,6 +11,8 @@ export type Collection = {
     country?: string; // auto-generated from the places inside; a trip like "Europe" won't have one
     coverImage?: string; // the picture on the card; if missing, use the first place's image
     ownerId?: string; // which user this collection belongs to; optional until login works
+    isPrivate?: boolean; // hidden from anyone except the owner, e.g. on their profile
+    isAuto?: boolean; // made automatically per city vs. made by the user by hand
     subCollections?: Collection[]; // sub collections, e.g. "Europe Trip" -> "France"
     // The type allows collections nested as deep as you like. TODO: make a way to limit depth
    

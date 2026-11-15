@@ -15,8 +15,9 @@ import { AuthInput } from '@/components/auth-input';
 import { RatingStars } from '@/components/rating-stars';
 import { TagPicker } from '@/components/tag-picker';
 import { UploadMediaPicker } from '@/components/upload-media-picker';
-import { createPost, validatePost } from '@/services/posts';
+import { useCreatePost } from '@/hooks/use-reviews';
 import type { UploadFields } from '@/types/upload-fields';
+import { validatePost } from '@/utils/validate-post';
 
 const placeTypes = [
   'Cafe',
@@ -63,6 +64,28 @@ function emptyFields(): UploadFields {
   };
 }
 
+// A new place's coordinates: the photo's GPS data if there was any, otherwise
+// the typed address looked up on the phone (iOS and Android only). Without
+// either, the post still saves; the place just stays off the map.
+async function findCoordinates(fields: UploadFields): Promise<{ latitude?: number; longitude?: number }> {
+  if (fields.latitude !== undefined && fields.longitude !== undefined) {
+    return { latitude: fields.latitude, longitude: fields.longitude };
+  }
+  if (Platform.OS === 'web') return {};
+
+  try {
+    if (Platform.OS === 'android') {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) return {};
+    }
+    const address = [fields.address, fields.city, fields.country].filter((part) => part.trim()).join(', ');
+    const [match] = await Location.geocodeAsync(address);
+    return match ? { latitude: match.latitude, longitude: match.longitude } : {};
+  } catch {
+    return {};
+  }
+}
+
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
 
@@ -74,6 +97,7 @@ function FieldError({ message }: { message?: string }) {
 }
 
 export default function UploadPage() {
+  const createPost = useCreatePost();
   const [fields, setFields] = useState<UploadFields>(emptyFields);
   const [attempted, setAttempted] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
@@ -110,6 +134,9 @@ export default function UploadPage() {
     if (posting.current) return;
 
     const lookupId = ++latestLookup.current;
+
+    // Keep the photo's coordinates for the new place, so it can go on the map.
+    setFields((current) => ({ ...current, latitude: coordinates.latitude, longitude: coordinates.longitude }));
 
     setIsFindingLocation(true);
     setLocationMessage('Finding the photo’s location…');
@@ -206,7 +233,7 @@ export default function UploadPage() {
     setIsPosting(true);
 
     try {
-      await createPost(fields);
+      await createPost.mutateAsync({ ...fields, ...(await findCoordinates(fields)) });
       setSaved(true);
       scrollView.current?.scrollTo({ y: 0, animated: true });
     } catch {
@@ -232,11 +259,10 @@ export default function UploadPage() {
   if (saved) {
     return (
       <View style={styles.successContainer}>
-        <Text style={styles.title}>Demo post saved</Text>
+        <Text style={styles.title}>Post saved</Text>
 
         <Text accessibilityLiveRegion="polite" style={styles.hint}>
-          Your post was saved for this app session. It is not
-          published online and will disappear when the app reloads.
+          Your review is now on the place&apos;s page and in the Feed.
         </Text>
 
         <Pressable
@@ -262,8 +288,7 @@ export default function UploadPage() {
       <Text style={styles.title}>New post</Text>
 
       <Text style={styles.hint}>
-        Fields marked * are required. Posts are saved for this
-        demo session only.
+        Fields marked * are required.
       </Text>
 
       {hasErrors && (
@@ -319,10 +344,10 @@ export default function UploadPage() {
 
         <FieldError message={errors.rating} />
 
-        <Text style={styles.label}>Your review *</Text>
+        <Text style={styles.label}>Your post *</Text>
 
         <TextInput
-          accessibilityLabel="Your review, required"
+          accessibilityLabel="Your post, required"
           style={[
             styles.review,
             errors.reviewText ? styles.invalidInput : undefined,

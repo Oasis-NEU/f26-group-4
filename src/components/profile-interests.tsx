@@ -1,4 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+
+import { Tag } from '@/components/ui';
+// THEME CODE -- design system. See profile-header.tsx for the convention.
+import { spacing } from '@/theme';
 
 // Shows a profile's hobbies/interests as a row of small tags ("chips"),
 // e.g. ["hiking", "photography"] -> two little pill-shaped labels.
@@ -15,9 +19,7 @@ export function ProfileInterests({ interests }: ProfileInterestsProps) {
   return (
     <View style={styles.container}>
       {interests.map((interest) => (
-        <View key={interest} style={styles.chip}>
-          <Text>{interest}</Text>
-        </View>
+        <Tag key={interest} label={interest} size="small" />
       ))}
     </View>
   );
@@ -27,12 +29,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#eee',
+    gap: spacing.sm,
+    justifyContent: 'center',
   },
 });

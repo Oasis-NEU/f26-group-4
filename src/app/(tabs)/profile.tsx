@@ -1,135 +1,336 @@
-import { useCallback, useState } from 'react';
-import { Link, useFocusEffect } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { router } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-// THEME CODE -- design system. See the note above the styles at the bottom.
-import { colors } from '@/theme';
-
+import { Avatar } from '@/components/avatar';
+import { CollectionCard } from '@/components/collection-card';
+import { FollowRequestsSheet } from '@/components/follow-requests-sheet';
 import { FriendSuggestion } from '@/components/friend-suggestion';
+import { PlacesMap, WORLD_CAMERA } from '@/components/places-map';
+import { ProfileBadges } from '@/components/profile-badges';
+import { ProfileChecklist, type ChecklistInput } from '@/components/profile-checklist';
+import { AVATAR_OVERLAP, hasVisibleCover, ProfileCover } from '@/components/profile-cover';
 import { ProfileHeader } from '@/components/profile-header';
 import { ProfileInterests } from '@/components/profile-interests';
-import { getProfile, getSuggestedFriends } from '@/services/users';
-import type { Profile } from '@/types/profile';
+import { ProfilePosts, type ProfilePostSummary } from '@/components/profile-posts';
+import { ProfileSkeleton } from '@/components/profile-skeleton';
+import { ProfileStats } from '@/components/profile-stats';
+// THEME CODE -- design system. See profile-header.tsx for the convention.
+import { colors, radius, spacing, type } from '@/theme';
+import { useProfileCity } from '@/hooks/use-cities';
+import { useCollectionsForProfile } from '@/hooks/use-collections';
+import {
+  useAcceptFollowRequest,
+  useDeclineFollowRequest,
+  useFollow,
+  useFollowerIds,
+  useFollowingIds,
+  useFollowRequests,
+  useSuggestedFriends,
+} from '@/hooks/use-follows';
+import { useInterestsByIds } from '@/hooks/use-interests';
+import { usePlacesByIds } from '@/hooks/use-places';
+import { useProfile } from '@/hooks/use-profiles';
+import { useReviewsByUser } from '@/hooks/use-reviews';
+import { useUserId } from '@/hooks/use-session';
+import { getCountryFlag } from '@/utils/country-flags';
 
-// Profile tab: the logged-in user's own profile.
-// There's no auth/session yet, so which profile is "mine" is hardcoded here.
-// Swap this for the real signed-in user's id once a session exists.
-const CURRENT_USER_ID = 'u1';
+// Profile tab: the signed-in user's own profile.
+
+type ProfileTab = 'collections' | 'map' | 'badges';
+
+const NO_IDS: string[] = [];
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [suggestedFriends, setSuggestedFriends] = useState<Profile[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const userId = useUserId();
+  const [isInboxOpen, setIsInboxOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProfileTab>('collections');
 
-  // Refetch whenever the tab comes back into focus, e.g. after closing the edit modal.
-  useFocusEffect(
-    useCallback(() => {
-      let isActive = true;
+  // Each piece comes from the shared cache, so a change anywhere (editing your
+  // profile, accepting a request, posting a review) refreshes it here by itself.
+  // Suggestion reasons, requesters' details and the trimmed status all come
+  // from the database, so there's no second round of lookups for them.
+  const profileQuery = useProfile(userId);
+  const followersQuery = useFollowerIds(userId);
+  const followingQuery = useFollowingIds(userId);
+  const reviewsQuery = useReviewsByUser(userId);
+  const suggestionsQuery = useSuggestedFriends();
+  const requestsQuery = useFollowRequests();
+  const collectionsQuery = useCollectionsForProfile(userId);
 
-      setIsLoading(true);
-      Promise.all([getProfile(CURRENT_USER_ID), getSuggestedFriends(CURRENT_USER_ID)]).then(
-        ([fetchedProfile, friends]) => {
-          if (!isActive) return;
-          setProfile(fetchedProfile);
-          setSuggestedFriends(friends);
-          setIsLoading(false);
-        },
-      );
+  const profile = profileQuery.data;
+  const reviews = reviewsQuery.data ?? [];
+  // The places you've reviewed, for the Map tab, in one request.
+  const placesQuery = usePlacesByIds(reviews.map((review) => review.placeID));
+  const homeCityQuery = useProfileCity(profile?.homeCityId);
+  const dreamTripQuery = useProfileCity(profile?.dreamTripCityId);
+  const interestsQuery = useInterestsByIds(profile?.interestIds ?? NO_IDS);
 
-      return () => {
-        isActive = false;
-      };
-    }, []),
-  );
+  const follow = useFollow();
+  const acceptRequest = useAcceptFollowRequest();
+  const declineRequest = useDeclineFollowRequest();
 
-  if (isLoading || !profile) {
+  if (profileQuery.isError) {
     return (
-      <View style={styles.container}>
-        <View style={styles.skeletonAvatar} />
-        <View style={styles.skeletonLine} />
-        <View style={[styles.skeletonLine, styles.skeletonLineShort]} />
-      </View>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <Text style={styles.message}>Couldn&apos;t load your profile.</Text>
+      </SafeAreaView>
     );
   }
 
+  if (profileQuery.isPending || !profile) {
+    return <ProfileSkeleton />;
+  }
+
+  const homeCity = homeCityQuery.data
+    ? { name: homeCityQuery.data.name, flag: getCountryFlag(homeCityQuery.data.country) }
+    : null;
+  const dreamTripName = dreamTripQuery.data?.name;
+  const interestNames = (interestsQuery.data ?? []).map((interest) => interest.name);
+  // Already trimmed by the database for whoever is looking; yours comes back in full.
+  const visibleStatus = profile.visibleStatus ?? null;
+  const followerCount = followersQuery.data?.length ?? 0;
+  const followingCount = followingQuery.data?.length ?? 0;
+  const suggestedFriends = suggestionsQuery.data ?? [];
+  const followRequests = requestsQuery.data ?? [];
+  const collections = collectionsQuery.data ?? [];
+  const places = placesQuery.data ?? [];
+
+  const showsCover = hasVisibleCover(profile.coverMode, profile.coverImage, visibleStatus, dreamTripName);
+
+  const postSummaries: ProfilePostSummary[] = reviews.map((review) => ({
+    id: review.id,
+    placeName: review.placeName,
+    rating: review.rating,
+    thumbnail: review.media[0]?.url || undefined,
+  }));
+
+  const checklistInput: ChecklistInput = {
+    hasProfilePhoto: !!profile.profilePicture,
+    hasBio: !!profile.bio,
+    postsCount: reviews.length,
+    followingCount,
+  };
+
+  function openPlace(placeId: string) {
+    router.push({ pathname: '/place/[id]', params: { id: placeId } });
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <ProfileHeader profile={profile} isOwnProfile />
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ProfileCover
+          coverMode={profile.coverMode}
+          coverImage={profile.coverImage}
+          visibleStatus={visibleStatus}
+          dreamTrip={dreamTripName}
+          isOwnProfile
+          pendingRequestCount={followRequests.length}
+          avatar={
+            <Avatar
+              name={profile.name}
+              username={profile.username}
+              uri={profile.profilePicture}
+              userId={profile.id}
+              avatarHue={profile.avatarHue}
+              size={96}
+            />
+          }
+          onSettingsPress={() => router.push('/settings')}
+          onInboxPress={() => setIsInboxOpen(true)}
+        />
 
-      <ProfileInterests interests={profile.interests} />
+        <View style={[styles.content, showsCover && styles.contentWithCover]}>
+          <ProfileHeader
+            profile={profile}
+            homeCity={homeCity}
+            visibleStatus={visibleStatus}
+            isOwnProfile
+            onEditPress={() => router.push('/edit-profile')}
+          />
 
-      {/* TODO(reviews): wire up once Review has an authorId and users.ts
-          (or a new reviews service) exposes getReviewsByUser. For now every
-          profile shows the empty state. */}
-      <Text style={styles.sectionTitle}>Reviews</Text>
-      <Text style={styles.message}>You haven&apos;t reviewed anywhere yet.</Text>
+          <ProfileStats placesCount={reviews.length} followersCount={followerCount} followingCount={followingCount} />
 
-      {suggestedFriends.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Suggested friends</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.friendsRow}>
-            {suggestedFriends.map((friend) => (
-              <FriendSuggestion key={friend.id} profile={friend} />
+          {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
+          <ProfileInterests interests={interestNames} />
+
+          <ProfileChecklist input={checklistInput} />
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Places I&apos;ve been</Text>
+              {/* TODO: no full-grid "see all" screen yet -- this row is the only view for now. */}
+            </View>
+            {postSummaries.length > 0 ? (
+              <ProfilePosts posts={postSummaries} variant="horizontal" onPostPress={openPlace} />
+            ) : (
+              <Text style={styles.message}>You haven&apos;t reviewed anywhere yet.</Text>
+            )}
+          </View>
+
+          {suggestedFriends.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Suggested friends</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.friendsRow}>
+                {suggestedFriends.map(({ profile: friend, reason }) => (
+                  <FriendSuggestion
+                    key={friend.id}
+                    profile={friend}
+                    reason={reason}
+                    onPress={() => router.push({ pathname: '/user/[id]', params: { id: friend.id } })}
+                    // Follows them, or sends a request if their account is friends-only.
+                    onAddPress={() => follow.mutate(friend.id)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          <View style={styles.tabBar}>
+            {(['collections', 'map', 'badges'] as const).map((tab) => (
+              <Pressable
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
+              >
+                <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
+                  {tab === 'collections' ? 'Collections' : tab === 'map' ? 'Map' : 'Badges'}
+                </Text>
+              </Pressable>
             ))}
-          </ScrollView>
-        </>
-      )}
+          </View>
 
-      {/* Temporary, so demo users can be switched until a real login gate exists. */}
-      <Link href="/login" style={styles.link}>
-        Log out
-      </Link>
-    </ScrollView>
+          {activeTab === 'collections' &&
+            (collections.length > 0 ? (
+              <View style={styles.collectionsList}>
+                {collections.map((collection, index) => (
+                  <CollectionCard
+                    key={collection.id}
+                    collection={collection}
+                    index={index}
+                    // Past a handful, full-size tiles turn a quick glance into a
+                    // long scroll -- shrink them so more fit without feeling chunky.
+                    compact={collections.length > 4}
+                    onPress={() => router.push({ pathname: '/collection/[id]', params: { id: collection.id } })}
+                  />
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.message}>No collections yet.</Text>
+            ))}
+
+          {activeTab === 'map' && (
+            <View style={styles.mapTab}>
+              {places.length > 0 ? (
+                <PlacesMap places={places} camera={WORLD_CAMERA} onSelectPlace={() => {}} onViewDetails={openPlace} />
+              ) : (
+                <Text style={styles.message}>No places on the map yet.</Text>
+              )}
+            </View>
+          )}
+
+          {activeTab === 'badges' && <ProfileBadges reviews={reviews} goals={profile.goals} />}
+
+        </View>
+      </ScrollView>
+
+      <FollowRequestsSheet
+        visible={isInboxOpen}
+        onClose={() => setIsInboxOpen(false)}
+        requests={followRequests}
+        onAccept={(fromId) => {
+          acceptRequest.mutate(fromId);
+        }}
+        onDecline={(fromId) => {
+          declineRequest.mutate(fromId);
+        }}
+        onPressRequester={(fromId) => {
+          setIsInboxOpen(false);
+          router.push({ pathname: '/user/[id]', params: { id: fromId } });
+        }}
+      />
+    </SafeAreaView>
   );
 }
 
-// ---------------------------------------------------------------------------
-// THEME CODE (design system) -- Ruby
-//
-// Colours, corner radius and spacing now come from src/theme.ts instead of
-// being typed in here. These are LOOKS ONLY -- no logic changed, nothing moved,
-// no props changed. Anything marked THEME CODE is safe to ignore while you work.
-//
-// To change a colour, change it in src/theme.ts so every screen updates, rather
-// than putting a hex code back in here.
-// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xl,
+  },
   container: {
-    padding: 24,
+    padding: spacing.xl,
+    gap: spacing.lg,
+  },
+  content: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.xl,
+    gap: spacing.lg,
+  },
+  // Only when ProfileCover actually shows a band: extra top space so the
+  // avatar overlapping its bottom edge (see AVATAR_OVERLAP) doesn't sit on
+  // top of the name/username. No-cover profiles don't need this -- the
+  // avatar there is laid out inline by ProfileCover itself, not overlapping.
+  contentWithCover: {
+    paddingTop: spacing.xl + AVATAR_OVERLAP,
+  },
+  section: {
+    gap: spacing.sm,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: type.title,
     fontWeight: 'bold',
-    marginTop: 24,
-    marginBottom: 8,
+    color: colors.text,
+  },
+  bio: {
+    fontSize: type.body,
+    color: colors.text,
+    textAlign: 'center',
   },
   message: {
-    marginTop: 16,
-    fontSize: 16,
+    fontSize: type.body,
+    color: colors.textMuted,
   },
   friendsRow: {
     flexDirection: 'row',
   },
-  link: {
-    marginTop: 20,
-    color: colors.link,
-    fontSize: 16,
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
   },
-  skeletonAvatar: {
-    alignSelf: 'center',
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.fill,
+  tabButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
-  skeletonLine: {
-    marginTop: 16,
-    height: 16,
-    borderRadius: 4,
-    backgroundColor: colors.fill,
+  tabButtonActive: {
+    borderBottomColor: colors.ink,
   },
-  skeletonLineShort: {
-    width: '50%',
-    alignSelf: 'center',
+  tabLabel: {
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  tabLabelActive: {
+    color: colors.text,
+  },
+  collectionsList: {
+    gap: spacing.md,
+  },
+  mapTab: {
+    height: 360,
+    borderRadius: radius.card,
+    overflow: 'hidden',
   },
 });

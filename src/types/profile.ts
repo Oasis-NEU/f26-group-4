@@ -1,16 +1,72 @@
 // A user's profile: who they are, where they live/travel, and their posts.
-// Used by the Profile Page.
+// Used by the Profile Page and Edit profile.
 // See src/types/template-type.ts if you want to see how a type file is put together.
 
 export type Profile = {
   id: string; // User ID; uniquely identifies this profile (the "key")
   name: string;
   username: string;
-  profilePicture: string; // URL to the image
+  profilePicture?: string; // URL to the image; missing means show initials (see Avatar)
+  // The initials' background color (0-359, a hue) when there's no photo. Missing
+  // means pick one from the user id (not the name), so it never changes just
+  // because they rename themselves.
+  avatarHue?: number;
   bio?: string; // short description shown next to the avatar (optional)
-  homeCountry: string; // 2-letter country code, e.g. "US"; their "home base"
-  currentCountry: string; // 2-letter country code, e.g. "FR"; used to generate a flag emoji
-  interests: string[]; // hobbies/interests, e.g. ["hiking", "photography"]
-  friendIds: string[]; // IDs of this user's friends; used to suggest new friends
-  postIds: string[]; // IDs of the reviews/posts they've made (their "places traveled/rated")
+  // auto: current travel city, else dream trip. custom: coverImage. none: no cover band at all.
+  coverMode: 'auto' | 'custom' | 'none';
+  coverImage?: string; // only used when coverMode is 'custom'
+  // A src/services/profile-cities.ts id; their "home base". Missing until they set
+  // one, or when their "Lives in" setting hides the city from you.
+  homeCityId?: string;
+  dreamTripCityId?: string; // a profile-cities.ts id; used for the cover fallback when home
+  // Your own status, in full, with how much of it each audience sees. Only your
+  // own profile has it: the database never sends someone's whole status to
+  // anyone else (docs/backend-plan.md, profile_locations).
+  status?: OwnTravelStatus;
+  // The status as the signed-in user may see it, already trimmed by the
+  // database. null means it's hidden from you. Use this one for display.
+  visibleStatus?: VisibleTravelStatus | null;
+  // closeFriendIds lives in Settings now, not here -- Settings is never
+  // fetched by anyone but its own owner, and this list shouldn't be either.
+  goals?: TravelGoal[]; // yearly travel goals; progress is calculated, not stored
+  interestIds: string[]; // src/services/interests.ts ids
+  // Who follows whom now lives in src/services/follows.ts as a `follows` table,
+  // not on the profile itself (see getFollowerIds/getFollowingIds).
+};
+
+// Where the user is right now. City and country are picked from the same city
+// list as "Lives in"/"Dream trip" (src/services/profile-cities.ts), so country
+// is always a full name, e.g. "France" -- never a typed-in value or a code.
+// Your own status, plus how much of it each audience can see.
+export type OwnTravelStatus = TravelStatus & {
+  sharing: {
+    closeFriends: StatusDetail;
+    everyone: StatusDetail;
+  };
+};
+
+export type TravelStatus =
+  | { kind: 'home' }
+  | { kind: 'traveling'; city: string; country: string; until?: string } // until: "2026-11-20"
+  | { kind: 'planning'; city: string; country: string; month?: string }; // month: "2026-12"
+
+// How much of the status someone can see:
+// hidden  -> no status pill
+// country -> "Traveling · Italy"
+// city    -> "Traveling · Rome, Italy"
+// full    -> "Traveling · Rome, Italy · until Nov 12"
+export type StatusDetail = 'hidden' | 'country' | 'city' | 'full';
+
+// What's left of a TravelStatus after getVisibleStatus trims it for a viewer.
+// Shaped like TravelStatus, but city/until/month may be missing even while
+// traveling/planning, since a given viewer might not be allowed to see them.
+export type VisibleTravelStatus =
+  | { kind: 'home' }
+  | { kind: 'traveling'; country: string; city?: string; until?: string }
+  | { kind: 'planning'; country: string; city?: string; month?: string };
+
+export type TravelGoal = {
+  year: number;
+  metric: 'countries' | 'cities' | 'places';
+  target: number; // progress is calculated from reviews, not stored
 };

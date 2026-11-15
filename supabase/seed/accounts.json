@@ -1,0 +1,17 @@
+[
+  { "username": "folake", "name": "Folake", "role": "demo" },
+  { "username": "kenji_travels", "name": "Kenji", "role": "demo" },
+  { "username": "amara", "name": "Amara", "role": "demo" },
+  { "username": "dgonzalez", "name": "Diego Gonzalez", "role": "background" },
+  { "username": "s.whitfield", "name": "Sam Whitfield", "role": "background" },
+  { "username": "j_okafor", "name": "Jide Okafor", "role": "background" },
+  { "username": "anneke.v", "name": "Anneke Visser", "role": "background" },
+  { "username": "l.ferreira", "name": "Lucas Ferreira", "role": "background" },
+  { "username": "priya_n", "name": "Priya Nair", "role": "background" },
+  { "username": "d.lindqvist", "name": "Dag Lindqvist", "role": "background" },
+  { "username": "samir.aziz", "name": "Samir Aziz", "role": "background" },
+  { "username": "o_mbeki", "name": "Omari Mbeki", "role": "background" },
+  { "username": "claire.dup", "name": "Claire Dupont", "role": "background" },
+  { "username": "yuki_t", "name": "Yuki Tanaka", "role": "background" },
+  { "username": "f.adeyemi", "name": "Funmi Adeyemi", "role": "background" }
+]

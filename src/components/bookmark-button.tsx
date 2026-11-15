@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 
-// The bookmark icon. Filled when the place is saved.
+// The bookmark icon. An outline when empty, filled in when the place is saved.
 // It doesn't save anything itself; the screen decides what happens on press
 // (e.g. open the "Save to collection" sheet).
 
@@ -17,13 +18,7 @@ export function BookmarkButton({ isSaved, onPress }: BookmarkButtonProps) {
       accessibilityLabel={isSaved ? 'Remove from saved' : 'Save place'}
       hitSlop={8}
     >
-      <Text style={styles.icon}>{isSaved ? '🔖' : '🏷️'}</Text>
+      <Ionicons name={isSaved ? 'bookmark' : 'bookmark-outline'} size={26} color="#111" />
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  icon: {
-    fontSize: 24,
-  },
-});

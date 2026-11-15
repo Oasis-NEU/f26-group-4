@@ -125,14 +125,15 @@ export function UploadMediaPicker({
 
         if (!permission.granted) {
           setMessage(
-            'Please allow photo library access to select photos and videos.'
+            'Please allow photo library access to select photos.'
           );
           return;
         }
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images', 'videos'],
+        // Photos only for now (docs/backend-plan.md, open decision 6).
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
         allowsEditing: false,
         exif: true,
@@ -188,10 +189,10 @@ export function UploadMediaPicker({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Photos and videos</Text>
+      <Text style={styles.heading}>Photos</Text>
 
       <Button
-        title={isPicking ? 'Opening picker…' : 'Add photos / videos'}
+        title={isPicking ? 'Opening picker…' : 'Add photos'}
         onPress={pickMedia}
         disabled={disabled || isPicking}
       />

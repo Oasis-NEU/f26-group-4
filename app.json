@@ -33,7 +33,8 @@
           "imageWidth": 76
         }
       ],
-      "expo-maps"
+      "expo-maps",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

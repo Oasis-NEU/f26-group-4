@@ -1,10 +1,9 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SavedPlaceRow } from '@/components/saved-place-row';
-import { getCollection } from '@/services/collections';
-import { Collection } from '@/types/collection';
+import { ALL_SAVED_ID, useCollection, useRemoveFromCollection } from '@/hooks/use-collections';
+import { useToggleSave } from '@/hooks/use-saves';
 import { colors, spacing, type } from '@/theme';
 
 // Inside one collection, e.g. /collection/col_europe.
@@ -13,17 +12,21 @@ import { colors, spacing, type } from '@/theme';
 export default function CollectionPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [collection, setCollection] = useState<Collection | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // From the shared cache: un-saving a place anywhere refreshes this page too.
+  const { data: collection, isPending: isLoading, isError } = useCollection(id);
+  const removeFromCollection = useRemoveFromCollection();
+  const toggleSave = useToggleSave();
 
-  useEffect(() => {
-    getCollection(id).then((result) => {
-      setCollection(result);
-      setIsLoading(false);
-    });
-    // TODO: reload when coming back to this screen (useFocusEffect), in case a place
-    // was un-saved on the Place page.
-  }, [id]);
+  // Taking a place out of a collection leaves it saved. "All saved" isn't a
+  // real collection, so removing from it un-saves the place.
+  // TODO: show a short "Removed. Undo" message, as the plan describes.
+  function removePlace(collectionId: string, placeId: string) {
+    if (collectionId === ALL_SAVED_ID) {
+      toggleSave.mutate({ placeId, save: false });
+    } else {
+      removeFromCollection.mutate({ collectionId, placeId });
+    }
+  }
 
   function openPlace(placeId: string) {
     router.push({ pathname: '/place/[id]', params: { id: placeId } });
@@ -37,10 +40,10 @@ export default function CollectionPage() {
     );
   }
 
-  if (collection === null) {
+  if (isError || !collection) {
     return (
       <View style={styles.centered}>
-        <Text>This collection no longer exists.</Text>
+        <Text>{isError ? "Couldn't load this collection." : 'This collection no longer exists.'}</Text>
       </View>
     );
   }
@@ -75,11 +78,7 @@ export default function CollectionPage() {
               key={place.id}
               place={place}
               onPress={() => openPlace(place.id)}
-              onRemove={() => {
-                // TODO: actually remove the place once collections can be edited.
-                // The plan is to show a short "Removed. Undo" message rather than
-                // asking "are you sure?" first.
-              }}
+              onRemove={() => removePlace(sub.id, place.id)}
             />
           ))}
         </View>
@@ -91,9 +90,7 @@ export default function CollectionPage() {
           key={place.id}
           place={place}
           onPress={() => openPlace(place.id)}
-          onRemove={() => {
-            // TODO: same as above.
-          }}
+          onRemove={() => removePlace(collection.id, place.id)}
         />
       ))}
     </ScrollView>
