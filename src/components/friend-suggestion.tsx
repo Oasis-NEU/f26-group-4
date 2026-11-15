@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 // THEME CODE -- design system. See the note above the styles at the bottom.
@@ -13,12 +13,13 @@ import type { Profile } from '@/types/profile';
 type FriendSuggestionProps = {
   profile: Profile; // the suggested person
   reason?: string; // why they're suggested, e.g. "4 mutuals"
+  onPress?: () => void; // called when the card itself (avatar/name) is tapped -- opens their profile
   onAddPress?: () => void; // called when "Add" is tapped
 };
 
-export function FriendSuggestion({ profile, reason, onAddPress }: FriendSuggestionProps) {
+export function FriendSuggestion({ profile, reason, onPress, onAddPress }: FriendSuggestionProps) {
   return (
-    <View style={styles.container}>
+    <Pressable style={styles.container} onPress={onPress}>
       <Avatar
         name={profile.name}
         username={profile.username}
@@ -38,7 +39,7 @@ export function FriendSuggestion({ profile, reason, onAddPress }: FriendSuggesti
       <Pressable onPress={onAddPress} style={styles.addButton}>
         <Text style={styles.addButtonText}>Add</Text>
       </Pressable>
-    </View>
+    </Pressable>
   );
 }
 

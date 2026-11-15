@@ -19,7 +19,10 @@ type ProfileHeaderProps = {
   homeCity: { name: string; flag: string } | null; // resolved from profile.homeCityId by the caller (see cities.ts)
   visibleStatus: VisibleTravelStatus | null; // already trimmed for the current viewer
   isOwnProfile?: boolean; // true if the logged-in user is viewing their own profile
-  isFollowing?: boolean; // only used when !isOwnProfile
+  // The signed-in user's relationship to this profile, only used when !isOwnProfile.
+  // 'requested' is a friends-only account: the Follow tap sent a request, not a
+  // follow, so the button shows that instead of silently acting like "Following".
+  followState?: 'none' | 'following' | 'requested';
   onEditPress?: () => void; // called when "Edit profile" is tapped
   onFollowPress?: () => void; // called when "Follow"/"Following" is tapped
   onSharePress?: () => void; // called when "Share" is tapped
@@ -31,12 +34,14 @@ export function ProfileHeader({
   homeCity,
   visibleStatus,
   isOwnProfile,
-  isFollowing,
+  followState = 'none',
   onEditPress,
   onFollowPress,
   onSharePress,
   notifyBell,
 }: ProfileHeaderProps) {
+  const isFollowing = followState === 'following';
+  const followLabel = followState === 'following' ? 'Following' : followState === 'requested' ? 'Requested' : 'Follow';
   const pill = formatStatusText(visibleStatus);
 
   return (
@@ -57,10 +62,8 @@ export function ProfileHeader({
         </Pressable>
       ) : (
         <View style={styles.buttonRow}>
-          <Pressable onPress={onFollowPress} style={isFollowing ? styles.secondaryButton : styles.primaryButton}>
-            <Text style={isFollowing ? styles.secondaryButtonText : styles.primaryButtonText}>
-              {isFollowing ? 'Following' : 'Follow'}
-            </Text>
+          <Pressable onPress={onFollowPress} style={followState === 'none' ? styles.primaryButton : styles.secondaryButton}>
+            <Text style={followState === 'none' ? styles.primaryButtonText : styles.secondaryButtonText}>{followLabel}</Text>
           </Pressable>
           {isFollowing && notifyBell}
           <Pressable onPress={onSharePress} style={styles.secondaryButton}>

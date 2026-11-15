@@ -9,6 +9,8 @@ import {
   getFollowerIds,
   getFollowingIds,
   getFollowRequests,
+  getFollowStatus,
+  setNotifyPrefs,
   unfollowUser,
 } from '@/services/follows';
 import { getFriendUsernames, getSuggestedFriends } from '@/services/users';
@@ -24,6 +26,15 @@ export function useFollowingIds(userId: string | undefined) {
   return useQuery({
     queryKey: queryKeys.follows.following(userId ?? ''),
     queryFn: userId ? () => getFollowingIds(userId) : skipToken,
+  });
+}
+
+// The signed-in user's own relationship to someone else's profile (Follow
+// button state + notify switches) -- used by user/[id].
+export function useFollowStatus(userId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.follows.status(userId ?? ''),
+    queryFn: userId ? () => getFollowStatus(userId) : skipToken,
   });
 }
 
@@ -81,5 +92,16 @@ export function useDeclineFollowRequest() {
   return useMutation({
     mutationFn: (fromId: string) => declineFollowRequest(fromId),
     onSettled: () => refreshAfterFollowChange(queryClient),
+  });
+}
+
+// NotifyBell's switches, for someone the signed-in user already follows.
+export function useSetNotifyPrefs() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, ...prefs }: { userId: string; notifyPosts?: boolean; notifyStatus?: boolean }) =>
+      setNotifyPrefs(userId, prefs),
+    onSettled: (_data, _error, { userId }) =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.follows.status(userId) }),
   });
 }

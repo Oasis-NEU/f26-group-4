@@ -62,6 +62,41 @@ export async function followUser(userId: string): Promise<'following' | 'request
   return data === 'requested' ? 'requested' : 'following';
 }
 
+export type FollowStatus = {
+  state: 'none' | 'following' | 'requested';
+  notifyPosts: boolean;
+  notifyStatus: boolean;
+};
+
+// The signed-in user's own relationship to someone else's profile -- for the
+// Follow/Following/Requested button and NotifyBell on user/[id].
+export async function getFollowStatus(userId: string): Promise<FollowStatus> {
+  const me = await currentUserId();
+  const [followResult, requestResult] = await Promise.all([
+    supabase
+      .from('follows')
+      .select('notify_posts, notify_status')
+      .eq('follower_id', me)
+      .eq('following_id', userId)
+      .maybeSingle(),
+    supabase
+      .from('follow_requests')
+      .select('from_id', { count: 'exact', head: true })
+      .eq('from_id', me)
+      .eq('to_id', userId),
+  ]);
+  if (followResult.error) throw followResult.error;
+  if (requestResult.error) throw requestResult.error;
+
+  if (followResult.data) {
+    return { state: 'following', notifyPosts: followResult.data.notify_posts, notifyStatus: followResult.data.notify_status };
+  }
+  if ((requestResult.count ?? 0) > 0) {
+    return { state: 'requested', notifyPosts: false, notifyStatus: false };
+  }
+  return { state: 'none', notifyPosts: false, notifyStatus: false };
+}
+
 // Stops following someone, and cancels a request that's still waiting.
 // Unfollowing also turns off both notify switches, since the follow row goes.
 export async function unfollowUser(userId: string): Promise<void> {

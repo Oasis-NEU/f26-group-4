@@ -48,6 +48,7 @@ export const queryKeys = {
     all: ['follows'] as const,
     followers: (userId: string) => ['follows', 'followers', userId] as const,
     following: (userId: string) => ['follows', 'following', userId] as const,
+    status: (userId: string) => ['follows', 'status', userId] as const, // signed-in user's relationship to userId
     requests: ['follows', 'requests'] as const, // waiting on the signed-in user
     suggestions: ['follows', 'suggestions'] as const,
     friendUsernames: ['follows', 'friend-usernames'] as const,

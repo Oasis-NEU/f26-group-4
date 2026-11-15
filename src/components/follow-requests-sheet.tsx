@@ -22,9 +22,17 @@ type FollowRequestsSheetProps = {
   requests: FollowRequestItem[];
   onAccept: (fromId: string) => void;
   onDecline: (fromId: string) => void;
+  onPressRequester?: (fromId: string) => void; // opens their profile
 };
 
-export function FollowRequestsSheet({ visible, onClose, requests, onAccept, onDecline }: FollowRequestsSheetProps) {
+export function FollowRequestsSheet({
+  visible,
+  onClose,
+  requests,
+  onAccept,
+  onDecline,
+  onPressRequester,
+}: FollowRequestsSheetProps) {
   // Tracks rows that were just accepted, so they can show "Now follows you"
   // for a moment instead of disappearing the instant the parent's data updates.
   const [justAcceptedIds, setJustAcceptedIds] = useState<string[]>([]);
@@ -50,19 +58,21 @@ export function FollowRequestsSheet({ visible, onClose, requests, onAccept, onDe
               const justAccepted = justAcceptedIds.includes(item.fromId);
               return (
                 <View style={styles.row}>
-                  <Avatar
-                    name={item.name}
-                    username={item.username}
-                    uri={item.photoUrl}
-                    userId={item.fromId}
-                    avatarHue={item.avatarHue}
-                    size={44}
-                  />
-                  <View style={styles.rowText}>
-                    <Text style={styles.name}>{item.name}</Text>
-                    <Text style={styles.username}>@{item.username}</Text>
-                    {item.reason && <Text style={styles.reason}>{item.reason}</Text>}
-                  </View>
+                  <Pressable style={styles.rowTap} onPress={() => onPressRequester?.(item.fromId)}>
+                    <Avatar
+                      name={item.name}
+                      username={item.username}
+                      uri={item.photoUrl}
+                      userId={item.fromId}
+                      avatarHue={item.avatarHue}
+                      size={44}
+                    />
+                    <View style={styles.rowText}>
+                      <Text style={styles.name}>{item.name}</Text>
+                      <Text style={styles.username}>@{item.username}</Text>
+                      {item.reason && <Text style={styles.reason}>{item.reason}</Text>}
+                    </View>
+                  </Pressable>
 
                   {justAccepted ? (
                     <Text style={styles.nowFollows}>Now follows you</Text>
@@ -117,6 +127,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 10,
+  },
+  rowTap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   rowText: {
     flex: 1,

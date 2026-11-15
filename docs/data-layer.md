@@ -211,6 +211,7 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 | `follows.ts` | `getFollowerIds(userId)`, `getFollowingIds(userId)`, `isFollowing(userId)` | |
 | | `followUser(userId): 'following' \| 'requested'` | a friends-only account gets a request |
 | | `unfollowUser(userId)`, `setNotifyPrefs(userId, prefs)` | |
+| | `getFollowStatus(userId): FollowStatus` | signed-in user's state ('none'/'following'/'requested') + notify prefs toward one person, for user/[id] |
 | | `getFollowRequests()`, `acceptFollowRequest(fromId)`, `declineFollowRequest(fromId)` | the 📥 inbox |
 | `settings.ts` | `getSettings()`, `updateSettings(changes)` | put together from four tables |
 | | `addCloseFriend(id)`, `removeCloseFriend(id)`, `blockUser(id)`, `unblockUser(id)` | |
@@ -243,6 +244,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | | `useCheckUsername()` returns `(username) => Promise<boolean>` | `isUsernameAvailable` | Create account, Edit profile |
 | `use-follows.ts` | `useFollowerIds(userId)`, `useFollowingIds(userId)`, `useFollowRequests()`, `useSuggestedFriends()`, `useFriendUsernames()` | `follows.ts`, `getSuggestedFriends`, `getFriendUsernames` | Profile, Map, Privacy, Close friends |
 | | `useFollow()`, `useUnfollow()`, `useAcceptFollowRequest()`, `useDeclineFollowRequest()` | `followUser`, `unfollowUser`, `acceptFollowRequest`, `declineFollowRequest` | Profile |
+| | `useFollowStatus(userId)`, `useSetNotifyPrefs()` | `getFollowStatus`, `setNotifyPrefs` | user/[id] |
 | `use-settings.ts` | `useSettings()`, `useUpdateSettings()`, `useToggleCloseFriend()`, `useBlockUser()`, `useUnblockUser()` | `settings.ts` | Settings screens |
 | `use-interests.ts` | `useInterestsByIds(ids)`, `usePopularInterests(limit, enabled?)`, `useSearchInterests(query)`, `useSuggestedInterests(enabled?)`, `useAddInterest()` | `interests.ts` | Profile, Edit profile |
 | `use-cities.ts` | `useCities(filters)`, `useCity(id)`, `useCityPlaces(id)` | `cities.ts` | Explore, City |
@@ -258,6 +260,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | `useCreatePost` | no | `places.all`, `cities.all`, `reviews.all`, `collections.all`, `saves.all`, `interests.suggested` |
 | `useUpdateProfile` | no; stays pending until the fresh profile loads | `profiles.all`, `interests.all`, `follows.suggestions` |
 | `useFollow`, `useUnfollow`, `useAcceptFollowRequest`, `useDeclineFollowRequest` | no | `follows.all`, `profiles.all`, `places.all` (friends' ratings change) |
+| `useSetNotifyPrefs` | no | `follows.status(userId)` |
 | `useUpdateSettings` | yes, `settings.all` | `settings.all`, `follows.all` (friends-only off accepts requests), `profiles.all` |
 | `useToggleCloseFriend` | yes, `settings.all` | `settings.all` |
 | `useUnblockUser` | yes, `settings.all` | `settings.all`, `follows.all`, `profiles.all` |

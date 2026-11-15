@@ -40,6 +40,7 @@ function RootStack() {
       <Stack.Protected guard={!!user}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="place/[id]" options={{ title: 'Place' }} />
+        <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="city/[id]" />
         <Stack.Screen name="collection/[id]" />
         <Stack.Screen name="upload" options={{ title: 'Upload', presentation: 'modal' }} />

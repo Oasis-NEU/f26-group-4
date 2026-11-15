@@ -178,6 +178,7 @@ export default function ProfilePage() {
                     key={friend.id}
                     profile={friend}
                     reason={reason}
+                    onPress={() => router.push({ pathname: '/user/[id]', params: { id: friend.id } })}
                     // Follows them, or sends a request if their account is friends-only.
                     onAddPress={() => follow.mutate(friend.id)}
                   />
@@ -243,6 +244,10 @@ export default function ProfilePage() {
         }}
         onDecline={(fromId) => {
           declineRequest.mutate(fromId);
+        }}
+        onPressRequester={(fromId) => {
+          setIsInboxOpen(false);
+          router.push({ pathname: '/user/[id]', params: { id: fromId } });
         }}
       />
     </SafeAreaView>
