@@ -18,6 +18,7 @@ type SessionValue = {
   // confirm their email first. The shared dev project doesn't.
   signUp: (fields: SignUpFields) => Promise<{ needsEmailConfirmation: boolean }>;
   signInAsDemoUser: (username: string) => Promise<void>;
+  finishOnboarding: () => Promise<void>;
   signOut: () => Promise<void>;
   // Deletes the account for good (the delete-account Edge Function), then signs out.
   deleteAccount: () => Promise<void>;
@@ -74,7 +75,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim().toLowerCase(),
           password,
-          options: { data: { username: username.trim().toLowerCase(), name: name.trim() } },
+          options: { data: { username: username.trim().toLowerCase(), name: name.trim(), onboarding_pending: true } },
         });
         if (error) throw error;
         return { needsEmailConfirmation: !data.session };
@@ -88,6 +89,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           password,
         });
         if (error) throw error;
+      },
+
+      async finishOnboarding() {
+        const { data, error } = await supabase.auth.updateUser({
+          data: { onboarding_pending: false },
+        });
+        if (error) throw error;
+        if (data.user?.id === userIdRef.current) setUser(data.user);
       },
 
       async signOut() {

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import { Stack, router } from 'expo-router';
 import { Button, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthInput } from '@/components/auth-input';
 import { OnboardingDropdown } from '@/components/onboarding-dropdown';
 import { TagPicker } from '@/components/tag-picker';
+import { useSession } from '@/hooks/use-session';
 import type { OnboardingFields } from '@/types/onboarding-fields';
 
 const countries = [
@@ -28,7 +28,9 @@ export default function OnboardingPage() {
   const [answers, setAnswers] = useState<OnboardingFields>({});
   const [stepIndex, setStepIndex] = useState(0);
   const [photoError, setPhotoError] = useState('');
-  const [previewComplete, setPreviewComplete] = useState(false);
+  const { finishOnboarding } = useSession();
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [finishError, setFinishError] = useState('');
 
   const [showOther, setShowOther] = useState(false);
   const [otherInterest, setOtherInterest] = useState('');
@@ -41,32 +43,36 @@ export default function OnboardingPage() {
     : Boolean(answers[field]?.trim());
 
   function saveAnswer(value: string) {
-    setPreviewComplete(false);
+    setFinishError('');
     if (field !== 'interests') {
       setAnswers((current) => ({ ...current, [field]: value }));
     }
   }
 
   function goBack() {
-    setPreviewComplete(false);
+    setFinishError('');
     setPhotoError('');
 
     if (stepIndex > 0) {
       setStepIndex(stepIndex - 1);
-    } else if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/create-account');
     }
   }
 
-  function goNext() {
+  async function goNext() {
+    if (isFinishing) return;
     setPhotoError('');
 
     if (stepIndex < steps.length - 1) {
       setStepIndex(stepIndex + 1);
     } else {
-      setPreviewComplete(true);
+      setIsFinishing(true);
+      setFinishError('');
+      try {
+        await finishOnboarding();
+      } catch {
+        setFinishError('Could not finish setup. Please try again.');
+        setIsFinishing(false);
+      }
     }
   }
 
@@ -100,12 +106,12 @@ export default function OnboardingPage() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
-
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Back"
         onPress={goBack}
+        disabled={stepIndex === 0 || isFinishing}
+        accessibilityState={{ disabled: stepIndex === 0 || isFinishing }}
         style={[styles.pill, styles.back]}
       >
         <Text style={styles.arrow}>←</Text>
@@ -174,7 +180,7 @@ export default function OnboardingPage() {
               selected={showOther ? [...selectedHobbies, 'Other'] : selectedHobbies}
               multiple
               onChange={(choices) => {
-                setPreviewComplete(false);
+                setFinishError('');
                 setShowOther(choices.includes('Other'));
                 setAnswers((current) => ({
                   ...current,
@@ -187,7 +193,7 @@ export default function OnboardingPage() {
                 label="Type another interest"
                 value={otherInterest}
                 onChangeText={(text) => {
-                  setPreviewComplete(false);
+                  setFinishError('');
                   setOtherInterest(text);
                 }}
               />
@@ -198,25 +204,22 @@ export default function OnboardingPage() {
         <Button
           title={field === 'interests' ? 'Finish' : 'Continue'}
           onPress={goNext}
-          disabled={!canContinue}
+          disabled={!canContinue || isFinishing}
         />
 
         {field === 'profilePicture' && (
           <Text style={styles.halfway}>You’re halfway there!</Text>
         )}
 
-        {previewComplete && (
-          <Text accessibilityLiveRegion="polite">
-            Preview complete. Interests:{' '}
-            {[...new Set([...selectedHobbies, ...(customInterest ? [customInterest] : [])])].join(', ') || 'None selected'}
-          </Text>
-        )}
+        {isFinishing && <Text>Finishing setup…</Text>}
+        {finishError ? <Text accessibilityRole="alert">{finishError}</Text> : null}
       </View>
 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Skip this question"
         onPress={skipStep}
+        disabled={isFinishing}
         style={[styles.pill, styles.skip]}
       >
         <Text style={styles.skipText}>Skip →</Text>

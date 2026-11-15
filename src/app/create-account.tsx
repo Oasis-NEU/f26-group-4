@@ -57,9 +57,9 @@ export default function CreateAccountPage() {
       }
       const { needsEmailConfirmation } = await signUp({ email, password, username: wantedUsername, name });
       // Without email confirmation, signing up also signs in, and the root
-      // layout moves to the tabs by itself.
+      // layout opens onboarding.
       if (needsEmailConfirmation) {
-        setMessage('Check your email to confirm your account, then log in.');
+        setMessage('Check your email to confirm your account, then log in to set up your profile.');
         setIsBusy(false);
       }
     } catch (error) {

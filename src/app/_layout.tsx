@@ -7,9 +7,7 @@ import { queryClient } from '@/lib/query-client';
 // The app's outermost navigator. The tab bar itself is set up in (tabs)/_layout.tsx.
 // Screens listed here open on top of the tabs, with a back button, instead of being a tab.
 //
-// The two Stack.Protected groups are the login gate: signed out, only Log in and
-// Create account exist; signed in, everything else does. Signing in or out flips
-// the guards, and the router moves to the first screen that's allowed.
+// Route to login, onboarding, or the main app based on the signed-in session.
 // QueryClientProvider holds the React Query cache that every hook in
 // src/hooks/ reads from (docs/data-layer.md).
 export default function RootLayout() {
@@ -25,6 +23,8 @@ export default function RootLayout() {
 function RootStack() {
   const { user, isLoading } = useSession();
 
+  const needsOnboarding = user?.user_metadata.onboarding_pending === true;
+
   // Wait for the saved session, so a signed-in person doesn't see Login flash first.
   if (isLoading) {
     return null;
@@ -37,7 +37,11 @@ function RootStack() {
         <Stack.Screen name="create-account" options={{ title: 'Create account' }} />
       </Stack.Protected>
 
-      <Stack.Protected guard={!!user}>
+      <Stack.Protected guard={!!user && needsOnboarding}>
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      </Stack.Protected>
+
+      <Stack.Protected guard={!!user && !needsOnboarding}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="place/[id]" options={{ title: 'Place' }} />
         <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
