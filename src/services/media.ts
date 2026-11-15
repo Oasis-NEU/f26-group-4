@@ -40,7 +40,11 @@ export async function uploadMedia(localUri: string, folder: MediaFolder): Promis
 
   let image = await ImageManipulator.manipulate(localUri).renderAsync();
   if (image.width > MAX_WIDTH) {
-    image = await ImageManipulator.manipulate(localUri).resize({ width: MAX_WIDTH, height: null }).renderAsync();
+    // No `height` -- resize keeps the aspect ratio from just a width. Passing
+    // `height: null` (instead of leaving it out) breaks this on web: its
+    // resize step checks `!== undefined`, null passes that check, and
+    // `Math.round(null)` collapses to a 0px target height.
+    image = await ImageManipulator.manipulate(localUri).resize({ width: MAX_WIDTH }).renderAsync();
   }
   const saved = await image.saveAsync({ compress: 0.7, format: SaveFormat.JPEG });
   const bytes = await (await fetch(saved.uri)).arrayBuffer();

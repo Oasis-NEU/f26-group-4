@@ -39,6 +39,17 @@ function isDraftValid(draft: Profile): boolean {
   return true;
 }
 
+// router.back() only works if there's a screen to go back TO -- a direct link
+// to /edit-profile (a refreshed browser tab) has no history, so this falls
+// back to Profile directly, same as Settings' own back button.
+function backToProfile() {
+  if (router.canGoBack()) {
+    router.back();
+  } else {
+    router.replace('/profile');
+  }
+}
+
 // Only the fields that actually changed, so updateProfile gets a minimal patch.
 function diffProfile(original: Profile, draft: Profile): Partial<Omit<Profile, 'id'>> {
   const changes: Partial<Record<keyof Profile, unknown>> = {};
@@ -120,7 +131,7 @@ function EditProfileForm({ profile }: { profile: Profile }) {
     if (hasChanges) {
       setIsDiscardOpen(true);
     } else {
-      router.back();
+      backToProfile();
     }
   }
 
@@ -139,7 +150,7 @@ function EditProfileForm({ profile }: { profile: Profile }) {
       }
 
       await updateProfile.mutateAsync(diffProfile(profile, draft));
-      router.back();
+      backToProfile();
     } catch {
       setSaveError("Couldn't save your changes. Try again.");
       setIsSaving(false);
@@ -330,7 +341,7 @@ function EditProfileForm({ profile }: { profile: Profile }) {
         visible={isDiscardOpen}
         onDiscard={() => {
           setIsDiscardOpen(false);
-          router.back();
+          backToProfile();
         }}
         onKeepEditing={() => setIsDiscardOpen(false)}
       />
