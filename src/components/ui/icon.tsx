@@ -18,6 +18,7 @@ import { colors, icon } from '@/theme';
 
 type IconName =
   | 'back'
+  | 'forward'
   | 'share'
   | 'bookmark'
   | 'add'
@@ -38,6 +39,7 @@ type IconName =
 // Our name on the left, Feather's name on the right.
 const FEATHER_NAMES = {
   back: 'chevron-left',
+  forward: 'chevron-right',
   share: 'share',
   bookmark: 'bookmark',
   add: 'plus',

@@ -1,7 +1,14 @@
-// Where the Explore page gets its cities from: the city_stats view, which works
+// Where the Explore page got its cities from: the city_stats view, which works
 // out each city's place count, review count, rating, cover and popularity from
 // the places in it. Cities are rows in the database now, shared with the
 // "Lives in" and "Dream trip" pickers (profile-cities.ts).
+//
+// NOTE: nothing calls getCities(), getCityPlaces() or getCity() any more, nor
+// the useCities / useCity / useCityPlaces hooks around them. They were for the
+// Explore page of city tiles and the city page those opened, which went when
+// Explore merged into the feed: the tiles are a row at the top of the feed now
+// and filter it in place (src/lib/suggestions.ts). They're left here in case a
+// branch still uses them; delete them once the team has merged.
 
 import { supabase } from '@/lib/supabase';
 

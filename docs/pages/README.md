@@ -7,14 +7,14 @@ This folder plans each page from our low-fidelity sketch: what goes on the page,
 | # | Page | Route | Plan |
 | - | ---- | ----- | ---- |
 | 1 | Log in (+ Create account) | `/login` | [01-login.md](01-login.md) |
-| 2 | Feed | `/` | [02-feed.md](02-feed.md) |
+| 2 | Feed (the Explore tab) | `/` | [02-feed.md](02-feed.md) |
 | 3 | Map | `/map` | [03-map.md](03-map.md) |
 | 4 | Place details | `/place/[id]` | [04-place-details.md](04-place-details.md) |
 | 5 | Saved collections | `/saved` | [05-saved-collections.md](05-saved-collections.md) |
 | 6 | Collection list | `/collection/[id]` | [06-collection-list.md](06-collection-list.md) |
 | 7 | Upload | `/upload` | [07-upload.md](07-upload.md) |
 | 8 | Profile | `/profile` | [08-profile.md](08-profile.md) |
-| 9 | Explore | `/explore` | [09-explore.md](09-explore.md) |
+| 9 | Explore (merged into the feed) | — | [09-explore.md](09-explore.md) |
 
 Search was in the sketch's tab bar as a placeholder. Explore has taken that tab slot, and the placeholder page is gone. Searching for other users still has no home -- see [09-explore.md](09-explore.md).
 
@@ -22,26 +22,29 @@ Search was in the sketch's tab bar as a placeholder. Explore has taken that tab 
 
 ### Route tree
 
-Everything sits inside the root stack in `src/app/_layout.tsx`. Pages inside `(tabs)` show the tab bar. Pages outside it open on top of the tabs with a back button, which is how `place/[id]` already works.
+Everything sits inside the root stack in `src/app/_layout.tsx`. Pages inside `(tabs)` show the tab bar. Each tab has its own stack, and the screens in `(tabs)/(profile,map,explore,saved)/` are pushed inside whichever tab you're in, with a back button, so the tab bar stays. Pages outside `(tabs)` cover the whole screen.
 
 ```
 Root Stack                     src/app/_layout.tsx, wrapped in a SessionProvider
 ├─ Signed out only
 │  ├─ login                    /login
 │  └─ create-account           /create-account
+├─ onboarding                  /onboarding         right after creating an account
 └─ Signed in only
-   ├─ (tabs)                   tab bar, src/app/(tabs)/_layout.tsx
-   │  ├─ profile               /profile            "Account" tab
-   │  ├─ map                   /map
-   │  ├─ index                 /                   "Feed" tab, the app opens here
-   │  ├─ saved                 /saved              NEW tab
-   │  └─ explore               /explore            NEW tab, replaced search
-   ├─ place/[id]               /place/:id          pushed, back button
-   ├─ city/[name]              /city/:name         pushed, back button       NEW (see 09)
-   ├─ collection/[id]          /collection/:id     pushed, back button       NEW
-   ├─ upload                   /upload             modal                     NEW
+   ├─ (tabs)                   tab bar, src/app/(tabs)/_layout.tsx; each tab is its own stack
+   │  ├─ (profile)/profile     /profile            "Account" tab
+   │  ├─ (map)/map             /map
+   │  ├─ (explore)/index       /                   "Explore" tab: the feed, tiles on top; the app opens here
+   │  ├─ (saved)/saved         /saved
+   │  └─ (profile,map,explore,saved)/              pushed inside the current tab, back button
+   │     ├─ place/[id]         /place/:id
+   │     ├─ collection/[id]    /collection/:id
+   │     ├─ new-collection     /new-collection     ?parentId=... for a sub-collection
+   │     └─ user/[id]          /user/:id           someone else's profile
+   ├─ upload                   /upload             modal
    ├─ save-to-collection       /save-to-collection sheet, ?placeId=...       NEW (see 05)
-   └─ edit-profile             /edit-profile       modal                     NEW (see 08)
+   ├─ edit-profile             /edit-profile       modal
+   └─ settings/...             /settings
 ```
 
 `save-to-collection` and `edit-profile` aren't in the sketch. The bookmark button and the edit button need somewhere to go, so they're planned inside the Saved Collections and Profile docs.
@@ -55,19 +58,19 @@ flowchart TD
   subgraph tabs["Tab bar"]
     profile["Profile<br/>/profile"]
     map["Map<br/>/map"]
-    feed["Feed<br/>/"]
+    feed["Explore (the feed)<br/>/"]
     saved["Saved collections<br/>/saved"]
-    explore["Explore<br/>/explore"]
   end
 
   login -->|sign in or demo user| feed
   feed -->|tap card| place["Place details<br/>/place/[id]"]
   map -->|pin popup| place
-  explore -->|tap a city tile| city["City<br/>/city/[name]"]
-  city -->|tap a place| place
+  feed -->|tap a tile: filters in place| feed
   profile -->|tap a review| place
   saved -->|tap a collection| collection["Collection list<br/>/collection/[id]"]
   collection -->|tap a row| place
+  saved -->|+ New| newc["New collection<br/>/new-collection"]
+  collection -->|+ sub-collection| newc
 
   feed -->|+ button| upload["Upload (modal)<br/>/upload"]
   profile -->|+ button| upload

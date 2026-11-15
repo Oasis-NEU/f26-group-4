@@ -13,27 +13,33 @@ import * as Location from 'expo-location';
 
 import { AuthInput } from '@/components/auth-input';
 import { RatingStars } from '@/components/rating-stars';
-import { TagPicker } from '@/components/tag-picker';
+import { SearchTagField } from '@/components/search-tag-field';
 import { UploadMediaPicker } from '@/components/upload-media-picker';
+import { useCitySearch } from '@/hooks/use-cities';
+import { useFilterOptions } from '@/hooks/use-places';
 import { useCreatePost } from '@/hooks/use-reviews';
+import { COUNTRY_NAMES } from '@/lib/countries';
 import type { UploadFields } from '@/types/upload-fields';
 import { validatePost } from '@/utils/validate-post';
 
-const placeTypes = [
-  'Cafe',
-  'Restaurant',
-  'Excursion',
-  'Sport',
-  'Other',
-];
-
-const suitedForOptions = [
-  'Solo',
-  'Friends',
-  'Families',
-  'Adventure',
-  'Skiers',
-];
+// ---------------------------------------------------------------------------
+// NOTE (Ruby, from the collections work) -- this page isn't mine, so here's
+// what changed and why. Revert any of it if you disagree.
+//
+// There used to be two hardcoded lists here: five place types and five
+// "suited for" options. That capped what anyone could ever post -- you could
+// not add a museum or a garden, and the collection rules on the Saved tab
+// could only ever offer the same five things back.
+//
+// They now come from the database (the place_types and suited_for_tags
+// tables, through useFilterOptions), the same lists the feed's filters and
+// the New collection screen use, so a post and a "Cafes in Japan" collection
+// use the same words. City and Country changed from free text to the same
+// kind of picker, so a place's country is spelled the same way every time and
+// a "Places in Japan" collection can actually match it. Any city can still be
+// typed in; create_review() adds it if it's new. The photo's location still
+// fills both in.
+// ---------------------------------------------------------------------------
 
 const locationHint =
   'Add a photo with GPS data to fill the location automatically.';
@@ -41,8 +47,6 @@ const locationHint =
 const textFields = [
   { key: 'placeName', label: 'Place name *' },
   { key: 'address', label: 'Address (optional)' },
-  { key: 'city', label: 'City *' },
-  { key: 'country', label: 'Country *' },
 ] as const;
 
 type PhotoLocation = {
@@ -98,6 +102,9 @@ function FieldError({ message }: { message?: string }) {
 
 export default function UploadPage() {
   const createPost = useCreatePost();
+  const filterOptions = useFilterOptions();
+  const knownCities = useCitySearch('');
+  const cityNames = [...new Set((knownCities.data ?? []).map((city) => city.name))];
   const [fields, setFields] = useState<UploadFields>(emptyFields);
   const [attempted, setAttempted] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
@@ -337,6 +344,32 @@ export default function UploadPage() {
           </View>
         ))}
 
+        <SearchTagField
+          label="City *"
+          placeholder="Search cities"
+          hint="Type any city. We only suggest the ones the app already knows."
+          multiple={false}
+          allowNew
+          selected={fields.city === '' ? [] : [fields.city]}
+          onChange={(selected) => updateField('city', selected[0] ?? '')}
+          options={cityNames}
+          disabled={isPosting}
+        />
+
+        <FieldError message={errors.city} />
+
+        <SearchTagField
+          label="Country *"
+          placeholder="Search countries"
+          multiple={false}
+          selected={fields.country === '' ? [] : [fields.country]}
+          onChange={(selected) => updateField('country', selected[0] ?? '')}
+          options={COUNTRY_NAMES}
+          disabled={isPosting}
+        />
+
+        <FieldError message={errors.country} />
+
         <RatingStars
           rating={fields.rating}
           onChange={(rating) => updateField('rating', rating)}
@@ -363,25 +396,31 @@ export default function UploadPage() {
 
         <FieldError message={errors.reviewText} />
 
-        <TagPicker
-          label="Place type * — choose one"
-          options={placeTypes}
+        <SearchTagField
+          label="Place type *"
+          placeholder="Cafe, museum, garden…"
+          hint="Pick one."
+          multiple={false}
           selected={fields.placeType ? [fields.placeType] : []}
           onChange={(selected) =>
             updateField('placeType', selected[0] ?? '')
           }
+          options={filterOptions.placeTypes}
+          disabled={isPosting}
         />
 
         <FieldError message={errors.placeType} />
 
-        <TagPicker
+        <SearchTagField
           label="Suited for — optional"
-          options={suitedForOptions}
+          placeholder="Solo, adventure, budget…"
+          hint="Choose as many as fit."
           selected={fields.suitedFor}
-          multiple={true}
           onChange={(selected) =>
             updateField('suitedFor', selected)
           }
+          options={filterOptions.suitedFor}
+          disabled={isPosting}
         />
       </View>
 

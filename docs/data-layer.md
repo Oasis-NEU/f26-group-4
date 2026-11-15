@@ -39,9 +39,16 @@ Why not keep the user's data in context: every change would re-render every scre
 
 ```
 src/app/         Screens. Call hooks; show the loading, error, empty and loaded states.
+                 Each tab is a (name) folder with its own stack inside it, so opening a
+                 place or a collection keeps the tab bar. Screens that should cover the
+                 WHOLE screen (Upload, Settings, Edit profile, Login) stay at the top
+                 level. Screens every tab can open (place, collection, someone's profile,
+                 New collection) live in (tabs)/(profile,map,explore,saved)/.
 src/components/  Same rule as screens: hooks, not services.
 src/hooks/       One file per kind of data (use-saves.ts, use-places.ts, ...): useQuery / useMutation around services.
-src/lib/         query-client.ts, query-keys.ts and supabase.ts.
+src/lib/         query-client.ts, query-keys.ts and supabase.ts. Also plain functions with no
+                 backend for collections and Explore: collection-rules.ts, collection-tree.ts,
+                 regions.ts, countries.ts and suggestions.ts.
 src/services/    Plain async functions that query Supabase. The only place that imports the client.
 src/utils/       Pure helpers with no backend: validatePost, formatStatusText, trimStatusForLevel, ...
 supabase/        Migrations, seed data and database tests. The database schema, checked into git.
@@ -187,17 +194,18 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 
 | File | Function | Notes |
 | --- | --- | --- |
-| `places.ts` | `getPlaces(filters): Place[]` | `search_places()`, with ratings, city and reviews |
+| `places.ts` | `getPlaces(filters): Place[]` | `search_places()`, with ratings, city and reviews. `filters.rules` (an Explore tile) is matched in the app, after the search |
 | | `getPlace(id): Place \| null` | with all its reviews |
 | | `getPlaceTypes()`, `getSuitedForTags(): string[]` | the filter lists, from the database |
 | | `getPlacesByIds(ids): Place[]` | several places in one request, e.g. the ones a profile reviewed |
 | `collections.ts` | `getSavedPlaceIds(): string[]` | |
-| | `savePlace(placeId)` / `unsavePlace(placeId)` | unsaving also takes the place out of every collection (a database rule) |
+| | `savePlace(placeId)` / `unsavePlace(placeId)` | a new save also goes into every auto add collection it matches ([Collections and auto add](#collections-and-auto-add)); unsaving also takes the place out of every collection (a database rule) |
 | | `getAllSavedPlaces()`, `getSavedPlaces(): Place[]` | every save; the loose ones |
 | | `getCollections()`, `getCollectionsForProfile(ownerId): Collection[]` | yours; someone's, without their private ones |
-| | `getCollection(id): Collection \| null` | handles `ALL_SAVED_ID` |
-| | `removeFromCollection(collectionId, placeId)` | the place stays saved |
-| | `getSavedCollectionIds(placeId)`, `createCollection`, `renameCollection`, `deleteCollection`, `addToCollection` | **add** for the save sheet |
+| | `getCollection(id): Collection \| null` | handles `ALL_SAVED_ID`; with the sub-collections directly inside it |
+| | `removeFromCollection(collectionId, placeId)` | the place stays saved. On an auto add collection it goes into `collection_exclusions`, so auto add doesn't put it straight back |
+| | `createCollection(fields: NewCollectionFields): string` | the name, an optional `parentId`, `isPrivate` (left out, the person's setting decides), the auto add `rules` and `autoAdd`, and `placeIds` to put in straight away. Gives back the new id |
+| | `getSavedCollectionIds(placeId)`, `renameCollection`, `deleteCollection`, `addToCollection` | **add** for the save sheet |
 | `posts.ts` | `createPost(fields: UploadFields): SavedPost` | uploads the photos, then `create_review()`, which adds the city and place if they're new |
 | `reviews.ts` | `getReviewsByAuthor(authorId): AuthoredReview[]` | |
 | | `getLikedReviewIds(): string[]` | every review the signed-in user liked |
@@ -216,7 +224,7 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 | `settings.ts` | `getSettings()`, `updateSettings(changes)` | put together from four tables |
 | | `addCloseFriend(id)`, `removeCloseFriend(id)`, `blockUser(id)`, `unblockUser(id)` | |
 | `interests.ts` | `getInterestsByIds(ids)`, `searchInterests(query)`, `getPopularInterests(limit)`, `suggestInterestsFromPosts()`, `addInterest(name)` | |
-| `cities.ts` | `getCities(filters)`, `getCity(id)`, `getCityPlaces(id)` | the `city_stats` view |
+| `cities.ts` | `getCities(filters)`, `getCity(id)`, `getCityPlaces(id)` | the `city_stats` view. Nothing calls them since Explore merged into the feed; delete once the team has merged |
 | `profile-cities.ts` | `getProfileCity(id)`, `searchProfileCities(query)` | the `cities` table |
 | | `addProfileCity(name, country)` | adds a row when the picker's search comes up empty; same `cities: add` RLS policy posting a review in a new city already uses |
 | `media.ts` | `uploadMedia(localUri, folder)`, `getMediaUrl(path)`, `deleteMedia(paths)` | photos in the `media` bucket |
@@ -232,12 +240,14 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | File | Hooks | Wraps | Used by |
 | --- | --- | --- | --- |
 | `use-session.tsx` | `SessionProvider`, `useSession()` returns `{ user, isLoading, signIn, signUp, signInAsDemoUser, signOut, deleteAccount }`; `useUserId()` | Supabase Auth | root layout, Login, Create account, Settings, Profile |
-| `use-places.ts` | `usePlaces(filters)`, `usePlace(id)`, `usePlacesByIds(ids)` | `getPlaces`, `getPlace`, `getPlacesByIds` | Feed, Map, Place details, Profile |
-| | `useFilterOptions()` returns `{ placeTypes, suitedFor }` | `getPlaceTypes`, `getSuitedForTags` | Feed, Map, Explore |
+| `use-places.ts` | `usePlaces(filters)`, `usePlace(id)`, `usePlacesByIds(ids)` | `getPlaces`, `getPlace`, `getPlacesByIds` | Explore, Map, Place details, Profile |
+| | `useSuggestions()`, the Explore tiles | `getPlaces({})`, then `buildSuggestions` from `src/lib/suggestions.ts` | `SuggestionStrip` |
+| | `useFilterOptions()` returns `{ placeTypes, suitedFor }` | `getPlaceTypes`, `getSuitedForTags` | Explore, Map, Upload, New collection |
 | `use-saves.ts` | `useSavedPlaceIds()`, `useIsSaved(placeId)`, `useToggleSave()` | `getSavedPlaceIds`, `savePlace` / `unsavePlace` | `PlaceCard`, Place details, Collection |
 | | `useAllSavedPlaces()`, `useLooseSavedPlaces()` | `getAllSavedPlaces`, `getSavedPlaces` | Saved |
 | `use-collections.ts` | `useCollections()`, `useCollectionsForProfile(ownerId)`, `useCollection(id)`, `useRemoveFromCollection()`; re-exports `ALL_SAVED_ID` | `getCollections`, `getCollectionsForProfile`, `getCollection`, `removeFromCollection` | Saved, Profile, Collection |
-| | `useCollectionsContaining(placeId)`, `useCreateCollection()`, `useRenameCollection()`, `useDeleteCollection()`, `useAddToCollection()` | **add** with the save sheet | |
+| | `useCreateCollection()`, `useCanAddSubCollection(id)`, `useRulesAbove(parentId)` | `createCollection`; the other two work out the nesting from `useCollections()` with `src/lib/collection-tree.ts` | New collection, Collection |
+| | `useCollectionsContaining(placeId)`, `useRenameCollection()`, `useDeleteCollection()`, `useAddToCollection()` | **add** with the save sheet | |
 | `use-reviews.ts` | `useReviewsByUser(userId)`, `useIsLiked(reviewId)`, `useToggleLike()` | `getReviewsByAuthor`, `getLikedReviewIds`, `likeReview` / `unlikeReview` | Profile, `PlaceCard` |
 | | `useCreatePost()` | `createPost` | Upload |
 | `use-profiles.ts` | `useProfile(id)`, `useProfilesByIds(ids)`, `useUpdateProfile()` | `getProfile`, `getProfilesByIds`, `updateProfile` | Profile, Edit profile, Settings |
@@ -247,8 +257,8 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | | `useFollowStatus(userId)`, `useSetNotifyPrefs()` | `getFollowStatus`, `setNotifyPrefs` | user/[id] |
 | `use-settings.ts` | `useSettings()`, `useUpdateSettings()`, `useToggleCloseFriend()`, `useBlockUser()`, `useUnblockUser()` | `settings.ts` | Settings screens |
 | `use-interests.ts` | `useInterestsByIds(ids)`, `usePopularInterests(limit, enabled?)`, `useSearchInterests(query)`, `useSuggestedInterests(enabled?)`, `useAddInterest()` | `interests.ts` | Profile, Edit profile |
-| `use-cities.ts` | `useCities(filters)`, `useCity(id)`, `useCityPlaces(id)` | `cities.ts` | Explore, City |
-| | `useProfileCity(id)`, `useCitySearch(query)`, `useAddProfileCity()` | `profile-cities.ts` | Profile, Edit profile |
+| `use-cities.ts` | `useCities(filters)`, `useCity(id)`, `useCityPlaces(id)` | `cities.ts` | nothing now (they were for the Explore and City pages) |
+| | `useProfileCity(id)`, `useCitySearch(query)`, `useAddProfileCity()` | `profile-cities.ts` | Profile, Edit profile; `useCitySearch('')` for Upload's and New collection's city pickers |
 
 ### Mutations and what they refresh
 
@@ -257,6 +267,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | `useToggleSave` | yes, `saves.ids` | `saves.all`, `collections.all` (unsaving uncollects) |
 | `useToggleLike` | yes, `reviews.likedIds` | `reviews.likedIds` |
 | `useRemoveFromCollection` | no | `collections.all`, `saves.all` |
+| `useCreateCollection` | no | `collections.all`, `saves.all` (places put in straight away stop being loose) |
 | `useCreatePost` | no | `places.all`, `cities.all`, `reviews.all`, `collections.all`, `saves.all`, `interests.suggested` |
 | `useUpdateProfile` | no; stays pending until the fresh profile loads | `profiles.all`, `interests.all`, `follows.suggestions` |
 | `useFollow`, `useUnfollow`, `useAcceptFollowRequest`, `useDeclineFollowRequest` | no | `follows.all`, `profiles.all`, `places.all` (friends' ratings change) |
@@ -267,7 +278,17 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | `useBlockUser` | no | `settings.all`, `follows.all` (blocking ends follows), `profiles.all` |
 | `useAddInterest` | no | `interests.all` |
 | `useAddProfileCity` | no | `cities.all` |
-| save sheet: `useAddToCollection`, `useCreateCollection`, `useRenameCollection`, `useDeleteCollection` | **add** | `collections.all`, and `saves.all` for add and delete |
+| save sheet: `useAddToCollection`, `useRenameCollection`, `useDeleteCollection` | **add** | `collections.all`, and `saves.all` for add and delete |
+
+## Collections and auto add
+
+From Ruby's `collections-and-explore` branch, moved onto Supabase when it was merged.
+
+- **Rules.** A collection can have `rules` (`CollectionRules` in `src/types/collection.ts`: regions, countries, cities, place types and "suited for" tags). Inside one group any match is enough; every group that's filled in has to match: "Bars in Japan". `matchesRules()` in `src/lib/collection-rules.ts` decides, and `regions.ts` knows which countries are in "Europe".
+- **Auto add.** With `auto_add` on, `savePlace()` puts a newly saved place into every matching collection. It runs in the app, not a trigger, so the New collection screen's "3 places already match" preview uses the same code. A failure there is logged and leaves the save in place.
+- **Nesting.** Three deep (Europe Trip > France > Paris), `MAX_COLLECTION_DEPTH` in `src/lib/collection-tree.ts`, and the database refuses a fourth level. A sub-collection is narrowed by the ones above it: a place has to match Europe AND France AND Paris.
+- **Taking a place out by hand** adds a row to `collection_exclusions` (only the owner can see it), so auto add skips that place. Putting it back in by hand clears the row (a database rule).
+- **The database half** is the `collection_rules` migration: the `rules` and `auto_add` columns, the exclusions table, and the three-level nesting check. Until it's pushed, plain collections still work (reads ask for `*`, and only a collection with rules writes the new columns). Making one with rules, or a third level, fails with the database's error. After pushing, regenerate `src/types/database.ts` and switch the `untypedSupabase` queries in `collections.ts` back to `supabase`.
 
 ## Type changes
 
@@ -279,7 +300,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | `Review` | Add `authorId`. Keep `profileName` as the username to show; the service fills it in from the author's profile. | Done |
 | `Review` | Remove `likedByMe`. Use `useIsLiked(review.id)` instead. | Done |
 | `Profile` | Remove `friendIds` and `postIds`. Use `useFollowerIds(id)`, `useFollowingIds(id)` and `useReviewsByUser(id)`. | Done |
-| `Collection` | No change. Services build `places` and `subCollections` from the database. | — |
+| `Collection` | Add `parentId`, `rules` and `autoAdd`. Services build `places` and `subCollections` from the database. | Done |
 | `src/types/database.ts` | Generated from the database. Never edit it by hand. | Done |
 
 ## Phase 0: Foundation
@@ -328,13 +349,13 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | Page | File | Hooks | Gets rid of |
 | --- | --- | --- | --- |
 | Session and login gate | `src/hooks/use-session.tsx`, `login.tsx`, `create-account.tsx`, `_layout.tsx` | `useSession()` | "Login is not connected yet"; the temporary "Go to login" link. Plan: [01-login.md](pages/01-login.md) |
-| Feed | `(tabs)/index.tsx` | `usePlaces(filters)` | the `ignore` `useEffect` and `load()` |
-| Map | `(tabs)/map.tsx` | `usePlaces(filters)` | the `ignore` `useEffect`. Keep the camera logic in a `useEffect` that runs when the places change. |
-| Place details | `place/[id].tsx` | `usePlace(id)` | the `useEffect` |
-| Saved | `(tabs)/saved.tsx` | `useCollections()`, `useLooseSavedPlaces()`, `useAllSavedPlaces()` | three `.then` calls; the "reload on focus" TODO |
-| Collection | `collection/[id].tsx` | `useCollection(id)`, `useRemoveFromCollection()` | the `useFocusEffect` TODO |
+| Feed | `(tabs)/(explore)/index.tsx` | `usePlaces(filters)` | the `ignore` `useEffect` and `load()` |
+| Map | `(tabs)/(map)/map.tsx` | `usePlaces(filters)` | the `ignore` `useEffect`. Keep the camera logic in a `useEffect` that runs when the places change. |
+| Place details | `(tabs)/(profile,map,explore,saved)/place/[id].tsx` | `usePlace(id)` | the `useEffect` |
+| Saved | `(tabs)/(saved)/saved.tsx` | `useCollections()`, `useLooseSavedPlaces()`, `useAllSavedPlaces()` | three `.then` calls; the "reload on focus" TODO |
+| Collection | `(tabs)/(profile,map,explore,saved)/collection/[id].tsx` | `useCollection(id)`, `useRemoveFromCollection()` | the `useFocusEffect` TODO |
 | Save sheet (new) | `save-to-collection.tsx` | `useCollections()`, `useCollectionsContaining(placeId)`, `useAddToCollection()`, `useRemoveFromCollection()`, `useCreateCollection()` | Bookmark taps open this instead of toggling directly. Plan: [05](pages/05-saved-collections.md) |
-| Profile | `(tabs)/profile.tsx` | `useSession()`, `useProfile(id)`, `useReviewsByUser(id)`, `useFriends(id)`, `useSuggestedFriends()` | `CURRENT_USER_ID`; the `useFocusEffect` fetch; the reviews TODO |
+| Profile | `(tabs)/(profile)/profile.tsx` | `useSession()`, `useProfile(id)`, `useReviewsByUser(id)`, `useFriends(id)`, `useSuggestedFriends()` | `CURRENT_USER_ID`; the `useFocusEffect` fetch; the reviews TODO |
 | Edit profile (new) | `edit-profile.tsx` | `useUpdateProfile()` | |
 | Upload | `upload.tsx` | `useCreateReview()`, `usePlaces({ query })` for suggestions | |
 
@@ -503,7 +524,9 @@ create policy "media: upload own" on storage.objects
 
 ## Phase 3: Later
 
-- **Auto-sort.** `profiles.auto_sort_saves` already exists. Add `match_country`, `match_city` and `match_place_type` to `collections`, plus an `after insert` trigger on `saves` that adds the place to matching collections. First answer the open questions in the `collections.ts` note.
+- **Auto add in the database.** Auto add is built ([Collections and auto add](#collections-and-auto-add)), with the matching in the app. An `after insert` trigger on `saves` would also catch saves that don't go through `savePlace()`, and do it in one transaction. It needs the regions in SQL first: a place only has a city and a country, so either expand a region into its countries when the rule is saved, or move `src/lib/regions.ts` into a `country_regions` table.
+- **Renaming and deleting collections**, and editing a collection's rules. You can make one, and that's it.
+- **One list of tags.** See the open decision about interests and "suited for".
 - **Distance.** Get the phone's location with `expo-location`, and fill in `proximity` in the service or hook.
 - **Live follow requests**, using Supabase Realtime on `follow_requests`.
 - **AI summaries**, written by an Edge Function when reviews change, and stored in `places.ai_summary`.
@@ -519,5 +542,14 @@ Each one has a default, so work isn't blocked. Change the default here if the te
 | Friend requests, or follow without approval? | **Follows**, with requests only for friends-only accounts. That's what the app built. |
 | Does a bookmark tap toggle, or open the save sheet? | **Open the sheet**, as planned in [05](pages/05-saved-collections.md). Until the sheet exists, it toggles. |
 | Can friends see your collections? | **Yes, unless they're private** (the Settings and Profile pages already worked this way). See backend-plan.md, open decision 9. |
-| How deep can collections nest? | **One level.** `createCollection` refuses a parent that already has a parent. |
+| How deep can collections nest? | **Three levels**, so Europe > France > Paris works. `MAX_COLLECTION_DEPTH` in `src/lib/collection-tree.ts`, and the database refuses a fourth (the `collection_rules` migration). |
+| Does a sub-collection inherit its parent's rules? | **No, it's narrowed by them.** Europe > France > Paris means a place has to match all three. Prefilling the parent's rules was tried first and went wrong: "Paris" started as "anywhere in France", and because everything about WHERE is an either/or, adding Paris read as "France or Paris" and the collection swallowed every French place. |
+| A saved place matches two auto add collections. Which one? | **Both.** |
+| Is auto add a per-user setting or a per-collection one? | **Per collection** (`collections.auto_add`), because the rules live on the collection. There's no per-person off switch yet. |
+| Does turning auto add on backfill places you already saved? | **Only if you ask.** The New collection screen counts the matches and offers to add them. |
+| A sub-collection matches. Does the parent get the place too? | **No.** A parent already shows everything inside its children. |
+| Are a place's "best suited for" tags and a profile's interests the same list? | **Not yet: two lists.** The database keeps `interests` (profiles) and `suited_for_tags` (places) apart. Ruby's branch made them one growing list in the mock data, which would let the app match a person's interests against a place (`Place.algorithmRating`, and the TODO in `src/lib/suggestions.ts`). That needs a migration joining the two. |
+| Can people add a new place type or "suited for" tag? | **Not yet.** Upload and New collection pick from `place_types` and `suited_for_tags`, which only change with a migration, and `create_review()` drops tags it doesn't know. |
+| Where does the list of cities come from? | **The `cities` table**, through `useCitySearch`, the same list Edit profile uses. People can type any other city, and `create_review()` adds it. Google Places Autocomplete could replace it later. |
+| Can someone pick a country the app hasn't seen? | **Yes.** `src/lib/countries.ts` has all of them with their two-letter codes, and the flag is worked out from the code instead of a lookup list. |
 | Who can read reviews? | **Anyone signed in.** |
