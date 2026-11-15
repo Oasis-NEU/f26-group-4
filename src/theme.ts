@@ -57,6 +57,11 @@ export const colors = {
   overlayIcon: '#0C0C0C',
   // Darkens the bottom of a photo so white text stays readable on top of it.
   scrim: 'rgba(36,28,94,0.58)',
+  // The same job, but with no colour in it. Use this where the photo IS the
+  // point and a purple cast over it would be wrong -- the Explore tiles, say.
+  // Meant as the dark end of a gradient that fades up from the bottom, not as
+  // a wash over the whole image.
+  scrimNeutral: 'rgba(0,0,0,0.62)',
 
   // --- Specific jobs ---
   // The save/bookmark button turns yellow once a place is saved.

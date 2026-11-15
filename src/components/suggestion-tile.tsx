@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
@@ -12,12 +13,16 @@ import { colors, radius, spacing, type } from '@/theme';
 // underneath, so it shows a tick when it's the one switched on -- it has
 // nowhere to take you.
 //
-// The look is carried over from the old CityTile on the Explore page, with one
-// fix: there's a SCRIM now. White text was sitting straight on the photo, so
-// it disappeared against anything pale -- and while the photo was still
-// loading the tile was light grey, which made white text invisible. The scrim
-// is a dark wash between the photo and the text, and it's in the design system
-// for exactly this (colors.scrim in src/theme.ts).
+// KEEPING THE WORDS READABLE. White text straight on a photo disappears
+// against anything pale, and while the photo is still loading the tile would
+// be a flat colour with invisible text on it. So there's a gradient behind
+// the text: see-through at the top, dark at the bottom.
+//
+// It fades rather than covering the tile, and it has no colour in it. The
+// design system's `colors.scrim` is purple-tinted, which cast a haze over
+// every photo -- fine for darkening the bottom of a big hero image, wrong
+// here where the photo is most of what you see. `colors.scrimNeutral` is the
+// same idea without the tint.
 
 type SuggestionTileProps = {
   suggestion: Suggestion;
@@ -42,8 +47,14 @@ export function SuggestionTile({ suggestion, width, height, selected, onPress }:
     >
       <Image source={{ uri: suggestion.coverImage }} style={styles.image} contentFit="cover" />
 
-      {/* The dark wash that keeps the words readable whatever the photo is. */}
-      <View style={styles.scrim} />
+      {/* Clear at the top, dark at the bottom, so the words have something to
+          sit on without the photo being dimmed. */}
+      <LinearGradient
+        colors={['transparent', colors.scrimNeutral]}
+        // Starts just under half way down: above that the photo is untouched.
+        locations={[0.45, 1]}
+        style={styles.fade}
+      />
 
       {/* Decorative: the whole tile is the button, so this isn't announced
           twice. Only shown when the tile is the one switched on. */}
@@ -56,7 +67,7 @@ export function SuggestionTile({ suggestion, width, height, selected, onPress }:
       )}
 
       <View style={styles.bottom}>
-        <Text style={styles.title} numberOfLines={3}>
+        <Text style={styles.title} numberOfLines={2}>
           {suggestion.title}
         </Text>
         <Text style={styles.count}>{countLabel}</Text>
@@ -81,9 +92,8 @@ const styles = StyleSheet.create({
   image: {
     ...fill,
   },
-  scrim: {
+  fade: {
     ...fill,
-    backgroundColor: colors.scrim,
   },
   // The one outline here: it's how you tell which tile the feed is filtered to.
   tileSelected: {

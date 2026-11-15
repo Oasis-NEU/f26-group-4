@@ -22,7 +22,7 @@ import { colors, spacing, type } from '@/theme';
 // A fixed size, because they sit in a row that scrolls sideways -- they can't
 // stretch to fit the screen the way the old grid's tiles did.
 const TILE_WIDTH = 148;
-const TILE_HEIGHT = 168;
+const TILE_HEIGHT = 136;
 
 type SuggestionStripProps = {
   // The id of the tile that's switched on, or null if none is.
