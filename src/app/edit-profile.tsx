@@ -32,8 +32,10 @@ function isDraftValid(draft: Profile): boolean {
   if (!draft.name.trim() || draft.name.length > 40) return false;
   if (!USERNAME_PATTERN.test(draft.username)) return false;
   if ((draft.bio?.length ?? 0) > 150) return false;
-  if (draft.interestIds.length < 1 || draft.interestIds.length > 6) return false;
-  if (!draft.homeCityId) return false;
+  // Capped at 6, but not required -- homeCityId and interestIds are both
+  // legitimately optional (a new account starts with neither), so Save
+  // shouldn't stay blocked over fields the person isn't editing right now.
+  if (draft.interestIds.length > 6) return false;
   return true;
 }
 

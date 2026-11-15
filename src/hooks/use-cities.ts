@@ -1,9 +1,9 @@
 // Cities: the Explore page, a city's page, and the city picker in Edit profile.
-import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { queryKeys } from '@/lib/query-keys';
 import { getCities, getCity, getCityPlaces, type CityFilters } from '@/services/cities';
-import { getProfileCity, searchProfileCities } from '@/services/profile-cities';
+import { addProfileCity, getProfileCity, searchProfileCities } from '@/services/profile-cities';
 
 // Every city with places, most popular first. Old results stay on screen while new ones load.
 export function useCities(filters: CityFilters) {
@@ -46,5 +46,15 @@ export function useCitySearch(query: string) {
     queryKey: queryKeys.cities.search(query.trim().toLowerCase()),
     queryFn: () => searchProfileCities(query),
     placeholderData: keepPreviousData,
+  });
+}
+
+// Adds a city the picker didn't have, for "Lives in"/"Dream trip".
+export function useAddProfileCity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ name, country }: { name: string; country: string }) => addProfileCity(name, country),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.cities.all }),
   });
 }

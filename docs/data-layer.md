@@ -217,6 +217,7 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 | `interests.ts` | `getInterestsByIds(ids)`, `searchInterests(query)`, `getPopularInterests(limit)`, `suggestInterestsFromPosts()`, `addInterest(name)` | |
 | `cities.ts` | `getCities(filters)`, `getCity(id)`, `getCityPlaces(id)` | the `city_stats` view |
 | `profile-cities.ts` | `getProfileCity(id)`, `searchProfileCities(query)` | the `cities` table |
+| | `addProfileCity(name, country)` | adds a row when the picker's search comes up empty; same `cities: add` RLS policy posting a review in a new city already uses |
 | `media.ts` | `uploadMedia(localUri, folder)`, `getMediaUrl(path)`, `deleteMedia(paths)` | photos in the `media` bucket |
 | `place-rows.ts` | `PLACE_SELECT`, `toPlace`, `toReview` | shared by the services that return places. Nothing per-user: "saved?" and "liked?" are their own queries (rule 6) |
 | `mock-backend.ts` | `mockRequest(data)` | only `template-service.ts` uses it now |
@@ -245,7 +246,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | `use-settings.ts` | `useSettings()`, `useUpdateSettings()`, `useToggleCloseFriend()`, `useBlockUser()`, `useUnblockUser()` | `settings.ts` | Settings screens |
 | `use-interests.ts` | `useInterestsByIds(ids)`, `usePopularInterests(limit, enabled?)`, `useSearchInterests(query)`, `useSuggestedInterests(enabled?)`, `useAddInterest()` | `interests.ts` | Profile, Edit profile |
 | `use-cities.ts` | `useCities(filters)`, `useCity(id)`, `useCityPlaces(id)` | `cities.ts` | Explore, City |
-| | `useProfileCity(id)`, `useCitySearch(query)` | `profile-cities.ts` | Profile, Edit profile |
+| | `useProfileCity(id)`, `useCitySearch(query)`, `useAddProfileCity()` | `profile-cities.ts` | Profile, Edit profile |
 
 ### Mutations and what they refresh
 
@@ -262,6 +263,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | `useUnblockUser` | yes, `settings.all` | `settings.all`, `follows.all`, `profiles.all` |
 | `useBlockUser` | no | `settings.all`, `follows.all` (blocking ends follows), `profiles.all` |
 | `useAddInterest` | no | `interests.all` |
+| `useAddProfileCity` | no | `cities.all` |
 | save sheet: `useAddToCollection`, `useCreateCollection`, `useRenameCollection`, `useDeleteCollection` | **add** | `collections.all`, and `saves.all` for add and delete |
 
 ## Type changes
