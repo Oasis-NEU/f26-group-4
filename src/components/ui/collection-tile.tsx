@@ -15,6 +15,11 @@ import { colors, gradients, radius, spacing, type } from '@/theme';
 // bigger than a caption normally would be. It stops a list of tiles shouting.
 //
 //   <CollectionTile name="Mountains in Italy" details="6 places · Dolomites" index={0} />
+//
+// `compact` is a shorter version of the same tile (less height, a smaller
+// photo, smaller type) -- for a screen with its own reason to show many
+// collections at once without the list turning into a wall of full-size
+// tiles (e.g. Profile, once someone's made more than a handful).
 
 type CollectionTileProps = {
   name: string;
@@ -22,6 +27,7 @@ type CollectionTileProps = {
   index?: number; // which gradient to use -- see below
   emoji?: string;
   image?: string;
+  compact?: boolean;
   onPress?: () => void;
 };
 
@@ -31,6 +37,7 @@ export function CollectionTile({
   index = 0,
   emoji,
   image,
+  compact = false,
   onPress,
 }: CollectionTileProps) {
   // There are three gradients. `%` wraps back round to the start, so a list of
@@ -43,18 +50,20 @@ export function CollectionTile({
         colors={[gradient[0], gradient[1]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }} // left to right. {x:1,y:1} would make it diagonal.
-        style={styles.tile}
+        style={[styles.tile, compact && styles.tileCompact]}
       >
         <View style={styles.text}>
-          <Text style={styles.name}>
+          <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={compact ? 1 : undefined}>
             {emoji !== undefined ? emoji + ' ' : ''}
             {name}
           </Text>
-          <Text style={styles.details}>{details}</Text>
+          <Text style={[styles.details, compact && styles.detailsCompact]} numberOfLines={compact ? 1 : undefined}>
+            {details}
+          </Text>
         </View>
 
         {image !== undefined && (
-          <Image source={{ uri: image }} style={styles.image} contentFit="cover" />
+          <Image source={{ uri: image }} style={[styles.image, compact && styles.imageCompact]} contentFit="cover" />
         )}
       </LinearGradient>
     </Pressable>
@@ -71,6 +80,11 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     overflow: 'hidden',
   },
+  tileCompact: {
+    gap: spacing.sm,
+    minHeight: 72,
+    padding: spacing.sm,
+  },
   text: {
     flex: 1, // takes the leftover space so the photo keeps its size
     gap: 6,
@@ -81,15 +95,27 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     color: colors.text,
   },
+  nameCompact: {
+    fontSize: type.body,
+    lineHeight: 20,
+  },
   details: {
     fontWeight: '600',
     fontSize: type.label,
     lineHeight: 18,
     color: colors.text,
   },
+  detailsCompact: {
+    fontSize: type.tiny,
+    lineHeight: 14,
+  },
   image: {
     width: 100,
     height: '100%',
     borderRadius: radius.card,
+  },
+  imageCompact: {
+    width: 56,
+    borderRadius: radius.image,
   },
 });

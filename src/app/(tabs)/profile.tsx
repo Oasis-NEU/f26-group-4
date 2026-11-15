@@ -208,6 +208,9 @@ export default function ProfilePage() {
                     key={collection.id}
                     collection={collection}
                     index={index}
+                    // Past a handful, full-size tiles turn a quick glance into a
+                    // long scroll -- shrink them so more fit without feeling chunky.
+                    compact={collections.length > 4}
                     onPress={() => router.push({ pathname: '/collection/[id]', params: { id: collection.id } })}
                   />
                 ))}

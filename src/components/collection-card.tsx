@@ -9,10 +9,11 @@ import { getCountryFlag } from '@/utils/country-flags';
 type CollectionCardProps = {
   collection: Collection;
   index?: number; // position in the list, so each tile gets a different gradient
+  compact?: boolean; // a shorter tile, for a screen showing many collections at once
   onPress?: () => void;
 };
 
-export function CollectionCard({ collection, index = 0, onPress }: CollectionCardProps) {
+export function CollectionCard({ collection, index = 0, compact = false, onPress }: CollectionCardProps) {
   // Count the places in this collection plus any inside its sub-collections,
   // so "Europe Trip" shows 4 rather than 0.
   let placeCount = collection.places.length;
@@ -43,6 +44,7 @@ export function CollectionCard({ collection, index = 0, onPress }: CollectionCar
       index={index}
       emoji={emoji !== '' ? emoji : undefined}
       image={collection.coverImage}
+      compact={compact}
       onPress={onPress}
     />
   );
