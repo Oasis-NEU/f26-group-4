@@ -7,7 +7,7 @@ import { getCountryFlag } from '@/utils/country-flags';
 import { colors, radius, spacing, type } from '@/theme';
 import { RatingBadge, Tag } from '@/components/ui';
 
-// Shows everything about one place. The screen (src/app/place/[id].tsx) finds the
+// Shows everything about one place. The screen (src/app/(tabs)/(profile,map,feed,saved,explore)/place/[id].tsx) finds the
 // place and hands it here; this component only displays what it's given.
 
 type PlaceDetailsProps = {

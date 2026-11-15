@@ -18,7 +18,8 @@ export type ProfileCity = {
   countryCode: string; // "US" -- 2-letter, for the flag
 };
 
-const mockProfileCities: ProfileCity[] = [
+// Exported so cities.ts can suggest these names too -- see searchCityNames there.
+export const mockProfileCities: ProfileCity[] = [
   { id: 'boston-us', name: 'Boston', country: 'United States', countryCode: 'US' },
   { id: 'new-york-us', name: 'New York', country: 'United States', countryCode: 'US' },
   { id: 'paris-fr', name: 'Paris', country: 'France', countryCode: 'FR' },

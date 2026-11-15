@@ -5,7 +5,7 @@
 | | |
 | - | - |
 | **Route** | `/map` |
-| **File** | `src/app/(tabs)/map.tsx` |
+| **File** | `src/app/(tabs)/(map)/map.tsx` |
 | **Navigator** | Tab: "Map" |
 | **Status** | Placeholder |
 

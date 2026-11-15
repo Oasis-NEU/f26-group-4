@@ -4,6 +4,9 @@
 
 import { mockRequest } from './mock-backend';
 
+import { matchesRules } from '@/lib/collection-rules';
+import type { CollectionRules } from '@/types/collection';
+
 import { mockPlace, Place } from '@/types/place';
 
 // All the sample places. mockPlace (the Mountain Peak Café) comes from place.ts
@@ -367,6 +370,15 @@ export type PlaceFilters = {
   query?: string; // matches the place name or city
   placeTypes?: string[]; // empty or missing means any type
   suitedFor?: string[]; // empty or missing means any; a place matches if it has at least one
+
+  // What an Explore tile stands for: "Hikes in France", "Food in Japan".
+  //
+  // It's the SAME type collections use for their auto-add rules, and the same
+  // matching function, on purpose. Both answer "which places does this stand
+  // for?", so there's one place to read and one place to fix. It also means a
+  // tile can say "anywhere in Europe" without this file knowing what Europe
+  // is -- src/lib/regions.ts handles that.
+  rules?: CollectionRules;
 };
 
 // Places that match the filters, in mock order. With no filters, every place.
@@ -374,6 +386,12 @@ export async function getPlaces(filters: PlaceFilters = {}): Promise<Place[]> {
   const query = filters.query?.trim().toLowerCase() ?? '';
   const matches = mockPlaces.filter((place) => {
     if (query && !place.name.toLowerCase().includes(query) && !place.city.toLowerCase().includes(query)) {
+      return false;
+    }
+    // The tile's rules, if one is switched on. Kept separate from `query`
+    // because searching the text "Florence" would also match a place CALLED
+    // Florence, which isn't what tapping a Florence tile should do.
+    if (filters.rules !== undefined && !matchesRules(place, filters.rules)) {
       return false;
     }
     if (filters.placeTypes?.length && !filters.placeTypes.includes(place.placeType)) {
@@ -391,6 +409,12 @@ export async function getPlaces(filters: PlaceFilters = {}): Promise<Place[]> {
 // Built from the mock places (a Set drops the repeats) so they stay in sync with the data.
 export const PLACE_TYPES = [...new Set(mockPlaces.map((place) => place.placeType))];
 export const SUITED_FOR = [...new Set(mockPlaces.flatMap((place) => place.suitedFor))];
+
+// NOTE: these two are for FILTER BARS (Feed, Map, Explore), where only offering
+// what's actually in the data is right -- a filter for a type no place has just
+// gives you an empty list. Forms where someone DESCRIBES a place or a
+// collection should use searchTags() in src/services/interests.ts instead, so
+// the vocabulary can grow.
 
 // One place by its id, or null if there isn't one with that id.
 export async function getPlace(id: string): Promise<Place | null> {

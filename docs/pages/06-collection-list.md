@@ -5,7 +5,7 @@
 | | |
 | - | - |
 | **Route** | `/collection/[id]`, for example `/collection/col_ski` |
-| **File** | `src/app/collection/[id].tsx` (new). Add a `Stack.Screen` in `src/app/_layout.tsx`. |
+| **File** | `src/app/(tabs)/(profile,map,explore,saved)/collection/[id].tsx` (new). Add a `Stack.Screen` in `src/app/_layout.tsx`. |
 | **Navigator** | Root stack, pushed on top of the tabs, with a back button to Saved |
 | **Status** | New |
 

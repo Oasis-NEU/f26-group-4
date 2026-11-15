@@ -1,13 +1,13 @@
-// Where the Explore page gets its cities from.
+// Where the city tiles get their cities from.
 //
 // There is no "city" table anywhere -- a city only exists because places have a
 // `city` field. So this file builds the list by grouping the places we already
-// have. When Supabase arrives, only this file changes: the Explore page calls
-// getCities() and the city page calls getCityPlaces(), and neither of them
-// cares where the data came from.
+// have. When Supabase arrives, only this file changes: the caller asks for
+// getCities() and doesn't care where the data came from.
 
 import { mockRequest } from './mock-backend';
 import { mockPlaces } from './places';
+import { mockProfileCities } from './profile-cities';
 
 import type { Place } from '@/types/place';
 
@@ -97,8 +97,13 @@ export async function getCities(filters: CityFilters = {}): Promise<City[]> {
   return mockRequest(cities);
 }
 
-// Every place in one city. Used by the city page the tiles open.
-// Best-rated first, so the top of the feed is the city's best.
+// NOTE: getCityPlaces() and getCity() below have nothing calling them any
+// more. They were for the city page, which was deleted when Explore merged
+// into the feed -- tapping a city tile now filters the feed in place instead
+// of opening a screen. They're left here rather than deleted in case someone
+// has a branch using them; delete them once the team has merged.
+
+// Every place in one city, best-rated first.
 export async function getCityPlaces(cityName: string): Promise<Place[]> {
   const places = mockPlaces
     .filter((place) => place.city.toLowerCase() === cityName.toLowerCase())
@@ -113,4 +118,68 @@ export async function getCity(cityName: string): Promise<City | null> {
     return mockRequest(null);
   }
   return mockRequest(toCity(places[0].city, places));
+}
+
+// ---------------------------------------------------------------------------
+// Searching for a city by name
+// ---------------------------------------------------------------------------
+//
+// There is no list of every city anywhere in this app, and there shouldn't be
+// one typed out by hand -- there are tens of thousands. The right answer is
+// GOOGLE PLACES: the same API that will eventually give us real places can
+// also autocomplete city names, so a city would be picked from real data
+// instead of a list we maintain.
+//
+// Until that's set up, this suggests the cities the app already knows about
+// (from places, and from the Edit profile city list) and the caller lets the
+// user type anything else. Typing a city we've never heard of is fine -- it
+// just won't suggest anything, and the rule still works because matching is
+// done on the city name.
+//
+// TODO: replace the inside of this function with a Google Places Autocomplete
+// call, restricted to `(cities)`. Nothing that calls it has to change.
+
+// Every city name we know, with no repeats, in alphabetical order.
+function knownCityNames(): string[] {
+  const names: string[] = [];
+
+  for (const place of mockPlaces) {
+    if (!names.includes(place.city)) {
+      names.push(place.city);
+    }
+  }
+
+  for (const city of mockProfileCities) {
+    if (!names.includes(city.name)) {
+      names.push(city.name);
+    }
+  }
+
+  return names.sort();
+}
+
+// City names matching what's been typed. Names that START with the text come
+// first, so typing "flo" offers Florence before anything else.
+export async function searchCityNames(query: string): Promise<string[]> {
+  const text = query.trim().toLowerCase();
+  const known = knownCityNames();
+
+  if (text === '') {
+    return mockRequest(known);
+  }
+
+  const startsWith: string[] = [];
+  const contains: string[] = [];
+
+  for (const name of known) {
+    const lower = name.toLowerCase();
+
+    if (lower.startsWith(text)) {
+      startsWith.push(name);
+    } else if (lower.includes(text)) {
+      contains.push(name);
+    }
+  }
+
+  return mockRequest([...startsWith, ...contains]);
 }

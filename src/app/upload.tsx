@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -10,26 +10,34 @@ import {
 import { colors, radius, spacing, type } from '@/theme';
 import { AuthInput } from '@/components/auth-input';
 import { RatingStars } from '@/components/rating-stars';
-import { TagPicker } from '@/components/tag-picker';
+import { SearchTagField } from '@/components/search-tag-field';
 import { UploadMediaPicker } from '@/components/upload-media-picker';
 import type { UploadFields } from '@/types/upload-fields';
+import { searchCountries } from '@/lib/countries';
+import { searchCityNames } from '@/services/cities';
+import { searchTags } from '@/services/interests';
 
-// Starter choices. These can be changed later.
-const placeTypes = [
-  'Cafe',
-  'Restaurant',
-  'Excursion',
-  'Sport',
-  'Other',
-];
-
-const suitedForOptions = [
-  'Solo',
-  'Friends',
-  'Families',
-  'Adventure',
-  'Skiers',
-];
+// ---------------------------------------------------------------------------
+// NOTE (Ruby, from the collections work) -- this page isn't mine, so here's
+// what changed and why. Revert any of it if you disagree.
+//
+// There used to be two hardcoded lists here: five place types and five
+// "suited for" options. That capped what anyone could ever post -- you could
+// not add a museum, a bar or a ski run, and the collection rules on the Saved
+// tab could only ever offer the same five things back.
+//
+// They now come from src/services/interests.ts, which is one growing list of
+// tags shared with profile interests. searchTags('place-type', text) and
+// searchTags('interest', text) search it, and anything typed that isn't in it
+// yet gets offered as "Add ...". City and Country changed from free text to
+// the same kind of picker, so a place's country is spelled the same way every
+// time and a "Places in Japan" collection can actually match it.
+//
+// STILL TO DO, on whoever builds the Post button: when the post is saved, call
+// addTag('place-type', ...) / addTag('interest', ...) from interests.ts for
+// anything the user typed that was new, so the tag exists for everyone else.
+// Picking it here doesn't add it to the shared list on its own.
+// ---------------------------------------------------------------------------
 
 export default function UploadPage() {
   // Information entered on the form.
@@ -44,6 +52,27 @@ export default function UploadPage() {
     placeType: '',
     suitedFor: [],
   });
+
+  // What each picker searches. useCallback keeps them the same function
+  // between renders, so a picker doesn't search again every time another one
+  // changes.
+  const findCountries = useCallback(async (query: string) => {
+    return searchCountries(query).map((country) => country.name);
+  }, []);
+
+  const findCities = useCallback(async (query: string) => {
+    return searchCityNames(query);
+  }, []);
+
+  const findPlaceTypes = useCallback(async (query: string) => {
+    const tags = await searchTags('place-type', query);
+    return tags.map((tag) => tag.name);
+  }, []);
+
+  const findVibes = useCallback(async (query: string) => {
+    const tags = await searchTags('interest', query);
+    return tags.map((tag) => tag.name);
+  }, []);
 
   return (
     // On iOS the header is see-through, so this keeps the content from starting underneath it.
@@ -76,26 +105,34 @@ export default function UploadPage() {
         }
       />
 
-      <AuthInput
+      <SearchTagField
         label="City"
-        value={fields.city}
-        onChangeText={(text) =>
+        placeholder="Search cities"
+        hint="Type any city. We only suggest the ones the app already knows."
+        multiple={false}
+        allowNew
+        selected={fields.city === '' ? [] : [fields.city]}
+        onChange={(selected) =>
           setFields((current) => ({
             ...current,
-            city: text,
+            city: selected[0] ?? '',
           }))
         }
+        search={findCities}
       />
 
-      <AuthInput
+      <SearchTagField
         label="Country"
-        value={fields.country}
-        onChangeText={(text) =>
+        placeholder="Search countries"
+        multiple={false}
+        selected={fields.country === '' ? [] : [fields.country]}
+        onChange={(selected) =>
           setFields((current) => ({
             ...current,
-            country: text,
+            country: selected[0] ?? '',
           }))
         }
+        search={findCountries}
       />
 
       <RatingStars
@@ -134,29 +171,35 @@ export default function UploadPage() {
         }
       />
 
-      <TagPicker
-        label="Place type — choose one"
-        options={placeTypes}
-        selected={fields.placeType ? [fields.placeType] : []}
+      <SearchTagField
+        label="Place type"
+        placeholder="Cafe, hike, bar…"
+        hint="Pick one. If it isn't here, type it and tap Add."
+        multiple={false}
+        allowNew
+        selected={fields.placeType === '' ? [] : [fields.placeType]}
         onChange={(selected) =>
           setFields((current) => ({
             ...current,
             placeType: selected[0] ?? '',
           }))
         }
+        search={findPlaceTypes}
       />
 
-      <TagPicker
-        label="Suited for — choose several"
-        options={suitedForOptions}
+      <SearchTagField
+        label="Suited for"
+        placeholder="Solo, adventure, budget…"
+        hint="Choose as many as fit. These are the same tags people pick as interests on their profile."
+        allowNew
         selected={fields.suitedFor}
-        multiple={true}
         onChange={(selected) =>
           setFields((current) => ({
             ...current,
             suitedFor: selected,
           }))
         }
+        search={findVibes}
       />
     </ScrollView>
   );

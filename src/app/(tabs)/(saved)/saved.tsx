@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CollectionCard } from '@/components/collection-card';
 import { SavedPlaceRow } from '@/components/saved-place-row';
@@ -12,8 +12,8 @@ import {
 } from '@/services/collections';
 import { Collection } from '@/types/collection';
 import { Place } from '@/types/place';
-import { colors, spacing, type } from '@/theme';
-import { FilterPill } from '@/components/ui';
+import { colors, radius, spacing, type } from '@/theme';
+import { FilterPill, Icon } from '@/components/ui';
 
 // The Saved tab: the user's collections, and the places they've saved
 // but not put in a collection yet.
@@ -30,17 +30,19 @@ export default function SavedPage() {
   // Which filter pill is selected. 'All' means don't filter anything out.
   const [selectedFilter, setSelectedFilter] = useState('All');
 
-  useEffect(() => {
-    // Ask for all three lists, then put them in state.
-    getCollections().then((result) => setCollections(result));
-    getSavedPlaces().then((result) => setSavedPlaces(result));
-    getAllSavedPlaces().then((result) => {
-      setAllSavedPlaces(result);
-      setIsLoading(false);
-    });
-    // TODO: reload this when the tab comes back into view (useFocusEffect), or a place
-    // bookmarked somewhere else won't show up here until the app restarts.
-  }, []);
+  // Ask for all three lists every time the tab comes back into view, so a place
+  // bookmarked somewhere else -- or a collection just made on the New collection
+  // screen -- shows up without restarting the app.
+  useFocusEffect(
+    useCallback(() => {
+      getCollections().then((result) => setCollections(result));
+      getSavedPlaces().then((result) => setSavedPlaces(result));
+      getAllSavedPlaces().then((result) => {
+        setAllSavedPlaces(result);
+        setIsLoading(false);
+      });
+    }, []),
+  );
 
   if (isLoading) {
     return (
@@ -132,7 +134,19 @@ export default function SavedPage() {
         ))}
       </ScrollView>
 
-      <Text style={styles.sectionHeading}>Collections</Text>
+      {/* The heading and the + that makes a new collection sit on one line */}
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionHeading}>Collections</Text>
+        <Pressable
+          onPress={() => router.push('/new-collection')}
+          accessibilityRole="button"
+          accessibilityLabel="New collection"
+          style={styles.addPill}
+        >
+          <Icon name="add" size={16} color={colors.secondaryText} />
+          <Text style={styles.addPillText}>New</Text>
+        </Pressable>
+      </View>
 
       {/* The "All saved" card only makes sense when nothing is filtered out */}
       {selectedFilter === 'All' && (
@@ -208,6 +222,29 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     paddingTop: spacing.sm,
     color: colors.text,
+  },
+  // Heading on the left, + on the right.
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  // A pill, the same shape and colours as the secondary Button in the design
+  // system -- it isn't <Button /> itself only because that doesn't take an icon.
+  addPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    minHeight: 36,
+    backgroundColor: colors.secondaryFill,
+    borderRadius: radius.round,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  addPillText: {
+    fontWeight: '600',
+    fontSize: type.label,
+    color: colors.secondaryText,
   },
   emptyText: {
     fontSize: type.body,
