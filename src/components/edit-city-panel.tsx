@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { EditPanelSheet } from '@/components/edit-panel-sheet';
 import { useAddProfileCity, useCitySearch } from '@/hooks/use-cities';
@@ -7,10 +7,10 @@ import type { ProfileCity } from '@/services/profile-cities';
 
 // Reused for both "Lives in" and "Dream trip" -- picked from the city list, not
 // typed freely, because there's more than one city with a given name (e.g. more
-// than one "Boston"), and the list tells them apart by country. When a search
-// comes up empty, typing "City, Country" offers to add it -- the same thing
-// that already happens behind the scenes when someone posts a review in a
-// city the app doesn't know yet (see addProfileCity).
+// than one "Boston"), and the list tells them apart by country. Typing a city
+// name that isn't in the list shows a Country field to add it -- the same
+// thing that already happens behind the scenes when someone posts a review in
+// a city the app doesn't know yet (see addProfileCity).
 
 type EditCityPanelProps = {
   visible: boolean;
@@ -20,46 +20,35 @@ type EditCityPanelProps = {
   onClose: () => void;
 };
 
-// Splits "Springfield, Canada" into its two parts, or null if there's no comma
-// yet, or either side is empty once trimmed.
-function parseNameAndCountry(query: string): { name: string; country: string } | null {
-  const commaIndex = query.indexOf(',');
-  if (commaIndex === -1) return null;
-  const name = query.slice(0, commaIndex).trim();
-  const country = query.slice(commaIndex + 1).trim();
-  if (!name || !country) return null;
-  return { name, country };
-}
-
 export function EditCityPanel({ visible, title, selectedCityId, onSelect, onClose }: EditCityPanelProps) {
   const [query, setQuery] = useState('');
+  const [country, setCountry] = useState('');
   // Every city when the box is empty; the list is small and cached.
   const results = useCitySearch(query).data ?? [];
   const addCity = useAddProfileCity();
 
-  const parsed = parseNameAndCountry(query);
-  const hasExactMatch = results.some(
-    (city) => parsed && city.name.toLowerCase() === parsed.name.toLowerCase() && city.country.toLowerCase() === parsed.country.toLowerCase(),
-  );
-  const canAdd = parsed !== null && !hasExactMatch;
+  const trimmedName = query.trim();
+  const trimmedCountry = country.trim();
+  const canAdd = trimmedName.length > 0 && trimmedCountry.length > 0;
 
   function selectCity(city: ProfileCity) {
     onSelect(city);
     onClose();
     setQuery('');
+    setCountry('');
     addCity.reset();
   }
 
   function handleAdd() {
-    if (!parsed) return;
-    addCity.mutate(parsed, { onSuccess: selectCity });
+    if (!canAdd) return;
+    addCity.mutate({ name: trimmedName, country: trimmedCountry }, { onSuccess: selectCity });
   }
 
   return (
     <EditPanelSheet visible={visible} title={title} onClose={onClose}>
       <TextInput
         style={styles.search}
-        placeholder="Search, or type City, Country to add one"
+        placeholder="Search for a city"
         value={query}
         onChangeText={(text) => {
           setQuery(text);
@@ -73,13 +62,7 @@ export function EditCityPanel({ visible, title, selectedCityId, onSelect, onClos
         keyExtractor={(city) => city.id}
         scrollEnabled={false}
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            {query
-              ? parsed
-                ? 'No match -- add it below.'
-                : `No cities match "${query}". Add "${query}, Country" to add a new one.`
-              : 'No cities yet.'}
-          </Text>
+          query ? <Text style={styles.empty}>No cities match &quot;{query}&quot;.</Text> : undefined
         }
         renderItem={({ item }) => (
           <Pressable style={styles.row} onPress={() => selectCity(item)}>
@@ -90,14 +73,31 @@ export function EditCityPanel({ visible, title, selectedCityId, onSelect, onClos
         )}
       />
 
-      {canAdd && (
-        <Pressable style={styles.addRow} onPress={handleAdd} disabled={addCity.isPending}>
-          <Text style={styles.addText}>
-            {addCity.isPending ? 'Adding…' : `+ Add "${parsed!.name}, ${parsed!.country}"`}
-          </Text>
-        </Pressable>
+      {!!query && (
+        <View style={styles.addSection}>
+          <Text style={styles.addLabel}>Can&apos;t find it? Add &quot;{query}&quot;:</Text>
+          <TextInput
+            style={styles.countryInput}
+            placeholder="Country"
+            value={country}
+            onChangeText={(text) => {
+              setCountry(text);
+              addCity.reset();
+            }}
+            autoCapitalize="words"
+          />
+          <Pressable
+            style={[styles.addButton, !canAdd && styles.addButtonDisabled]}
+            onPress={handleAdd}
+            disabled={!canAdd || addCity.isPending}
+          >
+            <Text style={[styles.addButtonText, !canAdd && styles.addButtonTextDisabled]}>
+              {addCity.isPending ? 'Adding…' : `+ Add ${query}${trimmedCountry ? `, ${trimmedCountry}` : ''}`}
+            </Text>
+          </Pressable>
+          {addCity.isError && <Text style={styles.error}>Couldn&apos;t add that city. Try again.</Text>}
+        </View>
       )}
-      {addCity.isError && <Text style={styles.error}>Couldn&apos;t add that city. Try again.</Text>}
     </EditPanelSheet>
   );
 }
@@ -138,8 +138,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 24,
   },
-  addRow: {
-    marginTop: 8,
+  addSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    gap: 8,
+  },
+  addLabel: {
+    fontSize: 13,
+    color: '#888',
+  },
+  countryInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+  },
+  addButton: {
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
@@ -147,12 +165,17 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     alignItems: 'center',
   },
-  addText: {
+  addButtonDisabled: {
+    borderColor: '#ccc',
+  },
+  addButtonText: {
     color: '#2A9D8F',
     fontWeight: '600',
   },
+  addButtonTextDisabled: {
+    color: '#ccc',
+  },
   error: {
-    marginTop: 8,
     color: '#e53e3e',
     fontSize: 13,
     textAlign: 'center',
