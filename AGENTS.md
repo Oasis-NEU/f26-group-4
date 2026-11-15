@@ -29,6 +29,13 @@ Run lint and typecheck before declaring any task done.
 - Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
 - Docs: https://docs.expo.dev/router/introduction.md
 
+## Design & styling
+
+The app's visual style lives in `docs/design/`: the reference boards the team picked, cropped into screens and components, plus the measured tokens, component specs and rollout plan. Read `docs/design/README.md` before building or restyling any UI, and compare your screen with its crop in `docs/design/reference/`.
+
+- Take colours, sizes, radii and type from `src/theme.ts`, and controls from `src/components/ui/`. Never type a hex code or a font size into a screen.
+- Where the code and the reference disagree, the reference wins, but `docs/design/implementation-plan.md` orders the fixes. Don't change a shared token or primitive as a side effect of building one screen: it restyles every screen that uses it.
+
 ## Data, auth & Supabase
 
 The app talks to the team's shared Supabase project. `.env` (committed) holds its URL and publishable key, so app work needs no setup: no Docker, no Supabase CLI, no Supabase account. Don't install Docker or run Supabase CLI commands that touch a database (`supabase start`, `link`, `db push`, `db reset`, `seed`) unless the user says they're doing database work on the local stack. The README's "The backend (Supabase)" section has the setup.
