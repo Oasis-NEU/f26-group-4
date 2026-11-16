@@ -8,6 +8,7 @@ import { Button, Icon } from '@/components/ui';
 import { useCitySearch } from '@/hooks/use-cities';
 import { useCreateCollection, useRulesAbove } from '@/hooks/use-collections';
 import { useFilterOptions } from '@/hooks/use-places';
+import { useTags } from '@/hooks/use-tags';
 import { useAllSavedPlaces } from '@/hooks/use-saves';
 import { useSettings } from '@/hooks/use-settings';
 import { describeRules, isEmptyRules } from '@/lib/collection-rules';
@@ -86,6 +87,18 @@ export default function NewCollectionPage() {
   // places it matches. Cities are the ones the app knows about, and any other
   // name can be typed in.
   const filterOptions = useFilterOptions();
+
+  // "Best suited for" offers the SHARED tag vocabulary, not just the fixed
+  // suited_for_tags list -- a profile's interests and a place's suited-for
+  // tags are the same words, so a collection should be able to use any of
+  // them. src/services/tags.ts explains why they're one list.
+  //
+  // Slugs rather than labels, because that's what a place stores in
+  // places.suited_for and what the rules are matched against. Showing
+  // "Remote work" but saving "remote work" would be nicer to read and a
+  // nuisance to match.
+  const peopleTags = useTags('interest');
+  const suitedForOptions = (peopleTags.data ?? []).map((tag) => tag.slug);
   const knownCities = useCitySearch('');
   const cityNames = [...new Set((knownCities.data ?? []).map((city) => city.name))];
 
@@ -271,10 +284,10 @@ export default function NewCollectionPage() {
           <SearchTagField
             label="Best suited for"
             placeholder="Solo, adventure, budget…"
-            hint="The same tags people pick when they post a place."
+            hint="The same tags people pick when they post a place, and as their own interests."
             selected={vibes}
             onChange={setVibes}
-            options={filterOptions.suitedFor}
+            options={suitedForOptions}
             disabled={isSaving}
           />
 

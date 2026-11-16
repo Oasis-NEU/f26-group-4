@@ -17,6 +17,7 @@ import { SearchTagField } from '@/components/search-tag-field';
 import { UploadMediaPicker } from '@/components/upload-media-picker';
 import { useCitySearch } from '@/hooks/use-cities';
 import { useFilterOptions } from '@/hooks/use-places';
+import { useTags } from '@/hooks/use-tags';
 import { useCreatePost } from '@/hooks/use-reviews';
 import { COUNTRY_NAMES } from '@/lib/countries';
 import type { UploadFields } from '@/types/upload-fields';
@@ -31,9 +32,14 @@ import { validatePost } from '@/utils/validate-post';
 // not add a museum or a garden, and the collection rules on the Saved tab
 // could only ever offer the same five things back.
 //
-// They now come from the database (the place_types and suited_for_tags
-// tables, through useFilterOptions), the same lists the feed's filters and
-// the New collection screen use, so a post and a "Cafes in Japan" collection
+// They now come from the database. Place type is the fixed place_types list
+// (it's a foreign key, so only a migration can grow it). "Suited for" is the
+// SHARED TAG VOCABULARY from src/services/tags.ts: the suited_for_tags list
+// AND everyone's profile interests, as one list. They're the same words --
+// `photography` and `adventure` are literally rows in both tables -- and
+// keeping them together is what will let the app say "this place suits you"
+// by comparing a person's interests to a place's tags. The New collection
+// screen offers the same list, so a post and a "Cafes in Japan" collection
 // use the same words. City and Country changed from free text to the same
 // kind of picker, so a place's country is spelled the same way every time and
 // a "Places in Japan" collection can actually match it. Any city can still be
@@ -103,6 +109,11 @@ function FieldError({ message }: { message?: string }) {
 export default function UploadPage() {
   const createPost = useCreatePost();
   const filterOptions = useFilterOptions();
+
+  // The shared vocabulary for "suited for". Slugs, not labels, because that's
+  // what places.suited_for stores and what collection rules match against.
+  const peopleTags = useTags('interest');
+  const suitedForOptions = (peopleTags.data ?? []).map((tag) => tag.slug);
   const knownCities = useCitySearch('');
   const cityNames = [...new Set((knownCities.data ?? []).map((city) => city.name))];
   const [fields, setFields] = useState<UploadFields>(emptyFields);
@@ -414,12 +425,12 @@ export default function UploadPage() {
         <SearchTagField
           label="Suited for — optional"
           placeholder="Solo, adventure, budget…"
-          hint="Choose as many as fit."
+          hint="Choose as many as fit. These are the same tags people pick as their own interests."
           selected={fields.suitedFor}
           onChange={(selected) =>
             updateField('suitedFor', selected)
           }
-          options={filterOptions.suitedFor}
+          options={suitedForOptions}
           disabled={isPosting}
         />
       </View>

@@ -209,6 +209,33 @@ them -- delete once the team has merged.
 
 ---
 
+## 4b. The shared tag vocabulary (~10 min)
+
+### [ ] `src/services/tags.ts`
+**Read the comment at the top -- it's the whole argument.** A profile's
+interests and a place's "best suited for" are one vocabulary stored as two
+tables: `adventure` and `photography` are rows in both, so 22 rows are really
+20 tags, and the two don't even slugify the same way (`remote work` vs
+`street-food`). The matching the app wants to do -- "does this place suit
+you?" -- only works if both sides come from one list.
+
+It presents them as one list without merging the tables, and writes new tags
+to `interests` through the database's `add_interest()`. That works because
+`places.suited_for` is a plain `text[]` with no foreign key.
+
+### [ ] `src/hooks/use-tags.ts`
+Thin React Query wrappers, same shape as `use-interests.ts`.
+
+### [ ] Where it's used
+`new-collection.tsx` ("Best suited for") and `upload.tsx` ("Suited for") both
+offer the shared list now. They pass **slugs**, not labels, because that's
+what `places.suited_for` stores and what collection rules match against.
+
+**Still to do:** a migration joining the two tables. Noted in
+`docs/data-layer.md` under Open decisions.
+
+---
+
 ## 5. The routing change (~10 min)
 
 All of this was one change: detail screens used to sit *above* the tabs, so
