@@ -10,11 +10,14 @@ import {
   View,
 } from 'react-native';
 import * as Location from 'expo-location';
+import { router, usePreventRemove } from 'expo-router';
 
 import { AuthInput } from '@/components/auth-input';
+import { DiscardChangesModal } from '@/components/discard-changes-modal';
 import { RatingStars } from '@/components/rating-stars';
 import { SearchTagField } from '@/components/search-tag-field';
 import { UploadMediaPicker } from '@/components/upload-media-picker';
+import { useSession } from '@/hooks/use-session';
 import { useCitySearch } from '@/hooks/use-cities';
 import { useFilterOptions } from '@/hooks/use-places';
 import { useTags } from '@/hooks/use-tags';
@@ -108,6 +111,8 @@ function FieldError({ message }: { message?: string }) {
 
 export default function UploadPage() {
   const createPost = useCreatePost();
+  const { user } = useSession();
+  const isPreview = __DEV__ && !user;
   const filterOptions = useFilterOptions();
 
   // The shared vocabulary for "suited for". Slugs, not labels, because that's
@@ -121,6 +126,10 @@ export default function UploadPage() {
   const [isPosting, setIsPosting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [previewValidated, setPreviewValidated] = useState(false);
+  const [discarded, setDiscarded] = useState(false);
+  const [showDiscard, setShowDiscard] = useState(false);
+  const pendingExit = useRef<(() => void) | null>(null);
 
   const [locationMessage, setLocationMessage] =
     useState(locationHint);
@@ -135,6 +144,26 @@ export default function UploadPage() {
   const hasErrors = Object.keys(errors).length > 0;
   const busy = isPosting || isFindingLocation;
 
+  const hasDraft = Boolean(
+    fields.placeName || fields.address || fields.city || fields.country ||
+    fields.rating || fields.reviewText || fields.media.length ||
+    fields.placeType || fields.suitedFor.length
+  );
+
+  usePreventRemove(isPosting || (!saved && !discarded && hasDraft), ({ repeat }) => {
+    if (posting.current) return;
+    pendingExit.current = repeat;
+    setShowDiscard(true);
+  });
+
+  function cancelPost() {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  }
+
   function updateField<K extends keyof UploadFields>(
     key: K,
     value: UploadFields[K]
@@ -146,6 +175,7 @@ export default function UploadPage() {
       [key]: value,
     }));
     setSubmitError('');
+    setPreviewValidated(false);
   }
 
   async function fillPhotoLocation(coordinates: PhotoLocation) {
@@ -238,11 +268,17 @@ export default function UploadPage() {
 
     setAttempted(true);
     setSubmitError('');
+    setPreviewValidated(false);
 
     const validationErrors = validatePost(fields);
 
     if (Object.keys(validationErrors).length > 0) {
       scrollView.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+
+    if (isPreview) {
+      setPreviewValidated(true);
       return;
     }
 
@@ -269,6 +305,7 @@ export default function UploadPage() {
     setFields(emptyFields());
     setAttempted(false);
     setSubmitError('');
+    setPreviewValidated(false);
     setLocationMessage(locationHint);
     setIsFindingLocation(false);
     setSaved(false);
@@ -441,37 +478,81 @@ export default function UploadPage() {
         </Text>
       )}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{
-          disabled: busy,
-          busy: isPosting,
-        }}
-        disabled={busy}
-        onPress={handlePost}
-        style={({ pressed }) => [
-          styles.postButton,
-          busy ? styles.disabledButton : undefined,
-          pressed && !busy ? styles.pressedButton : undefined,
-        ]}
-      >
-        {isPosting && <ActivityIndicator color="#FFFFFF" />}
-
-        <Text style={styles.postButtonText}>
-          {isPosting
-            ? 'Posting…'
-            : isFindingLocation
-              ? 'Finding location…'
-              : submitError
-                ? 'Try again'
-                : 'Post'}
+      {previewValidated && (
+        <Text accessibilityLiveRegion="polite" style={styles.hint}>
+          Your form passed validation. Preview mode does not publish posts.
         </Text>
-      </Pressable>
+      )}
+
+      <View style={styles.actions}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isPosting }}
+          disabled={isPosting}
+          onPress={cancelPost}
+          style={({ pressed }) => [
+            styles.postButton,
+            styles.actionButton,
+            styles.cancelButton,
+            isPosting && styles.disabledButton,
+            pressed && styles.pressedButton,
+          ]}
+        >
+          <Text style={[styles.postButtonText, styles.cancelText]}>Cancel</Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{
+            disabled: busy,
+            busy: isPosting,
+          }}
+          disabled={busy}
+          onPress={handlePost}
+          style={({ pressed }) => [
+            styles.postButton,
+            styles.actionButton,
+            busy ? styles.disabledButton : undefined,
+            pressed && !busy ? styles.pressedButton : undefined,
+          ]}
+        >
+          {isPosting && <ActivityIndicator color="#FFFFFF" />}
+
+          <Text style={styles.postButtonText}>
+            {isPosting
+              ? 'Posting…'
+              : isFindingLocation
+                ? 'Finding location…'
+                : submitError
+                  ? 'Try again'
+                  : 'Post'}
+          </Text>
+        </Pressable>
+      </View>
+      <DiscardChangesModal
+        visible={showDiscard}
+        title="Discard this post?"
+        onKeepEditing={() => {
+          pendingExit.current = null;
+          setShowDiscard(false);
+        }}
+        onDiscard={() => {
+          latestLookup.current += 1;
+          setDiscarded(true);
+          setShowDiscard(false);
+          pendingExit.current?.();
+          pendingExit.current = null;
+        }}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  actions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  actionButton: { flex: 1, marginTop: 0 },
+  cancelButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#315D49' },
+  cancelText: { color: '#315D49' },
   container: {
     padding: 24,
     paddingBottom: 48,

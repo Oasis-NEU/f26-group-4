@@ -34,6 +34,8 @@ function RootStack() {
 
   const needsOnboarding = user?.user_metadata.onboarding_pending === true;
 
+  const previewUpload = __DEV__ && process.env.EXPO_PUBLIC_PREVIEW_UPLOAD === 'true' && !user;
+
   // Wait for the saved session, so a signed-in person doesn't see Login flash first.
   if (isLoading) {
     return null;
@@ -51,10 +53,12 @@ function RootStack() {
       </Stack.Protected>
 
       <Stack.Protected guard={!!user && !needsOnboarding}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="upload" options={{ title: 'Upload', presentation: 'modal' }} />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
+      </Stack.Protected>
+      <Stack.Protected guard={previewUpload || (!!user && !needsOnboarding)}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="upload" options={{ title: 'Upload', presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );
