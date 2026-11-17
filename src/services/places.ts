@@ -2,16 +2,27 @@
 // getPlace() work the same as they did with the mock data. The mock places now
 // live in supabase/seed/20_places.sql.
 
+import { matchesRules } from '@/lib/collection-rules';
 import { supabase } from '@/lib/supabase';
 
 import { PLACE_SELECT, toPlace, UUID_PATTERN, type PlaceRow } from './place-rows';
 
+import type { CollectionRules } from '@/types/collection';
 import type { Place } from '@/types/place';
 
 export type PlaceFilters = {
   query?: string; // matches the place name or city
   placeTypes?: string[]; // empty or missing means any type
   suitedFor?: string[]; // empty or missing means any; a place matches if it has at least one
+
+  // What an Explore tile stands for: "Hikes in France", "Food in Japan".
+  //
+  // It's the SAME type collections use for their auto-add rules, and the same
+  // matching function, on purpose. Both answer "which places does this stand
+  // for?", so there's one place to read and one place to fix. It also means a
+  // tile can say "anywhere in Europe" without this file knowing what Europe
+  // is -- src/lib/regions.ts handles that.
+  rules?: CollectionRules;
 };
 
 // Places that match the filters, newest first. With no filters, every place.
@@ -24,7 +35,15 @@ export async function getPlaces(filters: PlaceFilters = {}): Promise<Place[]> {
     })
     .select(PLACE_SELECT);
   if (error) throw error;
-  return (data as unknown as PlaceRow[]).map(toPlace);
+  const places = (data as unknown as PlaceRow[]).map(toPlace);
+
+  // The tile's rules, if one is switched on. Kept separate from `query`
+  // because searching the text "Florence" would also match a place CALLED
+  // Florence, which isn't what tapping a Florence tile should do. Matched here
+  // rather than in search_places() because regions ("Europe") are a lookup in
+  // the app, not in the database.
+  const rules = filters.rules;
+  return rules ? places.filter((place) => matchesRules(place, rules)) : places;
 }
 
 // One place by its id, with all its reviews, or null if there isn't one with that id.

@@ -5,7 +5,7 @@
 | | |
 | - | - |
 | **Route** | `/saved` |
-| **File** | `src/app/(tabs)/saved.tsx` (new) |
+| **File** | `src/app/(tabs)/(saved)/saved.tsx` (new) |
 | **Navigator** | Tab: "Saved", called "saved posts" in the sketch. SF Symbol `bookmark.fill`, Material `bookmark`. |
 | **Status** | New. Add the file and a `Tabs.Screen` in `src/app/(tabs)/_layout.tsx`. |
 

@@ -1,13 +1,34 @@
-# 2. Feed
+# 2. Feed (now called Explore)
 
 ![Feed sketch](sketches/feed.jpg)
 
+> **RENAMED.** This page is called **Explore** now, and the Explore page has
+> been merged into it: a row of tiles sits across the top -- "Hikes in France",
+> "Food in Japan" -- and tapping one filters the feed rather than opening
+> anything. See [09-explore.md](09-explore.md) for what happened to the old
+> page.
+
 | | |
 | - | - |
-| **Route** | `/` |
-| **File** | `src/app/(tabs)/index.tsx` |
-| **Navigator** | Tab: "Feed", the middle tab, and where the app opens |
-| **Status** | Placeholder |
+| **Route** | `/` -- still the app's home |
+| **File** | `src/app/(tabs)/(explore)/index.tsx` |
+| **Navigator** | Tab: "Explore". SF Symbol `square.grid.2x2.fill`, Material `grid_view`. |
+| **Status** | Built. |
+
+## The tiles
+
+- `src/components/suggestion-strip.tsx`, in the `FlatList`'s
+  `ListHeaderComponent` so it scrolls away with the feed instead of sitting on
+  screen the whole time.
+- A tile is a theme, not a city: "Hikes in France", "Gardens in Italy". What
+  each one stands for is a set of `CollectionRules` -- the same type
+  collections use -- built in `src/lib/suggestions.ts`.
+- Tapping one sets `PlaceFilters.rules`; tapping the selected one clears it.
+- Rules rather than search text, because searching "Florence" would also match
+  a place *called* Florence. It also means a tile can say "anywhere in Europe"
+  and `getPlaces()` doesn't need to know what Europe is.
+- **They should be personalised.** The order is "most places first" for now;
+  see the TODO in `suggestions.ts`.
 
 ## Where it sits in navigation
 

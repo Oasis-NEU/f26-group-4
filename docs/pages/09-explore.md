@@ -1,14 +1,36 @@
 # 9. Explore
 
-Not in the low-fidelity sketch. Explore is a page we added afterwards, in the slot
-the Search placeholder used to have in the tab bar.
+Not in the low-fidelity sketch. Explore was a page we added afterwards, in the
+slot the Search placeholder used to have in the tab bar.
+
+> **MERGED INTO THE FEED.** Explore is no longer a page of its own. It was a
+> full screen of city tiles, and tapping one opened a *third* screen listing
+> that city's places -- the same places the feed already showed, reached a
+> different way. The tiles are now a row across the top of the feed and they
+> filter it in place, and the feed itself has been renamed Explore.
+>
+> The tiles are also more specific than they were. A tile is no longer a whole
+> city but a theme -- "Hikes in France", "Food in Japan", "Gardens in Italy" --
+> because a whole city is a blunt thing to tap when what you want is dinner.
+> Each one is a set of `CollectionRules`, the same type a collection uses, so
+> the title is written by `describeRules()` rather than typed in.
+>
+> What's left of this page: `src/lib/suggestions.ts` (what the tiles are),
+> `src/components/suggestion-strip.tsx` (the row) and
+> `src/components/suggestion-tile.tsx` (one tile). Deleted:
+> `(tabs)/(explore)/explore.tsx`, `src/components/explore-page.tsx`,
+> `src/components/city-tile.tsx` and the city page, `city/[name].tsx`.
+>
+> **The rest of this file is kept for the thinking behind the tiles** -- the
+> popularity ordering, what a tile stands for, why it isn't labelled with a
+> place type. Read [02-feed.md](02-feed.md) for the page as it is now.
 
 | | |
 | - | - |
-| **Route** | `/explore` |
-| **File** | `src/app/(tabs)/explore.tsx`, which renders `ExplorePage` from `src/components/explore-page.tsx` |
-| **Navigator** | Tab: "Explore". SF Symbol `square.grid.2x2.fill`, Material `grid_view`. |
-| **Status** | Built. |
+| **Route** | none -- it's part of `/` now |
+| **File** | `src/lib/suggestions.ts`, `src/components/suggestion-strip.tsx` |
+| **Navigator** | No tab of its own. The Feed tab is called "Explore". |
+| **Status** | Merged into the feed. |
 
 ## What it's for
 
@@ -65,7 +87,7 @@ changes and nothing else has to.
 | | |
 | - | - |
 | **Route** | `/city/[name]`, e.g. `/city/Florence` |
-| **File** | `src/app/city/[name].tsx` |
+| **File** | `src/app/(tabs)/(explore)/city/[name].tsx` |
 | **Navigator** | Root stack, pushed on top of the tabs with a back button. The screen sets the city's name as the title. |
 
 Every place in that city, best-rated first, with a **Feed / List** toggle

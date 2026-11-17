@@ -56,6 +56,13 @@ export const queryKeys = {
   settings: {
     all: ['settings'] as const,
   },
+  // The shared tag vocabulary -- a profile's interests and a place's
+  // "suited for" are one list. See src/services/tags.ts for why.
+  tags: {
+    all: ['tags'] as const,
+    list: (kind: string) => ['tags', 'list', kind] as const,
+    search: (kind: string, query: string) => ['tags', 'search', kind, query] as const,
+  },
   interests: {
     all: ['interests'] as const,
     byIds: (ids: string[]) => ['interests', 'ids', ids] as const,

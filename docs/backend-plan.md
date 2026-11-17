@@ -187,8 +187,9 @@ One review per person per place ([open decision 5](#open-decisions)). The `Revie
 | Table | Columns |
 | --- | --- |
 | `saves` | `user_id`, `place_id`. The primary key is both. This is the bookmark. |
-| `collections` | `owner_id`, `parent_id` (→ `collections`, one level deep), `name`, `emoji` (optional; `collection-card.tsx` has a TODO for it), `cover_path` (optional; falls back to the first place's image), `is_private`, `updated_at` |
+| `collections` | `owner_id`, `parent_id` (→ `collections`, up to three levels deep), `name`, `emoji` (optional; `collection-card.tsx` has a TODO for it), `cover_path` (optional; falls back to the first place's image), `is_private`, `rules` (jsonb, `CollectionRules`; null for a plain collection), `auto_add` (needs `rules`), `updated_at` |
 | `collection_places` | `collection_id`, `place_id`, `added_at`. The primary key is the first two. |
+| `collection_exclusions` | `collection_id`, `place_id`, `created_at`: places taken out of an auto add collection by hand, so auto add skips them. The primary key is the first two. Only the collection's owner can see them. |
 
 "All saved" is the `saves` table. Loose saves are saves that aren't in any of your collections. A collection's `country` is worked out from its places.
 
@@ -204,7 +205,7 @@ One review per person per place ([open decision 5](#open-decisions)). The `Revie
 ### Tables for later
 
 - **Push notifications** add `push_tokens` (`user_id`, `token`, `platform`) and `notifications`, an activity list (`user_id`, `kind`, `actor_id`, `review_id`, `read_at`).
-- **Auto-sort** adds `is_auto`, `match_country`, `match_city_id` and `match_place_type` to `collections`, and `auto_sort_saves` to `settings`. First answer the open questions in the `collections.ts` note.
+- **Auto-sort** is built as auto add (the `collection_rules` migration): `rules` and `auto_add` on `collections`, plus `collection_exclusions`. The matching runs in the app; [data-layer.md](data-layer.md#collections-and-auto-add) has the design, and its Phase 3 the move into a trigger.
 
 ## Who can see what
 
@@ -320,7 +321,7 @@ Triggers that hold whatever the app sends:
 
 1. Signing up creates your `profiles`, `settings` and `profile_locations` rows, using the `username` and `name` passed to `signUp`. If they're missing, which happens when someone adds a user in the dashboard, it makes a username from the email instead of failing, because a failing trigger stops the user from being created at all.
 2. Putting a place in a collection saves it. Unsaving a place takes it out of all your collections. (Both are in the old schema already.)
-3. Collections only nest one level deep.
+3. Collections only nest three levels deep, inside your own, and never inside one of their own sub-collections. Putting a place back in a collection clears it from `collection_exclusions`.
 4. A new collection is private if your `new_collections_private` setting is on, unless the app says otherwise.
 5. Blocking someone ends follows, follow requests and close-friend entries between the two of you, both ways.
 6. When someone stops following you, they come off your close friends.
@@ -600,7 +601,7 @@ Each has a default, so building isn't blocked. Change the default here if the te
 | 9 | Can other people see your collections? | **Yes, unless they're private.** That's what Settings and Profile already do. | data-layer.md said private. This plan replaces that default. |
 | 10 | Who verifies places, and can people edit places they added? | **We verify in the dashboard. No edits in v1.** | |
 | 11 | Phone and birthday in Settings → Account? | **Not stored.** Hide the rows until there's a reason to collect them. | Fewer personal details to protect. |
-| 12 | How deep can collections nest? | **One level**, as before. | |
+| 12 | How deep can collections nest? | **Three levels** (Europe Trip > France > Paris), from the `collection_rules` migration. | |
 
 ## Before we start
 

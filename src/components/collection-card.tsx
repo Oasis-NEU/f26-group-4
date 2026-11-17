@@ -1,4 +1,5 @@
 import { CollectionTile } from '@/components/ui';
+import { everyPlaceIn } from '@/lib/collection-tree';
 import { Collection } from '@/types/collection';
 import { getCountryFlag } from '@/utils/country-flags';
 
@@ -15,14 +16,9 @@ type CollectionCardProps = {
 
 export function CollectionCard({ collection, index = 0, compact = false, onPress }: CollectionCardProps) {
   // Count the places in this collection plus any inside its sub-collections,
-  // so "Europe Trip" shows 4 rather than 0.
-  let placeCount = collection.places.length;
-
-  if (collection.subCollections !== undefined) {
-    for (const sub of collection.subCollections) {
-      placeCount = placeCount + sub.places.length;
-    }
-  }
+  // all the way down, so "Europe Trip" shows 4 rather than 0. A place in both
+  // France and Paris counts once.
+  const placeCount = everyPlaceIn(collection).length;
 
   // "4 places", and the country after it when we know one.
   let details = placeCount + (placeCount === 1 ? ' place' : ' places');

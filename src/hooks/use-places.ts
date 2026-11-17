@@ -1,7 +1,8 @@
-// Places: the Feed, the Map, Place details, and the filter options.
+// Places: Explore (the feed), the Map, Place details, the Explore tiles, and the filter options.
 import { keepPreviousData, queryOptions, skipToken, useQuery } from '@tanstack/react-query';
 
 import { queryKeys } from '@/lib/query-keys';
+import { buildSuggestions } from '@/lib/suggestions';
 import { getPlace, getPlaces, getPlacesByIds, getPlaceTypes, getSuitedForTags, type PlaceFilters } from '@/services/places';
 
 // Places that match the filters. While new results load, the old ones stay on
@@ -11,6 +12,17 @@ export function usePlaces(filters: PlaceFilters) {
     queryKey: queryKeys.places.list(filters),
     queryFn: () => getPlaces(filters),
     placeholderData: keepPreviousData,
+  });
+}
+
+// The Explore tiles ("Hikes in France", "Food in Japan"), worked out from every
+// place. They come from the unfiltered list, so they don't change as people
+// type in the search box or tap a tile.
+export function useSuggestions() {
+  return useQuery({
+    queryKey: queryKeys.places.list({}),
+    queryFn: () => getPlaces({}),
+    select: buildSuggestions,
   });
 }
 

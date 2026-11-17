@@ -5,7 +5,7 @@
 | | |
 | - | - |
 | **Route** | `/place/[id]`, for example `/place/place_001` |
-| **Files** | `src/app/place/[id].tsx` (exists), `src/components/place-details.tsx` (partly built) |
+| **Files** | `src/app/(tabs)/(profile,map,explore,saved)/place/[id].tsx` (exists), `src/components/place-details.tsx` (partly built) |
 | **Navigator** | Root stack, pushed on top of the tabs. The tab bar is hidden and there's a back button. |
 | **Status** | The route works with `mockPlace`. The component shows raw fields. |
 

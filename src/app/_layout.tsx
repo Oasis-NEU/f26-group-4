@@ -5,11 +5,20 @@ import { SessionProvider, useSession } from '@/hooks/use-session';
 import { queryClient } from '@/lib/query-client';
 
 // The app's outermost navigator. The tab bar itself is set up in (tabs)/_layout.tsx.
-// Screens listed here open on top of the tabs, with a back button, instead of being a tab.
 //
 // Route to login, onboarding, or the main app based on the signed-in session.
 // QueryClientProvider holds the React Query cache that every hook in
 // src/hooks/ reads from (docs/data-layer.md).
+//
+// Screens listed here cover the WHOLE screen, tab bar included. That's right
+// for things you start, finish and leave -- posting, editing your profile,
+// settings, signing in.
+//
+// It is NOT right for things you browse. A place, a collection, someone's
+// profile and the New collection form all used to be listed here, which meant
+// the tab bar vanished as soon as you opened one. They now live inside each
+// tab's own stack, in src/app/(tabs)/(profile,map,explore,saved)/, so the tab
+// bar stays put and you always have a back arrow.
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -44,10 +53,6 @@ function RootStack() {
       </Stack.Protected>
 
       <Stack.Protected guard={!!user && !needsOnboarding}>
-        <Stack.Screen name="place/[id]" options={{ title: 'Place' }} />
-        <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="city/[id]" />
-        <Stack.Screen name="collection/[id]" />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
       </Stack.Protected>

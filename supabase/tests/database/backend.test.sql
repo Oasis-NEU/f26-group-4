@@ -14,7 +14,7 @@ create extension if not exists pgtap with schema extensions;
 -- pgTAP's own functions, for the signed-in and signed-out roles (rolled back with the rest)
 grant execute on all functions in schema extensions to anon, authenticated;
 
-select plan(29);
+select plan(35);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('aaaaaaaa-0000-0000-0000-000000000001', 'ana@test.local', '{"username": "test_ana", "name": "Ana"}'),
@@ -48,6 +48,9 @@ insert into public.collections (id, owner_id, name, is_private) values
   ('cccccccc-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000001', 'Open', false);
 insert into public.places (id, name, place_type, city_id) values
   ('dddddddd-0000-0000-0000-000000000001', 'Test Cafe', 'cafe', 'paris-fr');
+-- Ana took Test Cafe out of her Open collection by hand (auto add's exclusions)
+insert into public.collection_exclusions (collection_id, place_id) values
+  ('cccccccc-0000-0000-0000-000000000002', 'dddddddd-0000-0000-0000-000000000001');
 
 -- ---------------------------------------------------------------------------
 -- As Cat, a stranger
@@ -69,6 +72,9 @@ select is((select count(*)::int from public.close_friends), 0, 'Nobody else can 
 select is(
   (select count(*)::int from public.collections where owner_id = 'aaaaaaaa-0000-0000-0000-000000000001'), 1,
   'Others see public collections, not private ones');
+select is(
+  (select count(*)::int from public.collection_exclusions), 0,
+  'Others can''t see what you took out of your collections');
 select is(
   (select count(*)::int from public.follows where following_id = 'aaaaaaaa-0000-0000-0000-000000000001'), 0,
   'Hidden follow lists are hidden');
@@ -132,16 +138,38 @@ select is(
 -- ---------------------------------------------------------------------------
 set local "request.jwt.claims" to '{"sub": "aaaaaaaa-0000-0000-0000-000000000001", "role": "authenticated"}';
 
+select is(
+  (select count(*)::int from public.collection_exclusions), 1,
+  'You can see what you took out of your own collections');
+
 insert into public.collection_places (collection_id, place_id) values
   ('cccccccc-0000-0000-0000-000000000002', 'dddddddd-0000-0000-0000-000000000001');
 select is(
   (select count(*)::int from public.saves where place_id = 'dddddddd-0000-0000-0000-000000000001'), 1,
   'Putting a place in a collection saves it');
+select is(
+  (select count(*)::int from public.collection_exclusions), 0,
+  'Putting a place back in a collection clears it from what you took out');
 
 delete from public.saves where place_id = 'dddddddd-0000-0000-0000-000000000001';
 select is(
   (select count(*)::int from public.collection_places where place_id = 'dddddddd-0000-0000-0000-000000000001'), 0,
   'Unsaving takes it out of your collections');
+
+-- Open > France > Paris is three deep, like Europe Trip > France > Paris
+insert into public.collections (id, name, parent_id) values
+  ('cccccccc-0000-0000-0000-000000000003', 'France', 'cccccccc-0000-0000-0000-000000000002');
+select lives_ok(
+  $$ insert into public.collections (id, name, parent_id)
+     values ('cccccccc-0000-0000-0000-000000000004', 'Paris', 'cccccccc-0000-0000-0000-000000000003') $$,
+  'Collections nest three deep');
+select throws_ok(
+  $$ insert into public.collections (name, parent_id) values ('Montmartre', 'cccccccc-0000-0000-0000-000000000004') $$,
+  '23514', null, 'Collections don''t nest a fourth level');
+select throws_ok(
+  $$ update public.collections set parent_id = 'cccccccc-0000-0000-0000-000000000001'
+     where id = 'cccccccc-0000-0000-0000-000000000002' $$,
+  '23514', null, 'Moving a collection can''t make it more than three deep');
 
 update public.profiles set account_type = 'public' where id = 'aaaaaaaa-0000-0000-0000-000000000001';
 select is(

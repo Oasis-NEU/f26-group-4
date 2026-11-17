@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CollectionCard } from '@/components/collection-card';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,9 +8,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SavedPlaceRow } from '@/components/saved-place-row';
 import { ALL_SAVED_ID, useCollections } from '@/hooks/use-collections';
 import { useAllSavedPlaces, useLooseSavedPlaces } from '@/hooks/use-saves';
+import { everyPlaceIn } from '@/lib/collection-tree';
 import { Collection } from '@/types/collection';
-import { colors, spacing, type } from '@/theme';
-import { FilterPill } from '@/components/ui';
+import { colors, radius, spacing, type } from '@/theme';
+import { FilterPill, Icon } from '@/components/ui';
 
 // The Saved tab: the user's collections, and the places they've saved
 // but not put in a collection yet.
@@ -19,8 +20,9 @@ import { FilterPill } from '@/components/ui';
 // control at the top. This uses filter pills instead for now.
 
 export default function SavedPage() {
-  // The three lists come from the shared cache. Saving or unsaving anywhere
-  // refreshes them, so this tab is up to date whenever you come back to it.
+  // The three lists come from the shared cache. Saving or unsaving anywhere,
+  // or making a collection on the New collection screen, refreshes them, so
+  // this tab is up to date whenever you come back to it.
   const collectionsQuery = useCollections();
   const looseQuery = useLooseSavedPlaces();
   const allSavedQuery = useAllSavedPlaces();
@@ -55,19 +57,10 @@ export default function SavedPage() {
       return true;
     }
 
-    for (const place of collection.places) {
+    // Looks inside its sub-collections too, all three levels.
+    for (const place of everyPlaceIn(collection)) {
       if (place.country === selectedFilter) {
         return true;
-      }
-    }
-
-    if (collection.subCollections !== undefined) {
-      for (const sub of collection.subCollections) {
-        for (const place of sub.places) {
-          if (place.country === selectedFilter) {
-            return true;
-          }
-        }
       }
     }
 
@@ -123,7 +116,19 @@ export default function SavedPage() {
         ))}
       </ScrollView>
 
-      <Text style={styles.sectionHeading}>Collections</Text>
+      {/* The heading and the + that makes a new collection sit on one line */}
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionHeading}>Collections</Text>
+        <Pressable
+          onPress={() => router.push('/new-collection')}
+          accessibilityRole="button"
+          accessibilityLabel="New collection"
+          style={styles.addPill}
+        >
+          <Icon name="add" size={16} color={colors.secondaryText} />
+          <Text style={styles.addPillText}>New</Text>
+        </Pressable>
+      </View>
 
       {/* The "All saved" card only makes sense when nothing is filtered out */}
       {selectedFilter === 'All' && (
@@ -200,6 +205,29 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     paddingTop: spacing.sm,
     color: colors.text,
+  },
+  // Heading on the left, + on the right.
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  // A pill, the same shape and colours as the secondary Button in the design
+  // system -- it isn't <Button /> itself only because that doesn't take an icon.
+  addPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    minHeight: 36,
+    backgroundColor: colors.secondaryFill,
+    borderRadius: radius.round,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  addPillText: {
+    fontWeight: '600',
+    fontSize: type.label,
+    color: colors.secondaryText,
   },
   emptyText: {
     fontSize: type.body,

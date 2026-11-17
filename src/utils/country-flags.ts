@@ -1,28 +1,16 @@
 // Turns a country name into its flag emoji, to be used throughout the app
-// "🇫🇷 Chamonix, France" instead of just the text
+// "🇫🇷 Chamonix, France" instead of just the text.
+//
+// This used to be a hand-typed list of eight countries, with a TODO saying the
+// real fix was to use the two-letter country code and work the flag out with a
+// formula. That's now done in src/lib/countries.ts, which has every country
+// and its code, so this file just forwards to it.
+//
+// Nothing else needed changing: getCountryFlag() still takes a country name and
+// still gives back an empty string for a country it doesn't know.
 
-// This is a plain lookup list for now. It only has the countries in our mock data.
-// TODO: this doesn't scale -- there are ~195 countries. The real fix is to store a
-// two-letter country code on Place (like "FR") instead of the full country name,
-// because a code can be turned into a flag with a formula instead of a list.
-// ! I'm sure there's a library for this somewhere
-
-const flagsByCountry: Record<string, string> = {
-  France: '🇫🇷',
-  Switzerland: '🇨🇭',
-  Italy: '🇮🇹',
-  Germany: '🇩🇪',
-  Spain: '🇪🇸',
-  Portugal: '🇵🇹',
-  Austria: '🇦🇹',
-  'United States': '🇺🇸',
-};
+import { countryFlag } from '@/lib/countries';
 
 export function getCountryFlag(country: string) {
-  // If the country isn't in the list, return an empty string so nothing shows.
-  if (flagsByCountry[country] === undefined) {
-    return '';
-  }
-
-  return flagsByCountry[country];
+  return countryFlag(country);
 }

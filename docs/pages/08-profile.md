@@ -5,7 +5,7 @@
 | | |
 | - | - |
 | **Route** | `/profile` |
-| **File** | `src/app/(tabs)/profile.tsx` |
+| **File** | `src/app/(tabs)/(profile)/profile.tsx` |
 | **Navigator** | Tab: "Account", the first tab in the sketch |
 | **Status** | Placeholder. `ProfileHeader`, `ProfileInterests`, and `ProfilePosts` already exist. |
 
