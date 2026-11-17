@@ -1,19 +1,20 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-// Shown when Cancel is tapped on Edit profile with unsaved changes.
+// Confirms leaving a form with unsaved changes.
 
 type DiscardChangesModalProps = {
   visible: boolean;
+  title?: string;
   onDiscard: () => void;
   onKeepEditing: () => void;
 };
 
-export function DiscardChangesModal({ visible, onDiscard, onKeepEditing }: DiscardChangesModalProps) {
+export function DiscardChangesModal({ visible, title = 'Discard changes?', onDiscard, onKeepEditing }: DiscardChangesModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onKeepEditing}>
       <Pressable style={styles.backdrop} onPress={onKeepEditing} />
       <View style={styles.card}>
-        <Text style={styles.title}>Discard changes?</Text>
+        <Text style={styles.title}>{title}</Text>
         <Text style={styles.message}>If you leave now, your edits won&apos;t be saved.</Text>
         <Pressable style={styles.discardButton} onPress={onDiscard}>
           <Text style={styles.discardText}>Discard</Text>

@@ -1,17 +1,34 @@
-import { Tabs } from 'expo-router';
+import { Redirect, router, Tabs, usePathname } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+
+import { useSession } from '@/hooks/use-session';
 
 // The tab bar at the bottom of the screen. Each Tabs.Screen is one tab, and its `name`
 // is the file in this folder that it opens, e.g. name="explore" opens explore.tsx.
-// The order matches the sketch: account, map, feed, saved, explore. Feed is index.tsx, so
-// `/` still opens it even though it's the middle tab.
+// Feed is index.tsx, so `/` still opens it. The center action opens the upload modal.
 //
 // To add a tab: create a file in this folder, then add a Tabs.Screen for it below.
 // Icon names: `ios` is an SF Symbol (https://developer.apple.com/sf-symbols/),
 // `android` and `web` are Material Symbols (https://fonts.google.com/icons).
 export default function TabsLayout() {
+  const { user } = useSession();
+  const pathname = usePathname();
+  const isPreview = !user;
+
+  if (isPreview && pathname !== '/' && pathname !== '/new-post') {
+    return <Redirect href="/" />;
+  }
+
   return (
-    <Tabs>
+    <Tabs
+      screenListeners={({ route }) => ({
+        tabPress: (event) => {
+          if (isPreview && route.name !== 'index' && route.name !== 'new-post') {
+            event.preventDefault();
+          }
+        },
+      })}
+    >
       <Tabs.Screen
         name="profile"
         options={{
@@ -46,6 +63,21 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="new-post"
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            router.push('/upload');
+          },
+        }}
+        options={{
+          title: 'New post',
+          tabBarIcon: ({ color }) => (
+            <SymbolView name={{ ios: 'plus.circle.fill', android: 'add_circle', web: 'add_circle' }} tintColor={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="saved"
         options={{
           title: 'Saved',
@@ -70,6 +102,7 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="search" options={{ title: 'Search' }} />
     </Tabs>
   );
 }

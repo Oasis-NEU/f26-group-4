@@ -1,15 +1,33 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Button, FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Button, FlatList, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlaceCard } from '@/components/place-card';
 import { SearchFilterBar } from '@/components/search-filter-bar';
 import { useFilterOptions, usePlaces } from '@/hooks/use-places';
+import { useSession } from '@/hooks/use-session';
 
 // Feed: one place card per place, in a vertical list
 
 export default function FeedScreen() {
+  const { user } = useSession();
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View style={styles.center}>
+          <Text accessibilityRole="header">Feed preview</Text>
+          <Text>Tap New post in the bottom bar to try the form.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return <SignedInFeed />;
+}
+
+function SignedInFeed() {
   const { width } = useWindowDimensions();
 
   // Search text and filters; changing any of them loads the matching places
@@ -46,11 +64,6 @@ export default function FeedScreen() {
         onChangeSuitedFor={setSuitedFor}
         placeTypeOptions={filterOptions.placeTypes}
         suitedForOptions={filterOptions.suitedFor}
-        right={
-          <Pressable onPress={() => router.push('/upload')} accessibilityRole="button" accessibilityLabel="New post" hitSlop={8}>
-            <Text style={styles.plus}>+</Text>
-          </Pressable>
-        }
       />
 
       {places.isPending ? (
@@ -95,9 +108,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     padding: 24,
-  },
-  plus: {
-    fontSize: 28,
-    lineHeight: 30,
   },
 });
