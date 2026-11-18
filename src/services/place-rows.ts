@@ -8,11 +8,11 @@ import type { Media } from '@/types/media';
 import type { Place } from '@/types/place';
 import type { Review } from '@/types/review';
 
-// A review with its author's username, its like count and its photos.
-// Reviews reach profiles two ways (the author, and the people who liked it
-// through review_likes), so the author's link is named.
+// A review with its author's username, its like and comment counts, and its
+// photos. Reviews reach profiles two ways (the author, and the people who liked
+// it through review_likes), so the author's link is named.
 export const REVIEW_SELECT =
-  'id, author_id, rating, body, suited_for, created_at, like_count, author:profiles!reviews_author_id_fkey(username), photos:review_media(path, caption, position)';
+  'id, author_id, rating, body, suited_for, created_at, like_count, comment_count, author:profiles!reviews_author_id_fkey(username), photos:review_media(path, caption, position)';
 
 // A place with its calculated ratings, its city, and its reviews.
 // average_rating and friends_rating are worked out by the database when asked for.
@@ -28,6 +28,7 @@ export type ReviewRow = {
   suited_for: string[];
   created_at: string;
   like_count: number | null;
+  comment_count: number | null;
   author: { username: string } | null;
   photos: { path: string; caption: string | null; position: number }[];
 };
@@ -79,6 +80,7 @@ export function toReview(row: ReviewRow, place: ReviewPlace): Review {
     authorId: row.author_id,
     createdAt: row.created_at.slice(0, 10),
     likeCount: row.like_count ?? 0,
+    commentCount: row.comment_count ?? 0,
   };
 }
 

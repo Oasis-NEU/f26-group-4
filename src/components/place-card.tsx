@@ -3,17 +3,18 @@ import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { BookmarkButton } from '@/components/bookmark-button';
 import { CommentButton } from '@/components/comment-button';
-import { CommentsModal, type Comment } from '@/components/comments-modal';
+import { CommentsModal } from '@/components/comments-modal';
 import { LikeButton } from '@/components/like-button';
 import { MediaStrip } from '@/components/media-strip';
 import { RatingStars } from '@/components/rating-stars';
+import { useComments, usePostComment } from '@/hooks/use-comments';
 import { useIsLiked, useToggleLike } from '@/hooks/use-reviews';
 import { useIsSaved, useToggleSave } from '@/hooks/use-saves';
 import type { Place } from '@/types/place';
 
 // One place in the feed: header, swipeable media, action row, info, and text.
-// The screen decides where tapping it goes. Saving and liking happen here, through
-// the hooks in src/hooks/, so every card for the same place stays in step.
+// The screen decides where tapping it goes. Saving, liking and commenting happen
+// here, through the hooks in src/hooks/, so every card for the same place stays in step.
 
 type PlaceCardProps = {
   place: Place;
@@ -35,16 +36,12 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
   // TODO: open the "Save to collection" sheet instead of toggling directly.
   const isSaved = useIsSaved(place.id);
   const toggleSave = useToggleSave();
+  // Comments are on the newest review too, like the heart. They load the first
+  // time the popup opens; until then the count comes with the review.
   const [showComments, setShowComments] = useState(false);
-  // The place's posts count as comments for now; new comments only last while the card is on screen
-  const [newComments, setNewComments] = useState<Comment[]>([]);
-  // Comments you posted come first, newest at the top, so yours is always the one people see
-  const comments: Comment[] = [
-    ...[...newComments].reverse(),
-    ...(place.reviews ?? [])
-      .filter((r) => r.reviewText)
-      .map((r) => ({ id: r.id, author: r.profileName, text: r.reviewText! })),
-  ];
+  const comments = useComments(newestReview?.id, showComments);
+  const postComment = usePostComment();
+  const commentCount = comments.data?.length ?? newestReview?.commentCount ?? 0;
 
   // Opens the place in the phone's maps app: Apple Maps on iOS, the default maps app on Android.
   // A place without coordinates opens by its address instead.
@@ -63,9 +60,6 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`)
     );
   }
-
-  // The line shown under the post: your latest comment if you posted one, otherwise the newest review
-  const featured = newComments.length > 0 ? comments[0] : undefined;
 
   return (
     <View style={styles.card}>
@@ -86,18 +80,21 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
         {newestReview && (
           <LikeButton isLiked={isLiked} onPress={() => toggleLike.mutate({ reviewId: newestReview.id, like: !isLiked })} />
         )}
-        <CommentButton count={comments.length} onPress={() => setShowComments(true)} />
+        {newestReview && <CommentButton count={commentCount} onPress={() => setShowComments(true)} />}
         <BookmarkButton isSaved={isSaved} onPress={() => toggleSave.mutate({ placeId: place.id, save: !isSaved })} />
       </View>
-      <CommentsModal
-        visible={showComments}
-        comments={comments}
-        onPost={(text) => {
-          setNewComments((prev) => [...prev, { id: `new-${Date.now()}`, author: 'You', text }]);
-          setShowComments(false); // close the popup so your comment shows under the post
-        }}
-        onClose={() => setShowComments(false)}
-      />
+      {newestReview && (
+        <CommentsModal
+          visible={showComments}
+          comments={comments.data}
+          isLoading={comments.isPending}
+          isError={comments.isError}
+          onRetry={() => comments.refetch()}
+          // The popup stays open, so you see your comment land at the top of the list
+          onPost={(text) => postComment.mutateAsync({ reviewId: newestReview.id, text })}
+          onClose={() => setShowComments(false)}
+        />
+      )}
 
       <View style={styles.info}>
         <View style={styles.ratings}>
@@ -112,12 +109,7 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
             </Text>
           ))}
         </View>
-        {featured ? (
-          <Text numberOfLines={2}>
-            <Text style={styles.name}>{featured.author} </Text>
-            {featured.text}
-          </Text>
-        ) : newestReview?.reviewText ? (
+        {newestReview?.reviewText ? (
           <Text numberOfLines={2}>
             <Text style={styles.name}>{newestReview.profileName} </Text>
             {newestReview.reviewText}

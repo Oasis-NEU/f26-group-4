@@ -25,4 +25,5 @@ export type Review = {
     authorId?: string; // id of the user who wrote it, e.g. "u1"; used by the Profile page. Optional until login works
     createdAt?: string; // when it was posted, e.g. "2026-10-14"; for newest-first order and yearly goals
     likeCount?: number; // how many people liked it; whether *you* liked it is useIsLiked(review.id)
+    commentCount?: number; // how many comments it has; the comments themselves come from useComments(review.id)
 };

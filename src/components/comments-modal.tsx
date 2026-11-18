@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -11,31 +12,56 @@ import {
   View,
 } from 'react-native';
 
-// A popup listing every comment on a place, with a box at the bottom to write a new one.
-// It doesn't store anything itself; the parent passes in the comments and hears back
-// what was posted.
+import { Button } from '@/components/ui';
+import { colors, spacing, type } from '@/theme';
+import type { Comment } from '@/types/comment';
 
-export type Comment = {
-  id: string;
-  author: string;
-  text: string;
-};
+// A popup listing every comment on a post, with a box at the bottom to write a new one.
+// It doesn't load or save anything itself; the parent passes in the comments and
+// saves what's posted.
+
+// The database refuses longer comments
+const MAX_COMMENT_LENGTH = 1000;
 
 type CommentsModalProps = {
   visible: boolean;
-  comments: Comment[];
-  onPost: (text: string) => void;
+  comments: Comment[] | undefined; // undefined until they've loaded
+  isLoading?: boolean;
+  isError?: boolean; // loading them failed
+  onRetry?: () => void;
+  // Saves the comment. The box empties straight away, and gets the text back if
+  // the promise rejects.
+  onPost: (text: string) => Promise<unknown>;
   onClose: () => void;
 };
 
-export function CommentsModal({ visible, comments, onPost, onClose }: CommentsModalProps) {
+export function CommentsModal({ visible, comments, isLoading, isError, onRetry, onPost, onClose }: CommentsModalProps) {
   const [draft, setDraft] = useState('');
+  const [postFailed, setPostFailed] = useState(false);
   const canPost = draft.trim().length > 0;
 
   function post() {
     if (!canPost) return;
-    onPost(draft.trim());
+    const text = draft.trim();
     setDraft('');
+    setPostFailed(false);
+    onPost(text).catch(() => {
+      // Put the comment back, unless they've started typing another one
+      setDraft((current) => current || text);
+      setPostFailed(true);
+    });
+  }
+
+  let empty = <Text style={styles.empty}>No comments yet</Text>;
+  if (isLoading) {
+    empty = <ActivityIndicator style={styles.status} />;
+  } else if (isError) {
+    empty = (
+      <View style={styles.errorState}>
+        <Text style={styles.empty}>Couldn&apos;t load the comments.</Text>
+        <Button label="Try again" variant="secondary" align="center" onPress={onRetry} />
+      </View>
+    );
   }
 
   return (
@@ -58,13 +84,18 @@ export function CommentsModal({ visible, comments, onPost, onClose }: CommentsMo
               {item.text}
             </Text>
           )}
-          ListEmptyComponent={<Text style={styles.empty}>No comments yet</Text>}
+          ListEmptyComponent={empty}
         />
+        {postFailed && <Text style={styles.postError}>Couldn&apos;t post your comment. Try again.</Text>}
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
             value={draft}
-            onChangeText={setDraft}
+            onChangeText={(text) => {
+              setDraft(text);
+              setPostFailed(false);
+            }}
+            maxLength={MAX_COMMENT_LENGTH}
             placeholder="Add a comment..."
             placeholderTextColor="#444"
             returnKeyType="send"
@@ -143,5 +174,17 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     paddingVertical: 24,
+  },
+  status: {
+    paddingVertical: spacing.xl,
+  },
+  errorState: {
+    alignItems: 'center',
+    paddingBottom: spacing.xl,
+  },
+  postError: {
+    color: colors.textMuted,
+    fontSize: type.small,
+    paddingTop: spacing.sm,
   },
 });

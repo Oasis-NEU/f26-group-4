@@ -26,9 +26,9 @@ What we want the Supabase backend to do: the tables, who can see what, the funct
 - **Demo photos are links for now.** Seed rows hold the mock's picsum and pravatar URLs, which `getMediaUrl` passes through. Files in `supabase/seed/photos/` still work, and replace them.
 - **The reset needs no database password.** It runs the SQL through `npx supabase db query`, wrapped in one `do` block (one statement, one transaction). On the shared project it needs only the secret key and a linked CLI.
 - **The functions the app calls are plain** (`security invoker`) and ask helpers in `private` for anything private, as [Functions that skip RLS](#functions-that-skip-rls) describes. `create_review()` takes one `post` JSON argument.
-- **Likes** attach to the review a Feed card shows. Writing comments is still to build (the table exists).
+- **Likes and comments** attach to the review a Feed card shows.
 - **Upload is photos only**; the picker no longer offers videos.
-- **Not built yet:** changing email or password, Upload's city picker, writing comments, and everything under [Later](#later).
+- **Not built yet:** changing email or password, Upload's city picker, deleting comments (the database already allows it), and everything under [Later](#later).
 
 ## What the app needs
 
@@ -593,7 +593,7 @@ Each has a default, so building isn't blocked. Change the default here if the te
 | 1 | Should places use the shared `cities` list instead of typed city and country? | **Yes.** Upload picks the city with the same picker as Edit profile, plus "Add a city". | Typed names split "Florence" from "florence" and can't tell the two Bostons apart, and Explore groups by city. Changing it after real data exists means migrating that data. |
 | 2 | What does a friends-only account hide from people who don't follow it? | **Nothing yet.** It only means new followers need your OK, which is what the settings copy says now. | If posts should be hidden too, the rules for reviews, collections and photos change, and the bucket should be private. |
 | 3 | What does "Who can see your Map tab" hide? | **Only the Map tab.** Say so in the settings copy. | Your reviews still show on place pages, so the setting can't hide where you've been. |
-| 4 | Are likes and comments on reviews or on places? | **Reviews.** The Feed card's heart likes the review it shows. | "Likes and comments" notifications are about your posts. The comments sheet shows reviews today. |
+| 4 | Are likes and comments on reviews or on places? | **Reviews.** The Feed card's heart likes the review it shows, and its comments sheet shows and adds comments on that review. | "Likes and comments" notifications are about your posts. |
 | 5 | One review per person per place? | **Yes.** Posting about a place again edits your review. | Several reviews from one person would skew a place's rating. |
 | 6 | Videos in v1? | **No, photos only.** | The free plan has 1 GB of storage in all. That's a few thousand resized photos, but only a handful of videos. |
 | 7 | Where does a new place's location come from? | **Built:** the photo's GPS data, which Upload already reads, or else the typed address looked up on the phone with `geocodeAsync` from `expo-location`. It uses the phone's own geocoder, so there's no API key or bill; it works on iOS and Android but not the web. Without either, the place saves without coordinates and stays off the map. | Without coordinates a place can't go on the map. |
