@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   FlatList,
@@ -11,35 +12,31 @@ import {
   View,
 } from 'react-native';
 
-// A popup listing every comment on a place, with a box at the bottom to write a new one.
-// It doesn't store anything itself; the parent passes in the comments and hears back
-// what was posted.
-
-export type Comment = {
-  id: string;
-  author: string;
-  text: string;
-};
+import { useAddReviewComment, useReviewComments } from '@/hooks/use-reviews';
 
 type CommentsModalProps = {
-  visible: boolean;
-  comments: Comment[];
-  onPost: (text: string) => void;
+  reviewId: string;
   onClose: () => void;
 };
 
-export function CommentsModal({ visible, comments, onPost, onClose }: CommentsModalProps) {
+export function CommentsModal({ reviewId, onClose }: CommentsModalProps) {
   const [draft, setDraft] = useState('');
-  const canPost = draft.trim().length > 0;
+  const comments = useReviewComments(reviewId);
+  const addComment = useAddReviewComment(reviewId);
+  const canPost = draft.trim().length > 0 && !addComment.isPending;
 
-  function post() {
+  async function post() {
     if (!canPost) return;
-    onPost(draft.trim());
-    setDraft('');
+    try {
+      await addComment.mutateAsync(draft.trim());
+      setDraft('');
+    } catch {
+      // Keep the draft so it can be retried. The mutation supplies the error state.
+    }
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close comments" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.sheet}>
@@ -50,35 +47,62 @@ export function CommentsModal({ visible, comments, onPost, onClose }: CommentsMo
           </Pressable>
         </View>
         <FlatList
-          data={comments}
+          data={comments.data ?? []}
           keyExtractor={(c) => c.id}
           renderItem={({ item }) => (
-            <Text style={styles.comment}>
-              <Text style={styles.author}>{item.author} </Text>
-              {item.text}
-            </Text>
+            <Pressable
+              style={styles.comment}
+              accessibilityRole="link"
+              accessibilityHint={`Opens ${item.author}’s profile`}
+              disabled={!item.authorId}
+              onPress={() => {
+                if (!item.authorId) return;
+                onClose();
+                router.push({ pathname: '/user/[id]', params: { id: item.authorId } });
+              }}
+            >
+              <Text>
+                <Text style={styles.author}>{item.author} </Text>
+                {item.text}
+              </Text>
+            </Pressable>
           )}
-          ListEmptyComponent={<Text style={styles.empty}>No comments yet</Text>}
+          ListEmptyComponent={
+            comments.isPending ? (
+              <Text style={styles.empty}>Loading comments…</Text>
+            ) : comments.isError ? (
+              <Pressable onPress={() => void comments.refetch()} accessibilityRole="button">
+                <Text accessibilityRole="alert" style={styles.empty}>Couldn’t load comments. Tap to retry.</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.empty}>No comments yet</Text>
+            )
+          }
         />
+        {addComment.isError && (
+          <Text accessibilityRole="alert" style={styles.empty}>Couldn’t post your comment. Try again.</Text>
+        )}
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
             value={draft}
+            maxLength={1000}
+            editable={!addComment.isPending}
             onChangeText={setDraft}
             placeholder="Add a comment..."
             placeholderTextColor="#444"
             returnKeyType="send"
-            onSubmitEditing={post}
+            onSubmitEditing={() => void post()}
             accessibilityLabel="Write a comment"
           />
           <Pressable
-            onPress={post}
+            onPress={() => void post()}
             disabled={!canPost}
             accessibilityRole="button"
             accessibilityLabel="Post comment"
             hitSlop={8}
           >
-            <Text style={[styles.post, !canPost && styles.postDisabled]}>Post</Text>
+            <Text style={[styles.post, !canPost && styles.postDisabled]}>{addComment.isPending ? 'Posting…' : 'Post'}</Text>
           </Pressable>
         </View>
       </View>

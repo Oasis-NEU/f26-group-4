@@ -210,6 +210,7 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 | `reviews.ts` | `getReviewsByAuthor(authorId): AuthoredReview[]` | |
 | | `getLikedReviewIds(): string[]` | every review the signed-in user liked |
 | | `likeReview(reviewId)`, `unlikeReview(reviewId)` | |
+| | `getReviewComments(reviewId)`, `addReviewComment(reviewId, text)` | Replies to one review |
 | `users.ts` | `getProfile(id): Profile \| null` | yours has your full `status`; anyone's has the trimmed `visibleStatus` |
 | | `getProfilesByIds(ids): Profile[]` | several people in one request, in the order given (followers, blocked accounts) |
 | | `updateProfile(changes)` | the signed-in user only; routes each field to its table |
@@ -249,6 +250,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | | `useCreateCollection()`, `useCanAddSubCollection(id)`, `useRulesAbove(parentId)` | `createCollection`; the other two work out the nesting from `useCollections()` with `src/lib/collection-tree.ts` | New collection, Collection |
 | | `useCollectionsContaining(placeId)`, `useRenameCollection()`, `useDeleteCollection()`, `useAddToCollection()` | **add** with the save sheet | |
 | `use-reviews.ts` | `useReviewsByUser(userId)`, `useIsLiked(reviewId)`, `useToggleLike()` | `getReviewsByAuthor`, `getLikedReviewIds`, `likeReview` / `unlikeReview` | Profile, `PlaceCard` |
+| | `useReviewComments(reviewId)`, `useAddReviewComment(reviewId)` | `getReviewComments`, `addReviewComment` | Comments modal |
 | | `useCreatePost()` | `createPost` | Upload |
 | `use-profiles.ts` | `useProfile(id)`, `useProfilesByIds(ids)`, `useUpdateProfile()` | `getProfile`, `getProfilesByIds`, `updateProfile` | Profile, Edit profile, Settings |
 | | `useCheckUsername()` returns `(username) => Promise<boolean>` | `isUsernameAvailable` | Create account, Edit profile |
@@ -266,6 +268,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | --- | --- | --- |
 | `useToggleSave` | yes, `saves.ids` | `saves.all`, `collections.all` (unsaving uncollects) |
 | `useToggleLike` | yes, `reviews.likedIds` | `reviews.likedIds` |
+| `useAddReviewComment` | no | `reviews.all`, `places.all` |
 | `useRemoveFromCollection` | no | `collections.all`, `saves.all` |
 | `useCreateCollection` | no | `collections.all`, `saves.all` (places put in straight away stop being loose) |
 | `useCreatePost` | no | `places.all`, `cities.all`, `reviews.all`, `collections.all`, `saves.all`, `interests.suggested` |

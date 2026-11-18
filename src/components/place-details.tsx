@@ -1,4 +1,7 @@
+import { ReviewPhotoViewer } from '@/components/review-photo-viewer';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { type ComponentRef, useRef, useState } from 'react';
 import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useIsSaved, useToggleSave } from '@/hooks/use-saves';
@@ -12,9 +15,16 @@ import { RatingBadge, Tag } from '@/components/ui';
 
 type PlaceDetailsProps = {
   place: Place;
+  startAtReviews?: boolean;
 };
 
-export function PlaceDetails({ place }: PlaceDetailsProps) {
+export function PlaceDetails({ place, startAtReviews = false }: PlaceDetailsProps) {
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const reviewsTop = useRef(0);
+  const jumpOnLayout = useRef(startAtReviews);
+  const [openedReviewId, setOpenedReviewId] = useState<string>();
+  const reviews = place.reviews ?? [];
+
   // Whether the place is saved. It comes from the shared list of saved ids, so
   // it matches the bookmark on every other screen.
   // TODO: tapping it should open the "save to collection" sheet instead of just toggling.
@@ -29,7 +39,7 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
 
   // I want 2.5 posts visible at once, so you can tell there are more to the right
   // The strip starts 16 from the left, and each post has a 12 gap after it
-  const postWidth = (window.width - 16) / 2.5 - 12;
+  const postWidth = (window.width - spacing.lg) / 2.5 - spacing.md;
 
   // place.proximity is in meters. Anything over 1000 reads better in kilometers.
   // It's missing until the app knows where the phone is (expo-location), and then
@@ -58,6 +68,10 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
     }
   }
 
+  function scrollToReviews(animated = true) {
+    scroll.current?.scrollTo({ y: reviewsTop.current, animated });
+  }
+
   function handleBookmark() {
     toggleSave.mutate({ placeId: place.id, save: !isBookmarked });
   }
@@ -79,7 +93,7 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
   }
 
   return (
-    <ScrollView style={styles.page}>
+    <ScrollView ref={scroll} style={styles.page}>
       {/* The main photo. For now it's just a colored block 
           TODO: swap this View for <Image source={place.coverImage} /> later.
           Everything inside it uses `position: absolute`, which is what makes the
@@ -103,8 +117,12 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
             <Text style={styles.overlayButtonText}>{isBookmarked ? 'Saved' : 'Save'}</Text>
           </Pressable>
 
-          {/* TODO: this should open the Upload page with this place already filled in. */}
-          <Pressable style={styles.overlayButton}>
+          {/* TODO: Preselect this place when the upload form supports it. */}
+          <Pressable
+            accessibilityRole="button"
+            style={styles.overlayButton}
+            onPress={() => router.push('/upload')}
+          >
             <Text style={styles.overlayButtonText}>Post</Text>
           </Pressable>
         </View>
@@ -129,7 +147,13 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
               The badge itself is a design-system component -- the three kinds
               look different on purpose, see src/components/ui/rating-badge.tsx. */}
           <View style={styles.ratingRow}>
-            <RatingBadge variant="average" rating={place.averageRating} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Average rating ${place.averageRating.toFixed(1)} out of 5. Read reviews for ${place.name}`}
+              onPress={() => scrollToReviews()}
+            >
+              <RatingBadge variant="average" rating={place.averageRating} />
+            </Pressable>
 
             {place.friendsRating !== undefined && (
               <RatingBadge variant="friends" rating={place.friendsRating} />
@@ -182,45 +206,67 @@ export function PlaceDetails({ place }: PlaceDetailsProps) {
         )}
       </View>
 
-      {/* Posts:
-          Scrolls sideways with about 2.5 posts visible at a time. */}
-      {/* NOTE: not using the shared MediaPost component, because it expects media to look
-          like { imgURL, caption } and ours looks like { type, url, caption }. Needs a team fix. */}
-      <Text style={styles.sectionHeadingWide}>Posts</Text>
+      <View
+        onLayout={({ nativeEvent }) => {
+          reviewsTop.current = nativeEvent.layout.y;
+          if (jumpOnLayout.current) {
+            jumpOnLayout.current = false;
+            requestAnimationFrame(() => scrollToReviews(false));
+          }
+        }}
+      >
+        <Text accessibilityRole="header" style={styles.sectionHeadingWide}>Posts</Text>
 
-      {/* place.reviews is optional, so `?? []` gives an empty list when there isn't one,
-          which means .length and .map still work below. */}
-      {(place.reviews ?? []).length === 0 ? (
-        <Text style={styles.emptyText}>Be the first to post about this place.</Text>
-      ) : (
-        <ScrollView horizontal style={styles.postStrip} showsHorizontalScrollIndicator={false}>
-          {(place.reviews ?? []).map((review) => (
-            <View key={review.id} style={[styles.postCard, { width: postWidth }]}>
-              {/* Every card gets a block, even posts with no photo, so they all line
-                  up at the same height.
-                  TODO: swap for <Image source={review.media[0].url} /> later. */}
-              <View style={[styles.postImage, { width: postWidth }]}>
-                <Text style={styles.placeholderLabel}>
-                  {review.media.length > 0 ? 'Photo' : 'No photo'}
-                </Text>
-              </View>
-
-              <Text style={styles.postAuthor}>{review.profileName}</Text>
-              <Text style={styles.postRating}>
-                <Text style={styles.starPost}>★</Text> {review.rating} / 5
-              </Text>
-
-              {/* numberOfLines cuts long reviews off with "..." so every card is
-                  roughly the same height */}
-              {review.reviewText !== undefined && (
-                <Text style={styles.postText} numberOfLines={3}>
-                  {review.reviewText}
-                </Text>
-              )}
-            </View>
-          ))}
-        </ScrollView>
-      )}
+        {reviews.length === 0 ? (
+          <Text style={styles.emptyText}>No posts yet.</Text>
+        ) : (
+          <ScrollView horizontal contentContainerStyle={styles.postStrip} showsHorizontalScrollIndicator>
+            {reviews.map((review) => {
+              const photo = review.media.find((item) => item.type === 'photo' && item.url.trim());
+              return (
+                <View key={review.id} style={[styles.postCard, { width: postWidth }]}>
+                  <Pressable
+                    style={styles.postImage}
+                    disabled={!photo}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open photos by ${review.profileName}`}
+                    onPress={() => setOpenedReviewId(review.id)}
+                  >
+                    {photo ? (
+                      <Image source={{ uri: photo.url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                    ) : (
+                      <Text style={styles.placeholderLabel}>No photo</Text>
+                    )}
+                  </Pressable>
+                  <Text
+                    style={styles.postAuthor}
+                    accessibilityRole="link"
+                    onPress={() => {
+                      if (review.authorId) {
+                        router.push({ pathname: '/user/[id]', params: { id: review.authorId } });
+                      }
+                    }}
+                  >{review.profileName}</Text>
+                  <Text style={styles.postRating}>
+                    <Text style={styles.starPost}>★</Text> {review.rating} / 5
+                  </Text>
+                  {!!review.reviewText?.trim() && (
+                    <Text style={styles.postText} numberOfLines={3}>{review.reviewText}</Text>
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
+        {openedReviewId && (
+          <ReviewPhotoViewer
+            key={openedReviewId}
+            reviews={reviews}
+            initialReviewId={openedReviewId}
+            onClose={() => setOpenedReviewId(undefined)}
+          />
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -370,6 +416,7 @@ const styles = StyleSheet.create({
   postImage: {
     height: 120,
     borderRadius: radius.card,
+    overflow: 'hidden',
     backgroundColor: colors.fill,
     alignItems: 'center',
     justifyContent: 'center',

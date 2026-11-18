@@ -3,7 +3,7 @@ import { queryOptions, skipToken, useMutation, useQuery, useQueryClient } from '
 
 import { queryKeys } from '@/lib/query-keys';
 import { createPost } from '@/services/posts';
-import { getLikedReviewIds, getReviewsByAuthor, likeReview, unlikeReview } from '@/services/reviews';
+import { addReviewComment, getLikedReviewIds, getReviewComments, getReviewsByAuthor, likeReview, unlikeReview } from '@/services/reviews';
 
 // Every review one person wrote, newest first. Waits while there's no id yet.
 export function useReviewsByUser(userId: string | undefined) {
@@ -63,6 +63,27 @@ export function useCreatePost() {
       queryClient.invalidateQueries({ queryKey: queryKeys.collections.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.saves.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.interests.suggested });
+    },
+  });
+}
+
+export function useReviewComments(reviewId: string) {
+  return useQuery({
+    queryKey: queryKeys.reviews.comments(reviewId),
+    queryFn: () => getReviewComments(reviewId),
+  });
+}
+
+export function useAddReviewComment(reviewId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (text: string) => addReviewComment(reviewId, text),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.places.all }),
+      ]);
     },
   });
 }

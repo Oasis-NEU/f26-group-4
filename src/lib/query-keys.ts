@@ -24,6 +24,7 @@ export const queryKeys = {
   reviews: {
     all: ['reviews'] as const,
     byUser: (userId: string) => ['reviews', 'user', userId] as const,
+    comments: (reviewId: string) => ['reviews', 'comments', reviewId] as const,
     likedIds: ['reviews', 'liked'] as const, // every review the signed-in user liked
   },
   saves: {

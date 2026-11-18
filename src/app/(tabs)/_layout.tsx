@@ -47,39 +47,6 @@ export default function TabsLayout() {
       })}
     >
       <Tabs.Screen
-        name="(profile)"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'person.fill', android: 'person', web: 'person' }} tintColor={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="(map)"
-        options={{
-          title: 'Map',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'map.fill', android: 'map', web: 'map' }} tintColor={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="new-post"
-        listeners={{
-          tabPress: (event) => {
-            event.preventDefault();
-            router.push('/upload');
-          },
-        }}
-        options={{
-          title: 'New post',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'plus.circle.fill', android: 'add_circle', web: 'add_circle' }} tintColor={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="(explore)"
         options={{
           title: 'Explore',
@@ -97,6 +64,39 @@ export default function TabsLayout() {
           title: 'Saved',
           tabBarIcon: ({ color }) => (
             <SymbolView name={{ ios: 'bookmark.fill', android: 'bookmark', web: 'bookmark' }} tintColor={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="new-post"
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            router.push('/upload');
+          },
+        }}
+        options={{
+          title: 'New post',
+          tabBarIcon: ({ color }) => (
+            <SymbolView name={{ ios: 'plus.circle.fill', android: 'add_circle', web: 'add_circle' }} size={28} tintColor={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="(map)"
+        options={{
+          title: 'Map',
+          tabBarIcon: ({ color }) => (
+            <SymbolView name={{ ios: 'map.fill', android: 'map', web: 'map' }} tintColor={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="(profile)"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => (
+            <SymbolView name={{ ios: 'person.fill', android: 'person', web: 'person' }} tintColor={color} />
           ),
         }}
       />

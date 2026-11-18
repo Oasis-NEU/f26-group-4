@@ -53,3 +53,33 @@ export async function unlikeReview(reviewId: string): Promise<void> {
   const { error } = await supabase.from('review_likes').delete().eq('review_id', reviewId).eq('user_id', userId);
   if (error) throw error;
 }
+
+export type ReviewComment = {
+  id: string;
+  author: string;
+  authorId: string;
+  text: string;
+};
+
+export async function getReviewComments(reviewId: string): Promise<ReviewComment[]> {
+  const { data, error } = await supabase
+    .from('review_comments')
+    .select('id, author_id, body, author:profiles!review_comments_author_id_fkey(username)')
+    .eq('review_id', reviewId)
+    .order('created_at')
+    .order('id');
+  if (error) throw error;
+  return data.map((row) => ({
+    id: row.id,
+    authorId: row.author_id,
+    author: row.author?.username ?? 'someone',
+    text: row.body,
+  }));
+}
+
+export async function addReviewComment(reviewId: string, text: string): Promise<void> {
+  const { error } = await supabase
+    .from('review_comments')
+    .insert({ review_id: reviewId, body: text.trim() });
+  if (error) throw error;
+}

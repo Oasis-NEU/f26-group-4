@@ -1,9 +1,11 @@
+import { OpenReview } from '@/components/open-review';
+import { router } from 'expo-router';
 import { memo, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BookmarkButton } from '@/components/bookmark-button';
 import { CommentButton } from '@/components/comment-button';
-import { CommentsModal, type Comment } from '@/components/comments-modal';
+import { CommentsModal } from '@/components/comments-modal';
 import { LikeButton } from '@/components/like-button';
 import { MediaStrip } from '@/components/media-strip';
 import { RatingStars } from '@/components/rating-stars';
@@ -35,16 +37,7 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
   // TODO: open the "Save to collection" sheet instead of toggling directly.
   const isSaved = useIsSaved(place.id);
   const toggleSave = useToggleSave();
-  const [showComments, setShowComments] = useState(false);
-  // The place's posts count as comments for now; new comments only last while the card is on screen
-  const [newComments, setNewComments] = useState<Comment[]>([]);
-  // Comments you posted come first, newest at the top, so yours is always the one people see
-  const comments: Comment[] = [
-    ...[...newComments].reverse(),
-    ...(place.reviews ?? [])
-      .filter((r) => r.reviewText)
-      .map((r) => ({ id: r.id, author: r.profileName, text: r.reviewText! })),
-  ];
+  const [openCommentReviewId, setOpenCommentReviewId] = useState<string | null>(null);
 
   // Opens the place in the phone's maps app: Apple Maps on iOS, the default maps app on Android.
   // A place without coordinates opens by its address instead.
@@ -64,8 +57,9 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
     );
   }
 
-  // The line shown under the post: your latest comment if you posted one, otherwise the newest review
-  const featured = newComments.length > 0 ? comments[0] : undefined;
+  function showPlaceReviews() {
+    router.push({ pathname: '/place/[id]', params: { id: place.id, section: 'reviews' } });
+  }
 
   return (
     <View style={styles.card}>
@@ -86,22 +80,31 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
         {newestReview && (
           <LikeButton isLiked={isLiked} onPress={() => toggleLike.mutate({ reviewId: newestReview.id, like: !isLiked })} />
         )}
-        <CommentButton count={comments.length} onPress={() => setShowComments(true)} />
+        {newestReview && (
+          <CommentButton
+            count={newestReview.commentCount ?? 0}
+            onPress={() => setOpenCommentReviewId(newestReview.id)}
+          />
+        )}
         <BookmarkButton isSaved={isSaved} onPress={() => toggleSave.mutate({ placeId: place.id, save: !isSaved })} />
       </View>
-      <CommentsModal
-        visible={showComments}
-        comments={comments}
-        onPost={(text) => {
-          setNewComments((prev) => [...prev, { id: `new-${Date.now()}`, author: 'You', text }]);
-          setShowComments(false); // close the popup so your comment shows under the post
-        }}
-        onClose={() => setShowComments(false)}
-      />
+      {openCommentReviewId && (
+        <CommentsModal
+          key={openCommentReviewId}
+          reviewId={openCommentReviewId}
+          onClose={() => setOpenCommentReviewId(null)}
+        />
+      )}
 
       <View style={styles.info}>
         <View style={styles.ratings}>
-          <RatingStars rating={place.averageRating} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Average rating ${place.averageRating.toFixed(1)} out of 5. Read reviews for ${place.name}`}
+            onPress={() => showPlaceReviews()}
+          >
+            <RatingStars rating={place.averageRating} />
+          </Pressable>
           {place.friendsRating !== undefined && <RatingStars rating={place.friendsRating} label="Friends" />}
         </View>
         <View style={styles.chips}>
@@ -112,16 +115,8 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
             </Text>
           ))}
         </View>
-        {featured ? (
-          <Text numberOfLines={2}>
-            <Text style={styles.name}>{featured.author} </Text>
-            {featured.text}
-          </Text>
-        ) : newestReview?.reviewText ? (
-          <Text numberOfLines={2}>
-            <Text style={styles.name}>{newestReview.profileName} </Text>
-            {newestReview.reviewText}
-          </Text>
+        {newestReview?.reviewText ? (
+          <OpenReview review={newestReview} onPress={showPlaceReviews} />
         ) : (
           place.description && <Text numberOfLines={2}>{place.description}</Text>
         )}

@@ -10,7 +10,7 @@ import { usePlace } from '@/hooks/use-places';
 // This screen's job is to FIND the place. Showing it is PlaceDetails' job.
 
 export default function PlacePage() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, section } = useLocalSearchParams<{ id: string; section?: string }>();
 
   // Loads when the screen opens, and again if the id in the link changes.
   const { data: place, isPending, isError } = usePlace(id);
@@ -36,7 +36,7 @@ export default function PlacePage() {
       {/* Hides the navigation bar at the top, because PlaceDetails draws its own
           Back button (that's how my wireframe has it). */}
       <Stack.Screen options={{ headerShown: false }} />
-      <PlaceDetails place={place} />
+      <PlaceDetails key={place.id} place={place} startAtReviews={section === 'reviews'} />
     </View>
   );
 }
