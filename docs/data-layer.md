@@ -175,6 +175,7 @@ Every key is in `src/lib/query-keys.ts`. Add a new one there before a hook uses 
 | `places` | `all`, `list(filters)`, `detail(id)`, `byIds(ids)`, `types`, `tags` |
 | `cities` | `all`, `list(filters)`, `detail(id)`, `places(id)`, `pick(id)`, `search(query)` |
 | `reviews` | `all`, `byUser(userId)`, `likedIds` |
+| `comments` | `all`, `byReview(reviewId)` |
 | `saves` | `all`, `ids`, `places` ("All saved"), `loose` (saved but in no collection) |
 | `collections` | `all`, `mine`, `ofProfile(ownerId)`, `detail(id)` |
 | `profiles` | `all`, `detail(id)`, `byIds(ids)`, `usernameAvailable(username)` |
@@ -210,6 +211,8 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 | `reviews.ts` | `getReviewsByAuthor(authorId): AuthoredReview[]` | |
 | | `getLikedReviewIds(): string[]` | every review the signed-in user liked |
 | | `likeReview(reviewId)`, `unlikeReview(reviewId)` | |
+| `comments.ts` | `getComments(reviewId): Comment[]` | newest first, with each author's username. Row level security leaves out comments by people who blocked you |
+| | `postComment(reviewId, text): Comment` | as the signed-in user; gives back the saved comment. The database refuses an empty one or one over 1,000 characters |
 | `users.ts` | `getProfile(id): Profile \| null` | yours has your full `status`; anyone's has the trimmed `visibleStatus` |
 | | `getProfilesByIds(ids): Profile[]` | several people in one request, in the order given (followers, blocked accounts) |
 | | `updateProfile(changes)` | the signed-in user only; routes each field to its table |
@@ -250,6 +253,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | | `useCollectionsContaining(placeId)`, `useRenameCollection()`, `useDeleteCollection()`, `useAddToCollection()` | **add** with the save sheet | |
 | `use-reviews.ts` | `useReviewsByUser(userId)`, `useIsLiked(reviewId)`, `useToggleLike()` | `getReviewsByAuthor`, `getLikedReviewIds`, `likeReview` / `unlikeReview` | Profile, `PlaceCard` |
 | | `useCreatePost()` | `createPost` | Upload |
+| `use-comments.ts` | `useComments(reviewId, enabled?)`, `usePostComment()` | `getComments`, `postComment` | `PlaceCard` (the comments popup) |
 | `use-profiles.ts` | `useProfile(id)`, `useProfilesByIds(ids)`, `useUpdateProfile()` | `getProfile`, `getProfilesByIds`, `updateProfile` | Profile, Edit profile, Settings |
 | | `useCheckUsername()` returns `(username) => Promise<boolean>` | `isUsernameAvailable` | Create account, Edit profile |
 | `use-follows.ts` | `useFollowerIds(userId)`, `useFollowingIds(userId)`, `useFollowRequests()`, `useSuggestedFriends()`, `useFriendUsernames()` | `follows.ts`, `getSuggestedFriends`, `getFriendUsernames` | Profile, Map, Privacy, Close friends |
@@ -266,6 +270,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | --- | --- | --- |
 | `useToggleSave` | yes, `saves.ids` | `saves.all`, `collections.all` (unsaving uncollects) |
 | `useToggleLike` | yes, `reviews.likedIds` | `reviews.likedIds` |
+| `usePostComment` | yes, `comments.byReview(reviewId)` | `comments.byReview(reviewId)`, `places.all` (the review's comment count) |
 | `useRemoveFromCollection` | no | `collections.all`, `saves.all` |
 | `useCreateCollection` | no | `collections.all`, `saves.all` (places put in straight away stop being loose) |
 | `useCreatePost` | no | `places.all`, `cities.all`, `reviews.all`, `collections.all`, `saves.all`, `interests.suggested` |
@@ -299,6 +304,7 @@ From Ruby's `collections-and-explore` branch, moved onto Supabase when it was me
 | `Place` | Keep `reviews?`. `getPlace` fills in all of them, and `getPlaces` can fill in just the newest one for the Feed card. | — |
 | `Review` | Add `authorId`. Keep `profileName` as the username to show; the service fills it in from the author's profile. | Done |
 | `Review` | Remove `likedByMe`. Use `useIsLiked(review.id)` instead. | Done |
+| `Review` | Add `commentCount`, for the Feed card before its comments load. The comments themselves are `Comment` (`src/types/comment.ts`), from `useComments(review.id)`. | Done |
 | `Profile` | Remove `friendIds` and `postIds`. Use `useFollowerIds(id)`, `useFollowingIds(id)` and `useReviewsByUser(id)`. | Done |
 | `Collection` | Add `parentId`, `rules` and `autoAdd`. Services build `places` and `subCollections` from the database. | Done |
 | `src/types/database.ts` | Generated from the database. Never edit it by hand. | Done |
