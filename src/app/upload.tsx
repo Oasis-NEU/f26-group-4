@@ -459,15 +459,25 @@ export default function UploadPage() {
 
         <FieldError message={errors.placeType} />
 
+        {/* allowNew: type a tag that isn't in the list and it's offered as
+            "Add …". The list is meant to grow -- see docs/tags-and-filters.md.
+
+            NEEDS THE MIGRATION: until
+            supabase/migrations/20261121211934_growable_suited_for_tags.sql is
+            pushed, create_review() collects tags with an inner join against
+            suited_for_tags, so a tag that isn't already a row is dropped --
+            quietly, with no error. A new tag typed here will look accepted and
+            won't be on the post. */}
         <SearchTagField
           label="Suited for — optional"
           placeholder="Solo, adventure, budget…"
-          hint="Choose as many as fit. These are the same tags people pick as their own interests."
+          hint="Choose as many as fit, or type your own. These are the same tags people pick as their own interests."
           selected={fields.suitedFor}
           onChange={(selected) =>
             updateField('suitedFor', selected)
           }
           options={suitedForOptions}
+          allowNew
           disabled={isPosting}
         />
       </View>
