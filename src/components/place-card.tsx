@@ -9,7 +9,7 @@ import { CommentButton } from '@/components/comment-button';
 import { CommentsModal } from '@/components/comments-modal';
 import { LikeButton } from '@/components/like-button';
 import { MediaStrip } from '@/components/media-strip';
-import { RatingStars } from '@/components/rating-stars';
+import { RatingBadge } from '@/components/ui';
 import { useIsLiked, useToggleLike } from '@/hooks/use-reviews';
 import { useIsSaved, useToggleSave } from '@/hooks/use-saves';
 import type { Place } from '@/types/place';
@@ -116,15 +116,25 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
       )}
 
       <View style={styles.info}>
+        {/* The three ratings, each a single star and a number: what everyone
+            thinks, what your friends think, what the app thinks you'll think.
+            Five drawn stars twice over said less and took more room -- see
+            docs/design/reference/components/ratings.png.
+
+            Friends and For you only appear when there's a number for them: no
+            friends have rated it, or we can't work out a score for you yet. */}
         <View style={styles.ratings}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Average rating ${place.averageRating.toFixed(1)} out of 5. Read reviews for ${place.name}`}
             onPress={() => showPlaceReviews()}
           >
-            <RatingStars rating={place.averageRating} />
+            <RatingBadge variant="average" rating={place.averageRating} />
           </Pressable>
-          {place.friendsRating !== undefined && <RatingStars rating={place.friendsRating} label="Friends" />}
+
+          {place.friendsRating !== undefined && <RatingBadge variant="friends" rating={place.friendsRating} />}
+
+          {place.algorithmRating !== undefined && <RatingBadge variant="forYou" rating={place.algorithmRating} />}
         </View>
         <View style={styles.chips}>
           <Text style={[styles.chip, styles.typeChip]}>{place.placeType}</Text>
@@ -183,8 +193,9 @@ const styles = StyleSheet.create({
   },
   ratings: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   chips: {
     flexDirection: 'row',
