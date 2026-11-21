@@ -15,7 +15,7 @@ import {
 
 import type { CollectionRules } from '@/types/collection';
 
-// The built-in "All saved" collection's id, for screens to link to.
+// The built-in "Other Saved" collection's id, for screens to link to.
 export { ALL_SAVED_ID };
 export type { NewCollectionFields };
 
@@ -32,7 +32,7 @@ export function useCollectionsForProfile(ownerId: string | undefined) {
   });
 }
 
-// One collection with its sub-collections, or "All saved".
+// One collection with its sub-collections, or "Other Saved".
 export function useCollection(id: string | undefined) {
   return useQuery({
     queryKey: queryKeys.collections.detail(id ?? ''),
@@ -55,7 +55,7 @@ export function useRemoveFromCollection() {
   });
 }
 
-// Can this collection hold another one inside it? False for "All saved", and
+// Can this collection hold another one inside it? False for "Other Saved", and
 // for one that's already at the bottom of the nesting limit (three deep), so
 // the + inside a collection can hide itself instead of leading to an error.
 export function useCanAddSubCollection(id: string | undefined): boolean {

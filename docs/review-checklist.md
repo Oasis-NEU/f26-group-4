@@ -236,6 +236,34 @@ what `places.suited_for` stores and what collection rules match against.
 
 ---
 
+## 4c. The save prompt (~10 min)
+
+### [ ] `src/components/save-prompt.tsx`
+**Read the comment at the top.** The bar that slides up after you save a
+place, plus the context that lets any screen trigger it. It's mounted once in
+the tabs layout, not per screen, because you can save from the feed, Place
+details or inside a collection and the bar has to outlive the screen changing.
+
+Two messages, and the difference is the point: nothing caught the place →
+*"Saved. Add to a collection?"*; auto add caught it → *"Added to France and 2
+others. Change?"*. It goes away on its own after 5 seconds, and a second save
+replaces the first rather than stacking.
+
+### [ ] `src/components/collection-picker-sheet.tsx`
+The Pinterest-style list the bar opens: every collection as a **compact**
+`CollectionTile`, sub-collections indented, "New collection" at the bottom.
+
+### [ ] `src/services/collections.ts` — `savePlace` now reports back
+It used to return nothing. It gives back the collections auto add put the
+place in, so the bar knows what to say. `addToCollection()` is new, for
+picking one by hand.
+
+### [ ] `src/hooks/use-saves.ts`
+`useToggleSave` passes that list through to `onSuccess`, and `useAddToCollection`
+is new.
+
+---
+
 ## 5. The routing change (~10 min)
 
 All of this was one change: detail screens used to sit *above* the tabs, so

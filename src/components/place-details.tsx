@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { type ComponentRef, useRef, useState } from 'react';
 import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { useSavePrompt } from '@/components/save-prompt';
 import { useIsSaved, useToggleSave } from '@/hooks/use-saves';
 import { Place } from '@/types/place';
 import { getCountryFlag } from '@/utils/country-flags';
@@ -30,6 +31,7 @@ export function PlaceDetails({ place, startAtReviews = false }: PlaceDetailsProp
   // TODO: tapping it should open the "save to collection" sheet instead of just toggling.
   const isBookmarked = useIsSaved(place.id);
   const toggleSave = useToggleSave();
+  const { showSavePrompt } = useSavePrompt();
 
   // Some sizes depend on how big the phone is, so they have to be measured
   const window = useWindowDimensions();
@@ -72,8 +74,21 @@ export function PlaceDetails({ place, startAtReviews = false }: PlaceDetailsProp
     scroll.current?.scrollTo({ y: reviewsTop.current, animated });
   }
 
+  // Saving asks where it should go; un-saving says nothing. `savedTo` is the
+  // collections auto add put it in, which decides what the message says.
   function handleBookmark() {
-    toggleSave.mutate({ placeId: place.id, save: !isBookmarked });
+    const save = !isBookmarked;
+
+    toggleSave.mutate(
+      { placeId: place.id, save },
+      {
+        onSuccess: (savedTo) => {
+          if (save) {
+            showSavePrompt({ id: place.id, name: place.name }, savedTo);
+          }
+        },
+      },
+    );
   }
 
   function handleShare() {

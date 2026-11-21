@@ -6,12 +6,12 @@ import { CollectionCard } from '@/components/collection-card';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SavedPlaceRow } from '@/components/saved-place-row';
+import { FilterPill, Icon } from '@/components/ui';
 import { ALL_SAVED_ID, useCollections } from '@/hooks/use-collections';
 import { useAllSavedPlaces, useLooseSavedPlaces } from '@/hooks/use-saves';
 import { everyPlaceIn } from '@/lib/collection-tree';
-import { Collection } from '@/types/collection';
 import { colors, radius, spacing, type } from '@/theme';
-import { FilterPill, Icon } from '@/components/ui';
+import { Collection } from '@/types/collection';
 
 // The Saved tab: the user's collections, and the places they've saved
 // but not put in a collection yet.
@@ -76,11 +76,11 @@ export default function SavedPage() {
     return place.country === selectedFilter;
   });
 
-  // "All saved" is always the first card. It isn't a real collection the user made,
+  // "Other Saved" is always the first card. It isn't a real collection the user made,
   // so it gets built here out of every saved place.
   const allSavedCard: Collection = {
     id: ALL_SAVED_ID,
-    name: 'All saved',
+    name: 'Other Saved',
     places: allSavedPlaces,
   };
 
@@ -130,7 +130,7 @@ export default function SavedPage() {
         </Pressable>
       </View>
 
-      {/* The "All saved" card only makes sense when nothing is filtered out */}
+      {/* The "Other Saved" card only makes sense when nothing is filtered out */}
       {selectedFilter === 'All' && (
         <CollectionCard
           collection={allSavedCard}

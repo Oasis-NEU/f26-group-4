@@ -4,6 +4,7 @@ import { memo, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BookmarkButton } from '@/components/bookmark-button';
+import { useSavePrompt } from '@/components/save-prompt';
 import { CommentButton } from '@/components/comment-button';
 import { CommentsModal } from '@/components/comments-modal';
 import { LikeButton } from '@/components/like-button';
@@ -37,6 +38,24 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
   // TODO: open the "Save to collection" sheet instead of toggling directly.
   const isSaved = useIsSaved(place.id);
   const toggleSave = useToggleSave();
+  const { showSavePrompt } = useSavePrompt();
+
+  // Saving asks where it should go; un-saving says nothing. `savedTo` is the
+  // collections auto add put it in, which decides what the message says.
+  function handleToggleSave() {
+    const save = !isSaved;
+
+    toggleSave.mutate(
+      { placeId: place.id, save },
+      {
+        onSuccess: (savedTo) => {
+          if (save) {
+            showSavePrompt({ id: place.id, name: place.name }, savedTo);
+          }
+        },
+      },
+    );
+  }
   const [openCommentReviewId, setOpenCommentReviewId] = useState<string | null>(null);
 
   // Opens the place in the phone's maps app: Apple Maps on iOS, the default maps app on Android.
@@ -86,7 +105,7 @@ export const PlaceCard = memo(function PlaceCard({ place, width, onPress }: Plac
             onPress={() => setOpenCommentReviewId(newestReview.id)}
           />
         )}
-        <BookmarkButton isSaved={isSaved} onPress={() => toggleSave.mutate({ placeId: place.id, save: !isSaved })} />
+        <BookmarkButton isSaved={isSaved} onPress={handleToggleSave} />
       </View>
       {openCommentReviewId && (
         <CommentsModal

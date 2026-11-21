@@ -30,7 +30,7 @@ export const queryKeys = {
   saves: {
     all: ['saves'] as const,
     ids: ['saves', 'ids'] as const, // every saved place id
-    places: ['saves', 'places'] as const, // every saved place, for "All saved"
+    places: ['saves', 'places'] as const, // every saved place, for "Other Saved"
     loose: ['saves', 'loose'] as const, // saved but not in a collection
   },
   collections: {

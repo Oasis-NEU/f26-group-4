@@ -2,7 +2,15 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { queryKeys } from '@/lib/query-keys';
-import { getAllSavedPlaces, getSavedPlaceIds, getSavedPlaces, savePlace, unsavePlace } from '@/services/collections';
+import {
+  addToCollection,
+  getAllSavedPlaces,
+  getSavedPlaceIds,
+  getSavedPlaces,
+  savePlace,
+  type SavedTo,
+  unsavePlace,
+} from '@/services/collections';
 
 // Ids of every place the signed-in user has saved. Fetched once and shared by every bookmark.
 const savedIdsQuery = queryOptions({
@@ -26,7 +34,15 @@ export function useToggleSave() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ placeId, save }: ToggleSave) => (save ? savePlace(placeId) : unsavePlace(placeId)),
+    // Saving gives back the collections auto add put the place in, so the
+    // caller can say where it went. Unsaving has nothing to report.
+    mutationFn: async ({ placeId, save }: ToggleSave): Promise<SavedTo[]> => {
+      if (!save) {
+        await unsavePlace(placeId);
+        return [];
+      }
+      return savePlace(placeId);
+    },
 
     // Flip the bookmark straight away, before the server answers
     onMutate: async ({ placeId, save }) => {
@@ -53,7 +69,7 @@ export function useToggleSave() {
   });
 }
 
-// Every saved place, for the "All saved" card.
+// Every saved place, for the "Other Saved" card.
 export function useAllSavedPlaces() {
   return useQuery({ queryKey: queryKeys.saves.places, queryFn: getAllSavedPlaces });
 }
@@ -61,4 +77,20 @@ export function useAllSavedPlaces() {
 // Saved places that aren't in any collection.
 export function useLooseSavedPlaces() {
   return useQuery({ queryKey: queryKeys.saves.loose, queryFn: getSavedPlaces });
+}
+
+// Puts a place in a collection by hand, from the collection picker.
+export function useAddToCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ collectionId, placeId }: { collectionId: string; placeId: string }) =>
+      addToCollection(collectionId, placeId),
+
+    // A place in a collection is always saved, so both lists can change.
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.saves.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.collections.all });
+    },
+  });
 }

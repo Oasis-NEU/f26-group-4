@@ -1,6 +1,7 @@
 import { Redirect, router, Tabs, usePathname } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 
+import { SavePromptProvider } from '@/components/save-prompt';
 import { useSession } from '@/hooks/use-session';
 
 // The tab bar at the bottom of the screen. Each Tabs.Screen is one tab, and its `name`
@@ -36,70 +37,76 @@ export default function TabsLayout() {
   return (
     // Headers are drawn by each tab's own stack now, so the tab navigator
     // doesn't draw one as well -- two headers would stack up.
-    <Tabs
-      screenOptions={{ headerShown: false }}
-      screenListeners={({ route }) => ({
-        tabPress: (event) => {
-          if (isPreview && route.name !== '(explore)' && route.name !== 'new-post') {
-            event.preventDefault();
-          }
-        },
-      })}
-    >
-      <Tabs.Screen
-        name="(explore)"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{ ios: 'square.grid.2x2.fill', android: 'grid_view', web: 'grid_view' }}
-              tintColor={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="(saved)"
-        options={{
-          title: 'Saved',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'bookmark.fill', android: 'bookmark', web: 'bookmark' }} tintColor={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="new-post"
-        listeners={{
+    // The bar that slides up after you save a place is mounted here, once,
+    // rather than in each screen: you can save from the feed, from Place
+    // details or from inside a collection, and it has to outlive the screen
+    // changing underneath it. Screens reach it with useSavePrompt().
+    <SavePromptProvider>
+      <Tabs
+        screenOptions={{ headerShown: false }}
+        screenListeners={({ route }) => ({
           tabPress: (event) => {
-            event.preventDefault();
-            router.push('/upload');
+            if (isPreview && route.name !== '(explore)' && route.name !== 'new-post') {
+              event.preventDefault();
+            }
           },
-        }}
-        options={{
-          title: 'New post',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'plus.circle.fill', android: 'add_circle', web: 'add_circle' }} size={28} tintColor={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="(map)"
-        options={{
-          title: 'Map',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'map.fill', android: 'map', web: 'map' }} tintColor={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="(profile)"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'person.fill', android: 'person', web: 'person' }} tintColor={color} />
-          ),
-        }}
-      />
-    </Tabs>
+        })}
+      >
+        <Tabs.Screen
+          name="(explore)"
+          options={{
+            title: 'Explore',
+            tabBarIcon: ({ color }) => (
+              <SymbolView
+                name={{ ios: 'square.grid.2x2.fill', android: 'grid_view', web: 'grid_view' }}
+                tintColor={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="(saved)"
+          options={{
+            title: 'Saved',
+            tabBarIcon: ({ color }) => (
+              <SymbolView name={{ ios: 'bookmark.fill', android: 'bookmark', web: 'bookmark' }} tintColor={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="new-post"
+          listeners={{
+            tabPress: (event) => {
+              event.preventDefault();
+              router.push('/upload');
+            },
+          }}
+          options={{
+            title: 'New post',
+            tabBarIcon: ({ color }) => (
+              <SymbolView name={{ ios: 'plus.circle.fill', android: 'add_circle', web: 'add_circle' }} size={28} tintColor={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="(map)"
+          options={{
+            title: 'Map',
+            tabBarIcon: ({ color }) => (
+              <SymbolView name={{ ios: 'map.fill', android: 'map', web: 'map' }} tintColor={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="(profile)"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color }) => (
+              <SymbolView name={{ ios: 'person.fill', android: 'person', web: 'person' }} tintColor={color} />
+            ),
+          }}
+        />
+      </Tabs>
+    </SavePromptProvider>
   );
 }

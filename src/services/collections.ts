@@ -44,7 +44,7 @@ import { getPlace } from './places';
 import type { Collection, CollectionRules } from '@/types/collection';
 import type { Place } from '@/types/place';
 
-// The id used for the built-in "All saved" collection. It's always the first card
+// The id used for the built-in "Other Saved" collection. It's always the first card
 // on the Saved page, and it can't be renamed or deleted.
 export const ALL_SAVED_ID = 'all_saved';
 
@@ -143,10 +143,10 @@ export async function getCollectionsForProfile(ownerId: string): Promise<Collect
 }
 
 // One collection by its id, with the sub-collections directly inside it.
-// Theirs open on their own page. "All saved" is built from your saves.
+// Theirs open on their own page. "Other Saved" is built from your saves.
 export async function getCollection(id: string): Promise<Collection | null> {
   if (id === ALL_SAVED_ID) {
-    return { id: ALL_SAVED_ID, name: 'All saved', places: await getAllSavedPlaces() };
+    return { id: ALL_SAVED_ID, name: 'Other Saved', places: await getAllSavedPlaces() };
   }
   if (!UUID_PATTERN.test(id)) return null;
 
@@ -172,26 +172,40 @@ export async function getSavedPlaceIds(): Promise<string[]> {
 }
 
 // Saves a place, then puts it in every auto add collection it matches.
-export async function savePlace(placeId: string): Promise<void> {
+// Saves a place, and says where it ended up.
+//
+// The list it gives back is the collections auto add put it in -- empty when
+// nothing matched. The screen uses that to decide what to say: nothing matched
+// means "Saved. Add to a collection?", and something did means "Added to
+// France. Change?". An empty list is the normal case for a place that doesn't
+// match any rules.
+export async function savePlace(placeId: string): Promise<SavedTo[]> {
   // user_id fills itself in from the session.
   const { error } = await supabase.from('saves').insert({ place_id: placeId });
-  if (error?.code === '23505') return; // already saved, which is fine, and auto add already ran
+
+  // Already saved, which is fine, and auto add already ran. Nothing new
+  // happened, so there's nothing to tell anyone about.
+  if (error?.code === '23505') return [];
   if (error) throw error;
 
   // The save worked, so a problem from here on doesn't undo the bookmark: the
   // place just doesn't get sorted. Logged rather than thrown for that reason.
   try {
-    await addToAutoAddCollections(placeId);
+    return await addToAutoAddCollections(placeId);
   } catch (autoAddError) {
     console.warn('Saved the place, but auto add failed', autoAddError);
+    return [];
   }
 }
+
+// A collection a just-saved place landed in. Only what the message needs.
+export type SavedTo = { id: string; name: string };
 
 // Puts a just-saved place in every one of the signed-in user's auto add
 // collections whose rules it matches -- and the rules of every collection
 // above it, since a sub-collection is narrowed by those (Europe AND France AND
 // Paris). Skips the ones it was taken out of by hand.
-async function addToAutoAddCollections(placeId: string): Promise<void> {
+async function addToAutoAddCollections(placeId: string): Promise<SavedTo[]> {
   const userId = await currentUserId();
   const [owned, place] = await Promise.all([
     // Just the collections' own columns: the rules, not the places inside.
@@ -199,13 +213,13 @@ async function addToAutoAddCollections(placeId: string): Promise<void> {
     getPlace(placeId),
   ]);
   if (owned.error) throw owned.error;
-  if (!place) return;
+  if (!place) return [];
 
   const candidates = flattenCollections(toTree(owned.data as unknown as CollectionRow[])).filter(
     ({ collection, ancestors }) =>
       collection.autoAdd === true && matchesWithAncestors(place, collection.rules, rulesOf(ancestors)),
   );
-  if (candidates.length === 0) return;
+  if (candidates.length === 0) return [];
 
   // Asked only when something matched, so a database without the
   // collection_exclusions table yet never gets here.
@@ -216,16 +230,19 @@ async function addToAutoAddCollections(placeId: string): Promise<void> {
   if (exclusions.error) throw exclusions.error;
   const excludedIds = new Set((exclusions.data as { collection_id: string }[]).map((row) => row.collection_id));
 
-  const rows = candidates
-    .filter(({ collection }) => !excludedIds.has(collection.id))
-    .map(({ collection }) => ({ collection_id: collection.id, place_id: placeId }));
-  if (rows.length === 0) return;
+  const wanted = candidates.filter(({ collection }) => !excludedIds.has(collection.id));
+  if (wanted.length === 0) return [];
 
   // ignoreDuplicates: a place that's already in one of them stays put.
   const { error } = await supabase
     .from('collection_places')
-    .upsert(rows, { onConflict: 'collection_id,place_id', ignoreDuplicates: true });
+    .upsert(
+      wanted.map(({ collection }) => ({ collection_id: collection.id, place_id: placeId })),
+      { onConflict: 'collection_id,place_id', ignoreDuplicates: true },
+    );
   if (error) throw error;
+
+  return wanted.map(({ collection }) => ({ id: collection.id, name: collection.name }));
 }
 
 // Unsaving also takes the place out of all your collections (a database rule).
@@ -235,7 +252,7 @@ export async function unsavePlace(placeId: string): Promise<void> {
   if (error) throw error;
 }
 
-// Every place saved anywhere, newest save first, for the "All saved" card.
+// Every place saved anywhere, newest save first, for the "Other Saved" card.
 export async function getAllSavedPlaces(): Promise<Place[]> {
   const userId = await currentUserId();
   const { data, error } = await supabase
@@ -278,6 +295,27 @@ export async function removeFromCollection(collectionId: string, placeId: string
     .from('collection_exclusions')
     .upsert({ collection_id: collectionId, place_id: placeId }, { onConflict: 'collection_id,place_id', ignoreDuplicates: true });
   if (excludeError) throw excludeError;
+}
+
+// Puts a place in a collection by hand, and saves it if it wasn't already --
+// a place in a collection is always saved. Used by the collection picker that
+// opens from the "Saved" message.
+//
+// It also clears any exclusion: taking a place out of an auto add collection
+// remembers that so auto add doesn't put it back, and choosing it again by
+// hand plainly means you've changed your mind. The database does that part
+// through the collection_places_unexclude trigger.
+export async function addToCollection(collectionId: string, placeId: string): Promise<void> {
+  const { error: saveError } = await supabase.from('saves').insert({ place_id: placeId });
+  if (saveError && saveError.code !== '23505') throw saveError; // 23505: already saved
+
+  const { error } = await supabase
+    .from('collection_places')
+    .upsert({ collection_id: collectionId, place_id: placeId }, {
+      onConflict: 'collection_id,place_id',
+      ignoreDuplicates: true,
+    });
+  if (error) throw error;
 }
 
 // ---------------------------------------------------------------------------

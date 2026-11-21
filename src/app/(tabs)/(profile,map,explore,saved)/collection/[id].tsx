@@ -25,7 +25,7 @@ export default function CollectionPage() {
   const removeFromCollection = useRemoveFromCollection();
   const toggleSave = useToggleSave();
 
-  // Taking a place out of a collection leaves it saved. "All saved" isn't a
+  // Taking a place out of a collection leaves it saved. "Other Saved" isn't a
   // real collection, so removing from it un-saves the place.
   // TODO: show a short "Removed. Undo" message, as the plan describes.
   function removePlace(collectionId: string, placeId: string) {
