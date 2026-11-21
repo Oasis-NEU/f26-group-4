@@ -158,7 +158,7 @@ export default function SavedPage() {
 
       {visiblePlaces.length === 0 ? (
         <Text style={styles.emptyText}>
-          Nothing saved yet. Tap the bookmark on any place to save it here.
+          Saved places that aren't in a collection will show up here. Try saving a place from the map or the explore page!
         </Text>
       ) : (
         visiblePlaces.map((place) => (
