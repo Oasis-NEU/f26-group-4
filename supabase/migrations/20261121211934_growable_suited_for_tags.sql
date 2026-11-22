@@ -78,6 +78,10 @@ begin
 end;
 $$;
 
+-- core.sql turns off "everyone may run a new function", so each one grants
+-- its own. Same roles as add_interest().
+grant execute on function public.add_suited_for_tag(text) to authenticated, service_role;
+
 -- ---------------------------------------------------------------------------
 -- Stop create_review() dropping unknown tags
 -- ---------------------------------------------------------------------------
@@ -129,11 +133,20 @@ begin
     end if;
   end loop;
 
-  return v_slugs;
+  -- Sorted, like the array_agg(distinct ...) this replaces, so a post's tags
+  -- come back in the same order they always have.
+  return array(select s from unnest(v_slugs) as s order by s);
 end;
 $$;
 
 revoke all on function private.collect_suited_for(jsonb) from public;
+
+-- create_review() isn't security definer, so it calls this as the person
+-- posting. Without this grant every post fails with "permission denied for
+-- function collect_suited_for", not just posts with a new tag. Like
+-- private.slugify(), it's out of the API's reach either way: `private` isn't
+-- exposed.
+grant execute on function private.collect_suited_for(jsonb) to authenticated, service_role;
 
 -- create_review() again, as it stands in 20261108190649_core.sql with the one
 -- block swapped for the call above. Everything else is byte-for-byte the
