@@ -53,7 +53,7 @@ function RootStack() {
       </Stack.Protected>
 
       <Stack.Protected guard={!!user && !needsOnboarding}>
-        <Stack.Screen name="edit-profile" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="edit-profile" options={{ presentation: 'fullScreenModal', headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={previewUpload || (!!user && !needsOnboarding)}>

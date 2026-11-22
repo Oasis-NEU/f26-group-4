@@ -19,6 +19,7 @@ import { useCheckUsername, useProfile, useUpdateProfile } from '@/hooks/use-prof
 import { useUserId } from '@/hooks/use-session';
 import { formatStatusText, trimStatusForLevel } from '@/utils/status-text';
 import type { OwnTravelStatus, Profile, TravelStatus } from '@/types/profile';
+import { TOP_BUFFER } from '@/theme';
 
 // Edit profile: a modal route (see _layout.tsx) styled like the profile
 // itself, with a ✎ on each part. Tapping one opens a panel for just that
@@ -351,6 +352,7 @@ function EditProfileForm({ profile }: { profile: Profile }) {
 
 const styles = StyleSheet.create({
   screen: {
+    paddingTop: TOP_BUFFER,
     flex: 1,
     backgroundColor: '#fff',
   },

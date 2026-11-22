@@ -10,7 +10,7 @@ import { FilterPill, Icon } from '@/components/ui';
 import { ALL_SAVED_ID, useCollections } from '@/hooks/use-collections';
 import { useAllSavedPlaces, useLooseSavedPlaces } from '@/hooks/use-saves';
 import { everyPlaceIn } from '@/lib/collection-tree';
-import { colors, radius, spacing, type } from '@/theme';
+import { colors, radius, spacing, TOP_BUFFER, type } from '@/theme';
 import { Collection } from '@/types/collection';
 
 // The Saved tab: the user's collections, and the places they've saved
@@ -173,6 +173,7 @@ export default function SavedPage() {
 
 const styles = StyleSheet.create({
   page: {
+    paddingTop: TOP_BUFFER,
     flex: 1,
     backgroundColor: colors.background,
   },

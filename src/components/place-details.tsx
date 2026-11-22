@@ -2,13 +2,14 @@ import { ReviewPhotoViewer } from '@/components/review-photo-viewer';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { type ComponentRef, useRef, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useSavePrompt } from '@/components/save-prompt';
 import { useIsSaved, useToggleSave } from '@/hooks/use-saves';
 import { Place } from '@/types/place';
 import { getCountryFlag } from '@/utils/country-flags';
-import { colors, radius, spacing, type } from '@/theme';
+import { colors, radius, spacing, TOP_BUFFER, type } from '@/theme';
 import { RatingBadge, Tag } from '@/components/ui';
 
 // Shows everything about one place. The screen (src/app/(tabs)/(profile,map,explore,saved)/place/[id].tsx) finds the
@@ -35,6 +36,10 @@ export function PlaceDetails({ place, startAtReviews = false }: PlaceDetailsProp
 
   // Some sizes depend on how big the phone is, so they have to be measured
   const window = useWindowDimensions();
+
+  // The header is hidden, so the overlay buttons must clear the status bar / notch.
+  const insets = useSafeAreaInsets();
+  const topOffset = insets.top + TOP_BUFFER;
 
   // The photo is about 35% of the screen height
   const coverHeight = window.height * 0.35;
@@ -116,11 +121,11 @@ export function PlaceDetails({ place, startAtReviews = false }: PlaceDetailsProp
       <View style={[styles.coverBlock, { height: coverHeight }]}>
         <Text style={styles.placeholderLabel}>Primary image</Text>
 
-        <Pressable style={[styles.overlayButton, styles.backButton]} onPress={handleBack}>
+        <Pressable style={[styles.overlayButton, styles.backButton, { top: topOffset }]} onPress={handleBack}>
           <Text style={styles.overlayButtonText}>Back</Text>
         </Pressable>
 
-        <View style={styles.topRightButtons}>
+        <View style={[styles.topRightButtons, { top: topOffset }]}>
           <Pressable style={styles.overlayButton} onPress={handleShare}>
             <Text style={styles.overlayButtonText}>Share</Text>
           </Pressable>

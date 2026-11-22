@@ -9,6 +9,7 @@ import { SuggestionStrip } from '@/components/suggestion-strip';
 import { useFilterOptions, usePlaces } from '@/hooks/use-places';
 import { useSession } from '@/hooks/use-session';
 import type { Suggestion } from '@/lib/suggestions';
+import { TOP_BUFFER } from '@/theme';
 
 // Explore: the app's home screen. A row of tiles across the top, then one
 // place card per place in a vertical list underneath.
@@ -127,6 +128,7 @@ function SignedInExplore() {
 
 const styles = StyleSheet.create({
   screen: {
+    paddingTop: TOP_BUFFER,
     flex: 1,
   },
   center: {

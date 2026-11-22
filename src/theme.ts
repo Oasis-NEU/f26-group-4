@@ -152,6 +152,10 @@ export const spacing = {
   xl: 24,
 };
 
+// Gap between the status bar / notch (or the native header) and a page's first content.
+// Every page uses this so tops line up.
+export const TOP_BUFFER = spacing.sm;
+
 // ---------------------------------------------------------------------------
 // TYPE
 // ---------------------------------------------------------------------------
