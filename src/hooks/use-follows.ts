@@ -2,6 +2,7 @@
 import { skipToken, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { queryKeys } from '@/lib/query-keys';
+import { checkBadges } from '@/services/badges';
 import {
   acceptFollowRequest,
   declineFollowRequest,
@@ -58,6 +59,9 @@ function refreshAfterFollowChange(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: queryKeys.follows.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.profiles.all });
   queryClient.invalidateQueries({ queryKey: queryKeys.places.all });
+  // Travel Buddies / Cleared for Takeoff (docs/data-layer.md, "Badges") depend
+  // on how many people you follow.
+  checkBadges().then(() => queryClient.invalidateQueries({ queryKey: queryKeys.badges.all }));
 }
 
 // Follows someone, or sends a request if their account is friends-only.

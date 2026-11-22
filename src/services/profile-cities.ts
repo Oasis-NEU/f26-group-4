@@ -32,6 +32,15 @@ export async function getProfileCity(id: string): Promise<ProfileCity | null> {
   return data ? toProfileCity(data) : null;
 }
 
+// A city's id from its name + country, for ProfileCover's "Auto" photo: the
+// status only ever carries a city's name (TravelStatus), never its id, so
+// this is the only way to turn "Rome, Italy" back into a real city row.
+export async function getCityIdByName(name: string, country: string): Promise<string | null> {
+  const { data, error } = await supabase.from('cities').select('id').ilike('name', name).ilike('country', country).maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
 // Cities whose name or country matches the search text, for the picker's
 // results list. The list is small, so it's filtered here.
 export async function searchProfileCities(query: string): Promise<ProfileCity[]> {

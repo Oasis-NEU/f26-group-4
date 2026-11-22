@@ -1,12 +1,19 @@
 import { Image } from 'expo-image';
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { useCityIdByName, useDestinationPhotos } from '@/hooks/use-cities';
 
 // The banner at the top of a profile. Three states, from `coverMode`:
 // - 'custom': the photo the user picked (coverImage).
 // - 'auto': which city to feature (traveling/planning city, or -- if home, or
-//   the viewer can't see their city -- their dream trip) as a colored
-//   placeholder, since there's no photo source for "a picture of Rome" yet.
+//   the viewer can't see their city -- their dream trip), shown as a real
+//   Pixabay photo when one can be found for it, a colored placeholder
+//   otherwise. Unlike a 'custom' dream trip pick, this never becomes a
+//   stored photo -- it re-resolves every time the featured city changes, so
+//   it keeps tracking wherever the person actually is (docs/data-layer.md,
+//   "Dream trip cover").
 // - 'none', or 'auto' with no city to show either way: no band at all. The
 //   avatar sits at the top of the plain page instead of overlapping anything.
 //
@@ -28,6 +35,7 @@ export const AVATAR_OVERLAP = 48;
 type VisibleStatusForCover = {
   kind: 'home' | 'traveling' | 'planning';
   city?: string; // missing when the viewer's privacy level doesn't include it
+  country?: string; // missing when the viewer's privacy level doesn't include it either
 };
 
 type ProfileCoverProps = {
@@ -35,6 +43,7 @@ type ProfileCoverProps = {
   coverImage?: string; // only used when coverMode is 'custom'
   visibleStatus: VisibleStatusForCover | null; // null when status is hidden from this viewer entirely
   dreamTrip?: string; // fallback city when home, or when the city isn't visible
+  dreamTripCityId?: string; // for the 'auto' photo -- the status city has no id of its own, so it's looked up instead
   avatar?: ReactNode; // rendered overlapping the cover's bottom edge, centered (or inline, when there's no cover)
   isOwnProfile: boolean;
   pendingRequestCount?: number; // own profile only; the inbox icon's red badge
@@ -43,6 +52,15 @@ type ProfileCoverProps = {
   onBackPress?: () => void;
   onMenuPress?: () => void;
 };
+
+// Picks one photo for a city, the same one every time (not Math.random() --
+// an impure call isn't allowed during render) so it doesn't change on every
+// re-render, or look different to two people viewing the same profile.
+function pickPhoto(photos: string[], seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) % 1_000_003;
+  return photos[hash % photos.length];
+}
 
 // The city to show on an 'auto' cover, or null if there's nothing to show.
 function coverCity(visibleStatus: VisibleStatusForCover | null, dreamTrip?: string): string | null {
@@ -71,6 +89,7 @@ export function ProfileCover({
   coverImage,
   visibleStatus,
   dreamTrip,
+  dreamTripCityId,
   avatar,
   isOwnProfile,
   pendingRequestCount = 0,
@@ -81,6 +100,23 @@ export function ProfileCover({
 }: ProfileCoverProps) {
   const city = coverCity(visibleStatus, dreamTrip);
   const showsCover = hasVisibleCover(coverMode, coverImage, visibleStatus, dreamTrip);
+
+  // The status city never carries its own id (TravelStatus only ever has a
+  // name), so it's looked up here; the dream trip city's id is just passed
+  // straight through. Either way, this re-resolves whenever the featured
+  // city changes -- it's never saved, so Auto mode keeps tracking it.
+  const isShowingStatusCity = !!(visibleStatus && visibleStatus.kind !== 'home' && visibleStatus.city);
+  const statusCityId = useCityIdByName(
+    isShowingStatusCity ? visibleStatus?.city : undefined,
+    isShowingStatusCity ? visibleStatus?.country : undefined,
+  ).data;
+  const autoPhotoCityId =
+    coverMode === 'auto' ? (isShowingStatusCity ? (statusCityId ?? undefined) : dreamTripCityId) : undefined;
+  const autoPhotos = useDestinationPhotos(autoPhotoCityId, true);
+  const autoPhoto = useMemo(() => {
+    const list = autoPhotos.data;
+    return list && list.length > 0 ? pickPhoto(list, autoPhotoCityId ?? '') : undefined;
+  }, [autoPhotos.data, autoPhotoCityId]);
 
   const topBar = (
     <View style={[styles.topBar, !showsCover && styles.topBarNoCover]}>
@@ -127,6 +163,8 @@ export function ProfileCover({
     <View style={styles.container}>
       {coverMode === 'custom' && coverImage ? (
         <Image source={{ uri: coverImage }} style={styles.image} />
+      ) : coverMode === 'auto' && autoPhoto ? (
+        <Image source={{ uri: autoPhoto }} style={styles.image} />
       ) : (
         <View style={styles.placeholder}>{city && <Text style={styles.placeholderText}>{city}</Text>}</View>
       )}

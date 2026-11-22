@@ -1,8 +1,9 @@
-import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { Stack } from 'expo-router';
 
+import { BadgeCelebrationHost } from '@/components/badge-celebration';
 import { SessionProvider, useSession } from '@/hooks/use-session';
-import { queryClient } from '@/lib/query-client';
+import { PERSIST_MAX_AGE, queryClient, queryPersister } from '@/lib/query-client';
 
 // The app's outermost navigator. The tab bar itself is set up in (tabs)/_layout.tsx.
 //
@@ -21,11 +22,11 @@ import { queryClient } from '@/lib/query-client';
 // bar stays put and you always have a back arrow.
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: queryPersister, maxAge: PERSIST_MAX_AGE }}>
       <SessionProvider>
         <RootStack />
       </SessionProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
 
@@ -42,24 +43,29 @@ function RootStack() {
   }
 
   return (
-    <Stack>
-      <Stack.Protected guard={!user}>
-        <Stack.Screen name="login" options={{ title: 'Log in' }} />
-        <Stack.Screen name="create-account" options={{ title: 'Create account' }} />
-      </Stack.Protected>
+    <>
+      <Stack>
+        <Stack.Protected guard={!user}>
+          <Stack.Screen name="login" options={{ title: 'Log in' }} />
+          <Stack.Screen name="create-account" options={{ title: 'Create account' }} />
+        </Stack.Protected>
 
-      <Stack.Protected guard={!!user && needsOnboarding}>
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-      </Stack.Protected>
+        <Stack.Protected guard={!!user && needsOnboarding}>
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        </Stack.Protected>
 
-      <Stack.Protected guard={!!user && !needsOnboarding}>
-        <Stack.Screen name="edit-profile" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="settings" options={{ headerShown: false }} />
-      </Stack.Protected>
-      <Stack.Protected guard={previewUpload || (!!user && !needsOnboarding)}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="upload" options={{ title: 'Upload', presentation: 'modal' }} />
-      </Stack.Protected>
-    </Stack>
+        <Stack.Protected guard={!!user && !needsOnboarding}>
+          <Stack.Screen name="edit-profile" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="settings" options={{ headerShown: false }} />
+        </Stack.Protected>
+        <Stack.Protected guard={previewUpload || (!!user && !needsOnboarding)}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="upload" options={{ title: 'Upload', presentation: 'modal' }} />
+        </Stack.Protected>
+      </Stack>
+
+      {/* Floats over whatever screen is on top -- see badge-celebration.tsx. */}
+      {!!user && !needsOnboarding && <BadgeCelebrationHost />}
+    </>
   );
 }

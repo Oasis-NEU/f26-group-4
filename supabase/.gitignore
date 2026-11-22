@@ -6,3 +6,7 @@
 .env.keys
 .env.local
 .env.*.local
+
+# Edge Function secrets for local `supabase functions serve` (e.g.
+# functions/destination-photo/.env) -- real API keys, never committed.
+.env

@@ -17,7 +17,8 @@ import { useProfileCity } from '@/hooks/use-cities';
 import { useInterestsByIds } from '@/hooks/use-interests';
 import { useCheckUsername, useProfile, useUpdateProfile } from '@/hooks/use-profiles';
 import { useUserId } from '@/hooks/use-session';
-import { formatStatusText, trimStatusForLevel } from '@/utils/status-text';
+import type { ProfileCity } from '@/services/profile-cities';
+import { formatStatusText, trimStatus } from '@/utils/status-text';
 import type { OwnTravelStatus, Profile, TravelStatus } from '@/types/profile';
 
 // Edit profile: a modal route (see _layout.tsx) styled like the profile
@@ -66,9 +67,9 @@ function diffProfile(original: Profile, draft: Profile): Partial<Omit<Profile, '
 }
 
 // The bits of a status ProfileCover/the status card need, regardless of kind.
-function statusForPreview(status: TravelStatus): { kind: 'home' | 'traveling' | 'planning'; city?: string } {
+function statusForPreview(status: TravelStatus): { kind: 'home' | 'traveling' | 'planning'; city?: string; country?: string } {
   if (status.kind === 'home') return { kind: 'home' };
-  return { kind: status.kind, city: status.city };
+  return { kind: status.kind, city: status.city, country: status.country };
 }
 
 // Resolves interestIds to names for the Interests field's chip row.
@@ -118,13 +119,33 @@ function EditProfileForm({ profile }: { profile: Profile }) {
   const checkUsername = useCheckUsername();
 
   // Your own profile always has its status; "home" covers the moment before it loads.
-  const status: OwnTravelStatus = draft.status ?? { kind: 'home', sharing: { closeFriends: 'full', everyone: 'country' } };
+  const status: OwnTravelStatus = draft.status ?? {
+    kind: 'home',
+    sharing: {
+      closeFriends: { country: true, city: true, dates: true },
+      everyone: { country: true, city: false, dates: false },
+    },
+  };
   const hasChanges = JSON.stringify(profile) !== JSON.stringify(draft);
   const canSave = hasChanges && isDraftValid(draft) && !isSaving;
   const showsCover = hasVisibleCover(draft.coverMode, draft.coverImage, statusForPreview(status), dreamTripCity?.name);
 
   function updateDraft(changes: Partial<Profile>) {
     setDraft((current) => ({ ...current, ...changes }));
+  }
+
+  // If the cover is already a dream trip photo, changing the dream trip
+  // city makes it stale (it's now a photo of the wrong place) -- this takes
+  // you straight to the cover picker to choose a fresh one, rather than
+  // silently swapping a photo you deliberately picked. Auto mode doesn't
+  // need this: ProfileCover resolves a real photo for whichever city it's
+  // showing on its own, every time, without ever leaving "auto".
+  function handleDreamTripSelect(city: ProfileCity) {
+    const hadDreamTripCover = draft.coverIsDreamTrip;
+    updateDraft({ dreamTripCityId: city.id });
+    if (hadDreamTripCover) {
+      setOpenPanel('cover');
+    }
   }
 
   function handleCancel() {
@@ -157,8 +178,8 @@ function EditProfileForm({ profile }: { profile: Profile }) {
     }
   }
 
-  const closeFriendsPreview = formatStatusText(trimStatusForLevel(status, status.sharing.closeFriends));
-  const everyonePreview = formatStatusText(trimStatusForLevel(status, status.sharing.everyone));
+  const closeFriendsPreview = formatStatusText(trimStatus(status, status.sharing.closeFriends));
+  const everyonePreview = formatStatusText(trimStatus(status, status.sharing.everyone));
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -179,6 +200,7 @@ function EditProfileForm({ profile }: { profile: Profile }) {
             coverImage={draft.coverImage}
             visibleStatus={statusForPreview(status)}
             dreamTrip={dreamTripCity?.name}
+            dreamTripCityId={draft.dreamTripCityId}
             isOwnProfile
             avatar={
               <Pressable style={styles.avatarPressable} onPress={() => setOpenPanel('photo')}>
@@ -276,7 +298,10 @@ function EditProfileForm({ profile }: { profile: Profile }) {
         onClose={() => setOpenPanel(null)}
         coverMode={draft.coverMode}
         coverImage={draft.coverImage}
-        onChange={(mode, image) => updateDraft({ coverMode: mode, coverImage: image })}
+        coverIsDreamTrip={draft.coverIsDreamTrip}
+        dreamTripCityId={draft.dreamTripCityId}
+        dreamTripCityName={dreamTripCity?.name}
+        onChange={(mode, image, isDreamTrip) => updateDraft({ coverMode: mode, coverImage: image, coverIsDreamTrip: !!isDreamTrip })}
       />
 
       <EditPhotoPanel
@@ -311,7 +336,7 @@ function EditProfileForm({ profile }: { profile: Profile }) {
         visible={openPanel === 'dreamTrip'}
         title="Dream trip"
         selectedCityId={draft.dreamTripCityId}
-        onSelect={(city) => updateDraft({ dreamTripCityId: city.id })}
+        onSelect={handleDreamTripSelect}
         onClose={() => setOpenPanel(null)}
       />
 

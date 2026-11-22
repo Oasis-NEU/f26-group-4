@@ -3,7 +3,8 @@ import { keepPreviousData, skipToken, useMutation, useQuery, useQueryClient } fr
 
 import { queryKeys } from '@/lib/query-keys';
 import { getCities, getCity, getCityPlaces, type CityFilters } from '@/services/cities';
-import { addProfileCity, getProfileCity, searchProfileCities } from '@/services/profile-cities';
+import { getDestinationPhotos } from '@/services/destination-photos';
+import { addProfileCity, getCityIdByName, getProfileCity, searchProfileCities } from '@/services/profile-cities';
 
 // Every city with places, most popular first. Old results stay on screen while new ones load.
 export function useCities(filters: CityFilters) {
@@ -46,6 +47,30 @@ export function useCitySearch(query: string) {
     queryKey: queryKeys.cities.search(query.trim().toLowerCase()),
     queryFn: () => searchProfileCities(query),
     placeholderData: keepPreviousData,
+  });
+}
+
+// A city's id from its name + country -- ProfileCover's only way to fetch a
+// real photo for the status city, which never carries an id on its own.
+// Waits while either piece is missing.
+export function useCityIdByName(name: string | undefined, country: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.cities.idByName(name ?? '', country ?? ''),
+    queryFn: name && country ? () => getCityIdByName(name, country) : skipToken,
+    staleTime: Infinity,
+  });
+}
+
+// A few real photos for a city, for the "Dream trip" cover picker. Waits
+// while there's no id, and only fetches once the panel actually asks for it
+// (see enabled in edit-cover-panel.tsx) -- no point hitting Pixabay until
+// someone actually opens that option.
+export function useDestinationPhotos(id: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.cities.destinationPhotos(id ?? ''),
+    queryFn: id ? () => getDestinationPhotos(id) : skipToken,
+    enabled,
+    staleTime: Infinity, // a city's photos don't change mid-session
   });
 }
 

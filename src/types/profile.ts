@@ -15,6 +15,10 @@ export type Profile = {
   // auto: current travel city, else dream trip. custom: coverImage. none: no cover band at all.
   coverMode: 'auto' | 'custom' | 'none';
   coverImage?: string; // only used when coverMode is 'custom'
+  // Whether coverImage came from the Dream Trip picker rather than an
+  // upload -- both save the same way, so this is the only way to tell them
+  // apart (edit-cover-panel.tsx, profile.tsx's auto-pick-on-first-setup).
+  coverIsDreamTrip: boolean;
   // A src/services/profile-cities.ts id; their "home base". Missing until they set
   // one, or when their "Lives in" setting hides the city from you.
   homeCityId?: string;
@@ -40,8 +44,8 @@ export type Profile = {
 // Your own status, plus how much of it each audience can see.
 export type OwnTravelStatus = TravelStatus & {
   sharing: {
-    closeFriends: StatusDetail;
-    everyone: StatusDetail;
+    closeFriends: StatusSharing;
+    everyone: StatusSharing;
   };
 };
 
@@ -50,20 +54,24 @@ export type TravelStatus =
   | { kind: 'traveling'; city: string; country: string; until?: string } // until: "2026-11-20"
   | { kind: 'planning'; city: string; country: string; month?: string }; // month: "2026-12"
 
-// How much of the status someone can see:
-// hidden  -> no status pill
-// country -> "Traveling · Italy"
-// city    -> "Traveling · Rome, Italy"
-// full    -> "Traveling · Rome, Italy · until Nov 12"
-export type StatusDetail = 'hidden' | 'country' | 'city' | 'full';
+// Three independent choices for how much of the status someone can see.
+// `dates` only has an effect when `country` is also on -- a date with no
+// place attached isn't useful on its own (see trimStatus in status-text.ts).
+// All three off is the same as the old "hidden": no status pill at all.
+export type StatusSharing = {
+  country: boolean; // "Traveling · Italy"
+  city: boolean; // adds ", Rome" to the country
+  dates: boolean; // adds "· until Nov 12" -- needs country on too
+};
 
 // What's left of a TravelStatus after getVisibleStatus trims it for a viewer.
-// Shaped like TravelStatus, but city/until/month may be missing even while
-// traveling/planning, since a given viewer might not be allowed to see them.
+// Shaped like TravelStatus, but country/city/until/month may each be
+// missing even while traveling/planning, since a given viewer might not be
+// allowed to see them.
 export type VisibleTravelStatus =
   | { kind: 'home' }
-  | { kind: 'traveling'; country: string; city?: string; until?: string }
-  | { kind: 'planning'; country: string; city?: string; month?: string };
+  | { kind: 'traveling'; country?: string; city?: string; until?: string }
+  | { kind: 'planning'; country?: string; city?: string; month?: string };
 
 export type TravelGoal = {
   year: number;

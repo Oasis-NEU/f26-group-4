@@ -10,15 +10,15 @@ import { currentUserId, supabase } from '@/lib/supabase';
 import { getMediaUrl, isLocalPhoto, mediaPathFrom, uploadMedia, type MediaFolder } from './media';
 
 import type { Database } from '@/types/database';
-import type { OwnTravelStatus, Profile, StatusDetail, TravelGoal, VisibleTravelStatus } from '@/types/profile';
+import type { OwnTravelStatus, Profile, TravelGoal, VisibleTravelStatus } from '@/types/profile';
 
 const PROFILE_SELECT =
-  'id, username, name, bio, avatar_path, avatar_hue, cover_mode, cover_path, dream_trip_city_id, visible_status, visible_home, interests:profile_interests(interest_id), goals:travel_goals(year, metric, target)';
+  'id, username, name, bio, avatar_path, avatar_hue, cover_mode, cover_path, cover_is_dream_trip, dream_trip_city_id, visible_status, visible_home, interests:profile_interests(interest_id), goals:travel_goals(year, metric, target)';
 
 // Your own location row, with the status city's name (it has two links to
 // cities, so the foreign key is named).
 const LOCATION_SELECT =
-  'home_city_id, status_kind, status_until, status_month, share_close_friends, share_everyone, status_city:cities!profile_locations_status_city_id_fkey(name, country)';
+  'home_city_id, status_kind, status_until, status_month, share_close_friends_country, share_close_friends_city, share_close_friends_dates, share_everyone_country, share_everyone_city, share_everyone_dates, status_city:cities!profile_locations_status_city_id_fkey(name, country)';
 
 type ProfileRow = {
   id: string;
@@ -29,6 +29,7 @@ type ProfileRow = {
   avatar_hue: number | null;
   cover_mode: string;
   cover_path: string | null;
+  cover_is_dream_trip: boolean;
   dream_trip_city_id: string | null;
   visible_status: unknown;
   visible_home: unknown;
@@ -41,15 +42,27 @@ type LocationRow = {
   status_kind: string;
   status_until: string | null;
   status_month: string | null;
-  share_close_friends: string;
-  share_everyone: string;
+  share_close_friends_country: boolean;
+  share_close_friends_city: boolean;
+  share_close_friends_dates: boolean;
+  share_everyone_country: boolean;
+  share_everyone_city: boolean;
+  share_everyone_dates: boolean;
   status_city: { name: string; country: string } | null;
 };
 
 function toOwnStatus(location: LocationRow): OwnTravelStatus {
-  const sharing = {
-    closeFriends: location.share_close_friends as StatusDetail,
-    everyone: location.share_everyone as StatusDetail,
+  const sharing: OwnTravelStatus['sharing'] = {
+    closeFriends: {
+      country: location.share_close_friends_country,
+      city: location.share_close_friends_city,
+      dates: location.share_close_friends_dates,
+    },
+    everyone: {
+      country: location.share_everyone_country,
+      city: location.share_everyone_city,
+      dates: location.share_everyone_dates,
+    },
   };
   const city = location.status_city;
   if (location.status_kind === 'traveling' && city) {
@@ -72,6 +85,7 @@ function toProfile(row: ProfileRow, ownLocation?: LocationRow | null): Profile {
     bio: row.bio ?? undefined,
     coverMode: row.cover_mode as Profile['coverMode'],
     coverImage: getMediaUrl(row.cover_path),
+    coverIsDreamTrip: row.cover_is_dream_trip,
     homeCityId: ownLocation ? (ownLocation.home_city_id ?? undefined) : visibleHome?.city_id,
     dreamTripCityId: row.dream_trip_city_id ?? undefined,
     status: ownLocation ? toOwnStatus(ownLocation) : undefined,
@@ -184,6 +198,7 @@ export async function updateProfile(changes: ProfileChanges): Promise<Profile | 
   if ('bio' in changes) profile.bio = changes.bio?.trim() || null;
   if ('avatarHue' in changes) profile.avatar_hue = changes.avatarHue ?? null;
   if (changes.coverMode !== undefined) profile.cover_mode = changes.coverMode;
+  if (changes.coverIsDreamTrip !== undefined) profile.cover_is_dream_trip = changes.coverIsDreamTrip;
   if ('dreamTripCityId' in changes) profile.dream_trip_city_id = changes.dreamTripCityId ?? null;
   if ('profilePicture' in changes) profile.avatar_path = await photoPath(changes.profilePicture, 'avatar');
   if ('coverImage' in changes) profile.cover_path = await photoPath(changes.coverImage, 'cover');
@@ -196,8 +211,12 @@ export async function updateProfile(changes: ProfileChanges): Promise<Profile | 
     location.status_city_id = status.kind === 'home' ? null : await cityIdFor(status.city, status.country);
     location.status_until = status.kind === 'traveling' ? (status.until ?? null) : null;
     location.status_month = status.kind === 'planning' && status.month ? `${status.month}-01` : null;
-    location.share_close_friends = status.sharing.closeFriends;
-    location.share_everyone = status.sharing.everyone;
+    location.share_close_friends_country = status.sharing.closeFriends.country;
+    location.share_close_friends_city = status.sharing.closeFriends.city;
+    location.share_close_friends_dates = status.sharing.closeFriends.dates;
+    location.share_everyone_country = status.sharing.everyone.country;
+    location.share_everyone_city = status.sharing.everyone.city;
+    location.share_everyone_dates = status.sharing.everyone.dates;
   }
 
   if (Object.keys(profile).length > 0) {

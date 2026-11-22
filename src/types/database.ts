@@ -281,14 +281,14 @@ isOneToOne: false
                   ]
                 },"profile_locations": {
                   Row: {
-                    "home_city_id": string | null,"share_close_friends": string,"share_everyone": string,"status_city_id": string | null,"status_kind": string,"status_month": string | null,"status_until": string | null,"status_updated_at": string,"user_id": string
+                    "home_city_id": string | null,"share_close_friends_city": boolean,"share_close_friends_country": boolean,"share_close_friends_dates": boolean,"share_everyone_city": boolean,"share_everyone_country": boolean,"share_everyone_dates": boolean,"status_city_id": string | null,"status_kind": string,"status_month": string | null,"status_until": string | null,"status_updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "home_city_id"?: string | null,"share_close_friends"?: string,"share_everyone"?: string,"status_city_id"?: string | null,"status_kind"?: string,"status_month"?: string | null,"status_until"?: string | null,"status_updated_at"?: string,"user_id": string
+                    "home_city_id"?: string | null,"share_close_friends_city"?: boolean,"share_close_friends_country"?: boolean,"share_close_friends_dates"?: boolean,"share_everyone_city"?: boolean,"share_everyone_country"?: boolean,"share_everyone_dates"?: boolean,"status_city_id"?: string | null,"status_kind"?: string,"status_month"?: string | null,"status_until"?: string | null,"status_updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "home_city_id"?: string | null,"share_close_friends"?: string,"share_everyone"?: string,"status_city_id"?: string | null,"status_kind"?: string,"status_month"?: string | null,"status_until"?: string | null,"status_updated_at"?: string,"user_id"?: string
+                    "home_city_id"?: string | null,"share_close_friends_city"?: boolean,"share_close_friends_country"?: boolean,"share_close_friends_dates"?: boolean,"share_everyone_city"?: boolean,"share_everyone_country"?: boolean,"share_everyone_dates"?: boolean,"status_city_id"?: string | null,"status_kind"?: string,"status_month"?: string | null,"status_until"?: string | null,"status_updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -325,14 +325,14 @@ isOneToOne: true
                   ]
                 },"profiles": {
                   Row: {
-                    "account_type": string,"avatar_hue": number | null,"avatar_path": string | null,"bio": string | null,"cover_mode": string,"cover_path": string | null,"created_at": string,"dream_trip_city_id": string | null,"id": string,"name": string,"username": string,"follower_count": number | null,"following_count": number | null,"place_count": number | null,"suggestion_reason": string | null,"visible_home": Json | null,"visible_status": Json | null
+                    "account_type": string,"avatar_hue": number | null,"avatar_path": string | null,"bio": string | null,"cover_is_dream_trip": boolean,"cover_mode": string,"cover_path": string | null,"created_at": string,"dream_trip_city_id": string | null,"id": string,"name": string,"username": string,"follower_count": number | null,"following_count": number | null,"place_count": number | null,"suggestion_reason": string | null,"visible_home": Json | null,"visible_status": Json | null
                   }
                   ComputedFields: "follower_count" | "following_count" | "place_count" | "suggestion_reason" | "visible_home" | "visible_status"
                   Insert: {
-                    "account_type"?: string,"avatar_hue"?: number | null,"avatar_path"?: string | null,"bio"?: string | null,"cover_mode"?: string,"cover_path"?: string | null,"created_at"?: string,"dream_trip_city_id"?: string | null,"id": string,"name": string,"username": string
+                    "account_type"?: string,"avatar_hue"?: number | null,"avatar_path"?: string | null,"bio"?: string | null,"cover_is_dream_trip"?: boolean,"cover_mode"?: string,"cover_path"?: string | null,"created_at"?: string,"dream_trip_city_id"?: string | null,"id": string,"name": string,"username": string
                   }
                   Update: {
-                    "account_type"?: string,"avatar_hue"?: number | null,"avatar_path"?: string | null,"bio"?: string | null,"cover_mode"?: string,"cover_path"?: string | null,"created_at"?: string,"dream_trip_city_id"?: string | null,"id"?: string,"name"?: string,"username"?: string
+                    "account_type"?: string,"avatar_hue"?: number | null,"avatar_path"?: string | null,"bio"?: string | null,"cover_is_dream_trip"?: boolean,"cover_mode"?: string,"cover_path"?: string | null,"created_at"?: string,"dream_trip_city_id"?: string | null,"id"?: string,"name"?: string,"username"?: string
                   }
                   Relationships: [
                     {
@@ -475,14 +475,14 @@ isOneToOne: false
                   ]
                 },"settings": {
                   Row: {
-                    "created_at": string,"default_share_close_friends": string,"default_share_everyone": string,"findable_by_contact": boolean,"follow_lists_visibility": string,"home_visibility": string,"map_visibility": string,"new_collections_private": boolean,"notifications_paused": boolean,"notify_close_friend_status": boolean,"notify_likes_comments": boolean,"notify_new_follower": boolean,"notify_trip_overlap": boolean,"show_in_suggestions": boolean,"updated_at": string,"user_id": string
+                    "created_at": string,"default_share_close_friends_city": boolean,"default_share_close_friends_country": boolean,"default_share_close_friends_dates": boolean,"default_share_everyone_city": boolean,"default_share_everyone_country": boolean,"default_share_everyone_dates": boolean,"findable_by_contact": boolean,"follow_lists_visibility": string,"home_visibility": string,"map_visibility": string,"new_collections_private": boolean,"notifications_paused": boolean,"notify_close_friend_status": boolean,"notify_likes_comments": boolean,"notify_new_follower": boolean,"notify_trip_overlap": boolean,"show_in_suggestions": boolean,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"default_share_close_friends"?: string,"default_share_everyone"?: string,"findable_by_contact"?: boolean,"follow_lists_visibility"?: string,"home_visibility"?: string,"map_visibility"?: string,"new_collections_private"?: boolean,"notifications_paused"?: boolean,"notify_close_friend_status"?: boolean,"notify_likes_comments"?: boolean,"notify_new_follower"?: boolean,"notify_trip_overlap"?: boolean,"show_in_suggestions"?: boolean,"updated_at"?: string,"user_id": string
+                    "created_at"?: string,"default_share_close_friends_city"?: boolean,"default_share_close_friends_country"?: boolean,"default_share_close_friends_dates"?: boolean,"default_share_everyone_city"?: boolean,"default_share_everyone_country"?: boolean,"default_share_everyone_dates"?: boolean,"findable_by_contact"?: boolean,"follow_lists_visibility"?: string,"home_visibility"?: string,"map_visibility"?: string,"new_collections_private"?: boolean,"notifications_paused"?: boolean,"notify_close_friend_status"?: boolean,"notify_likes_comments"?: boolean,"notify_new_follower"?: boolean,"notify_trip_overlap"?: boolean,"show_in_suggestions"?: boolean,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"default_share_close_friends"?: string,"default_share_everyone"?: string,"findable_by_contact"?: boolean,"follow_lists_visibility"?: string,"home_visibility"?: string,"map_visibility"?: string,"new_collections_private"?: boolean,"notifications_paused"?: boolean,"notify_close_friend_status"?: boolean,"notify_likes_comments"?: boolean,"notify_new_follower"?: boolean,"notify_trip_overlap"?: boolean,"show_in_suggestions"?: boolean,"updated_at"?: string,"user_id"?: string
+                    "created_at"?: string,"default_share_close_friends_city"?: boolean,"default_share_close_friends_country"?: boolean,"default_share_close_friends_dates"?: boolean,"default_share_everyone_city"?: boolean,"default_share_everyone_country"?: boolean,"default_share_everyone_dates"?: boolean,"findable_by_contact"?: boolean,"follow_lists_visibility"?: string,"home_visibility"?: string,"map_visibility"?: string,"new_collections_private"?: boolean,"notifications_paused"?: boolean,"notify_close_friend_status"?: boolean,"notify_likes_comments"?: boolean,"notify_new_follower"?: boolean,"notify_trip_overlap"?: boolean,"show_in_suggestions"?: boolean,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -521,6 +521,26 @@ isOneToOne: true
                   Relationships: [
                     {
       foreignKeyName: "travel_goals_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"user_badges": {
+                  Row: {
+                    "backfilled": boolean,"badge_id": string,"earned_at": string,"level": number,"seen_at": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "backfilled"?: boolean,"badge_id": string,"earned_at"?: string,"level"?: number,"seen_at"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "backfilled"?: boolean,"badge_id"?: string,"earned_at"?: string,"level"?: number,"seen_at"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "user_badges_user_id_fkey"
       columns: ["user_id"]
 isOneToOne: false
       referencedRelation: "profiles"

@@ -2,7 +2,7 @@
 // status pill, e.g. "Traveling · Rome, Italy · until Nov 12". Shared between
 // ProfileHeader (the real pill) and EditStatusPanel (the "they see: ..." preview).
 
-import type { StatusDetail, TravelStatus, VisibleTravelStatus } from '@/types/profile';
+import type { StatusSharing, TravelStatus, VisibleTravelStatus } from '@/types/profile';
 
 // A date-only string ("2026-11-20" or "2026-12") as midnight in the phone's own
 // timezone. new Date("2026-11-20") reads it as midnight UTC instead, which is
@@ -21,21 +21,25 @@ function formatMonth(isoMonth: string): string {
   return localDate(isoMonth).toLocaleDateString('en-US', { month: 'long' });
 }
 
-// Trims a status down to one sharing level: hidden -> nothing, country -> no
-// city, city -> no dates, full -> everything. The database does the same before
-// it sends anyone else's status (private.status_json in the people migration);
+// Trims a status down to what one audience is allowed to see, from three
+// independent choices (country/city/dates) instead of one ladder level.
+// Dates only come through when country is also on. All three off is
+// nothing at all -- no status pill. The database does the same before it
+// sends anyone else's status (private.status_json in the people migration);
 // this copy is for Edit profile's live "Close friends see: ..." previews.
-export function trimStatusForLevel(status: TravelStatus, level: StatusDetail): VisibleTravelStatus | null {
-  if (level === 'hidden') return null;
+export function trimStatus(status: TravelStatus, sharing: StatusSharing): VisibleTravelStatus | null {
+  if (!sharing.country && !sharing.city && !sharing.dates) return null;
   if (status.kind === 'home') return status;
 
-  const city = level === 'country' ? undefined : status.city;
+  const country = sharing.country ? status.country : undefined;
+  const city = sharing.city ? status.city : undefined;
+  const showDates = sharing.dates && sharing.country;
 
   if (status.kind === 'traveling') {
-    return { kind: 'traveling', country: status.country, city, until: level === 'full' ? status.until : undefined };
+    return { kind: 'traveling', country, city, until: showDates ? status.until : undefined };
   }
 
-  return { kind: 'planning', country: status.country, city, month: level === 'full' ? status.month : undefined };
+  return { kind: 'planning', country, city, month: showDates ? status.month : undefined };
 }
 
 // Null when there's nothing to show (status hidden from this viewer).
@@ -44,13 +48,15 @@ export function formatStatusText(status: VisibleTravelStatus | null): string | n
   if (status.kind === 'home') return 'Home';
 
   const label = status.kind === 'traveling' ? 'Traveling' : 'Planning';
-  const place = status.city ? `${status.city}, ${status.country}` : status.country;
+  // Country and city are now independent -- either, both, or (rarely)
+  // neither can be showing.
+  const place = status.city && status.country ? `${status.city}, ${status.country}` : (status.city ?? status.country);
 
   if (status.kind === 'traveling' && status.until) {
-    return `${label} · ${place} · until ${formatUntil(status.until)}`;
+    return place ? `${label} · ${place} · until ${formatUntil(status.until)}` : `${label} · until ${formatUntil(status.until)}`;
   }
   if (status.kind === 'planning' && status.month) {
-    return `${label} · ${place} · ${formatMonth(status.month)}`;
+    return place ? `${label} · ${place} · ${formatMonth(status.month)}` : `${label} · ${formatMonth(status.month)}`;
   }
-  return `${label} · ${place}`;
+  return place ? `${label} · ${place}` : label;
 }

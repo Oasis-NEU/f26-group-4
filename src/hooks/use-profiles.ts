@@ -4,6 +4,7 @@ import { keepPreviousData, skipToken, useMutation, useQuery, useQueryClient } fr
 import { useCallback } from 'react';
 
 import { queryKeys } from '@/lib/query-keys';
+import { checkBadges } from '@/services/badges';
 import { getProfile, getProfilesByIds, isUsernameAvailable, updateProfile, type ProfileChanges } from '@/services/users';
 
 // One profile. Yours has your full status; anyone else's comes back already
@@ -39,6 +40,9 @@ export function useUpdateProfile() {
         queryClient.invalidateQueries({ queryKey: queryKeys.profiles.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.interests.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.follows.suggestions }),
+        // Several badges depend on the profile (Passport Photo, Cleared for
+        // Takeoff) or the travel goal (Goal Getter) -- docs/data-layer.md, "Badges".
+        checkBadges().then(() => queryClient.invalidateQueries({ queryKey: queryKeys.badges.all })),
       ]),
   });
 }

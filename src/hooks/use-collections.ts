@@ -3,6 +3,7 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 
 import { canHoldSubCollection, rulesAbove } from '@/lib/collection-tree';
 import { queryKeys } from '@/lib/query-keys';
+import { checkBadges } from '@/services/badges';
 import {
   ALL_SAVED_ID,
   createCollection,
@@ -83,6 +84,8 @@ export function useCreateCollection() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.collections.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.saves.all });
+      // Curator (docs/data-layer.md, "Badges") counts your own collections.
+      checkBadges().then(() => queryClient.invalidateQueries({ queryKey: queryKeys.badges.all }));
     },
   });
 }

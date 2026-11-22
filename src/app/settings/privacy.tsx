@@ -5,23 +5,17 @@ import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { ConfirmModal } from '@/components/confirm-modal';
 import { OptionPills } from '@/components/option-pills';
 import { SettingsRow } from '@/components/settings-row';
+import { SharingToggles } from '@/components/sharing-toggles';
 import { useFollowRequests } from '@/hooks/use-follows';
 import { useSettings, useUpdateSettings } from '@/hooks/use-settings';
-import { formatStatusText, trimStatusForLevel } from '@/utils/status-text';
+import { formatStatusText, trimStatus } from '@/utils/status-text';
 import type { Audience, Settings } from '@/types/settings';
-import type { StatusDetail, TravelStatus } from '@/types/profile';
+import type { TravelStatus } from '@/types/profile';
 
 
 // Used just to show a live "they'd see: ..." example under the default
 // sharing pills -- these aren't anyone's real status.
 const EXAMPLE_STATUS: TravelStatus = { kind: 'traveling', city: 'Rome', country: 'Italy', until: '2026-11-20' };
-
-const SHARING_OPTIONS: { value: StatusDetail; label: string }[] = [
-  { value: 'hidden', label: 'Off' },
-  { value: 'country', label: 'Country' },
-  { value: 'city', label: 'City' },
-  { value: 'full', label: '+ Dates' },
-];
 
 const MAP_OPTIONS: { value: Audience; label: string }[] = [
   { value: 'everyone', label: 'Everyone' },
@@ -97,25 +91,23 @@ export default function PrivacyScreen() {
       <View style={styles.card}>
         <View style={styles.pillSection}>
           <Text style={styles.pillLabel}>Close friends see</Text>
-          <OptionPills
-            options={SHARING_OPTIONS}
-            selected={settings.defaultStatusSharing.closeFriends}
-            onSelect={(value) => patch({ defaultStatusSharing: { ...settings.defaultStatusSharing, closeFriends: value } })}
+          <SharingToggles
+            value={settings.defaultStatusSharing.closeFriends}
+            onChange={(value) => patch({ defaultStatusSharing: { ...settings.defaultStatusSharing, closeFriends: value } })}
           />
           <Text style={styles.example}>
-            e.g. {formatStatusText(trimStatusForLevel(EXAMPLE_STATUS, settings.defaultStatusSharing.closeFriends)) ?? 'Nothing'}
+            e.g. {formatStatusText(trimStatus(EXAMPLE_STATUS, settings.defaultStatusSharing.closeFriends)) ?? 'Nothing'}
           </Text>
         </View>
 
         <View style={[styles.pillSection, styles.pillSectionLast]}>
           <Text style={styles.pillLabel}>Everyone else sees</Text>
-          <OptionPills
-            options={SHARING_OPTIONS}
-            selected={settings.defaultStatusSharing.everyone}
-            onSelect={(value) => patch({ defaultStatusSharing: { ...settings.defaultStatusSharing, everyone: value } })}
+          <SharingToggles
+            value={settings.defaultStatusSharing.everyone}
+            onChange={(value) => patch({ defaultStatusSharing: { ...settings.defaultStatusSharing, everyone: value } })}
           />
           <Text style={styles.example}>
-            e.g. {formatStatusText(trimStatusForLevel(EXAMPLE_STATUS, settings.defaultStatusSharing.everyone)) ?? 'Nothing'}
+            e.g. {formatStatusText(trimStatus(EXAMPLE_STATUS, settings.defaultStatusSharing.everyone)) ?? 'Nothing'}
           </Text>
         </View>
 

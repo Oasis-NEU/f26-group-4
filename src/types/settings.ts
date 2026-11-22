@@ -2,7 +2,7 @@
 // info other people never load. Stored separately from Profile on purpose --
 // Settings never gets fetched by anyone except its own owner.
 
-import type { StatusDetail } from './profile';
+import type { StatusSharing } from './profile';
 
 export type Audience = 'everyone' | 'closeFriends' | 'onlyMe';
 
@@ -14,8 +14,8 @@ export type Settings = {
 
   // Privacy: your status
   defaultStatusSharing: {
-    closeFriends: StatusDetail;
-    everyone: StatusDetail;
+    closeFriends: StatusSharing;
+    everyone: StatusSharing;
   };
   closeFriendIds: string[]; // picked from followers; not visible to anyone but the owner
 
@@ -43,7 +43,10 @@ export function defaultSettingsFor(userId: string): Settings {
   return {
     userId,
     accountType: 'public',
-    defaultStatusSharing: { closeFriends: 'full', everyone: 'country' },
+    defaultStatusSharing: {
+      closeFriends: { country: true, city: true, dates: true },
+      everyone: { country: true, city: false, dates: false },
+    },
     closeFriendIds: [],
     mapVisibility: 'everyone',
     homeVisibility: 'city',

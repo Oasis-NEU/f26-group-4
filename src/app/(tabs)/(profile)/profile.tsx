@@ -125,6 +125,7 @@ export default function ProfilePage() {
           coverImage={profile.coverImage}
           visibleStatus={visibleStatus}
           dreamTrip={dreamTripName}
+          dreamTripCityId={profile.dreamTripCityId}
           isOwnProfile
           pendingRequestCount={followRequests.length}
           avatar={
@@ -150,7 +151,13 @@ export default function ProfilePage() {
             onEditPress={() => router.push('/edit-profile')}
           />
 
-          <ProfileStats placesCount={reviews.length} followersCount={followerCount} followingCount={followingCount} />
+          <ProfileStats
+            placesCount={reviews.length}
+            followersCount={followerCount}
+            followingCount={followingCount}
+            onPressFollowers={() => router.push({ pathname: '/connections/[id]', params: { id: userId, tab: 'followers' } })}
+            onPressFollowing={() => router.push({ pathname: '/connections/[id]', params: { id: userId, tab: 'following' } })}
+          />
 
           {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
           <ProfileInterests interests={interestNames} />
@@ -230,7 +237,7 @@ export default function ProfilePage() {
             </View>
           )}
 
-          {activeTab === 'badges' && <ProfileBadges reviews={reviews} goals={profile.goals} />}
+          {activeTab === 'badges' && <ProfileBadges reviews={reviews} goals={profile.goals} profileId={userId} isOwnProfile />}
 
         </View>
       </ScrollView>

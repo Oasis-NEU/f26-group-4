@@ -2,6 +2,7 @@
 import { queryOptions, skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { queryKeys } from '@/lib/query-keys';
+import { checkBadges } from '@/services/badges';
 import { createPost } from '@/services/posts';
 import { addReviewComment, getLikedReviewIds, getReviewComments, getReviewsByAuthor, likeReview, unlikeReview } from '@/services/reviews';
 
@@ -63,6 +64,8 @@ export function useCreatePost() {
       queryClient.invalidateQueries({ queryKey: queryKeys.collections.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.saves.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.interests.suggested });
+      // Most badges are earned by posting -- see docs/data-layer.md ("Badges").
+      checkBadges().then(() => queryClient.invalidateQueries({ queryKey: queryKeys.badges.all }));
     },
   });
 }

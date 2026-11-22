@@ -20,6 +20,8 @@ export const queryKeys = {
     places: (id: string) => ['cities', 'places', id] as const,
     pick: (id: string) => ['cities', 'pick', id] as const, // one city from the picker list
     search: (query: string) => ['cities', 'search', query] as const, // the picker's results
+    destinationPhotos: (id: string) => ['cities', 'destination-photos', id] as const,
+    idByName: (name: string, country: string) => ['cities', 'id-by-name', name, country] as const,
   },
   reviews: {
     all: ['reviews'] as const,
@@ -56,6 +58,12 @@ export const queryKeys = {
   },
   settings: {
     all: ['settings'] as const,
+  },
+  badges: {
+    all: ['badges'] as const,
+    mine: ['badges', 'mine'] as const,
+    unseen: ['badges', 'unseen'] as const,
+    byProfile: (userId: string) => ['badges', 'profile', userId] as const,
   },
   // The shared tag vocabulary -- a profile's interests and a place's
   // "suited for" are one list. See src/services/tags.ts for why.

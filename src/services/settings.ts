@@ -8,7 +8,6 @@
 import { currentUserId, supabase } from '@/lib/supabase';
 
 import type { Database } from '@/types/database';
-import type { StatusDetail } from '@/types/profile';
 import type { Audience, Settings } from '@/types/settings';
 
 type SettingsUpdate = Database['public']['Tables']['settings']['Update'];
@@ -42,8 +41,16 @@ export async function getSettings(): Promise<Settings> {
     userId: me,
     accountType: profile.data.account_type === 'friends_only' ? 'friendsOnly' : 'public',
     defaultStatusSharing: {
-      closeFriends: row.default_share_close_friends as StatusDetail,
-      everyone: row.default_share_everyone as StatusDetail,
+      closeFriends: {
+        country: row.default_share_close_friends_country,
+        city: row.default_share_close_friends_city,
+        dates: row.default_share_close_friends_dates,
+      },
+      everyone: {
+        country: row.default_share_everyone_country,
+        city: row.default_share_everyone_city,
+        dates: row.default_share_everyone_dates,
+      },
     },
     closeFriendIds: closeFriends.data.map((item) => item.friend_id),
     mapVisibility: MAP_VISIBILITY_TO_APP[row.map_visibility] ?? 'everyone',
@@ -72,8 +79,13 @@ export async function updateSettings(changes: Partial<Omit<Settings, 'userId'>>)
 
   const row: SettingsUpdate = {};
   if (changes.defaultStatusSharing) {
-    row.default_share_close_friends = changes.defaultStatusSharing.closeFriends;
-    row.default_share_everyone = changes.defaultStatusSharing.everyone;
+    const { closeFriends, everyone } = changes.defaultStatusSharing;
+    row.default_share_close_friends_country = closeFriends.country;
+    row.default_share_close_friends_city = closeFriends.city;
+    row.default_share_close_friends_dates = closeFriends.dates;
+    row.default_share_everyone_country = everyone.country;
+    row.default_share_everyone_city = everyone.city;
+    row.default_share_everyone_dates = everyone.dates;
   }
   if (changes.mapVisibility) row.map_visibility = MAP_VISIBILITY_TO_DB[changes.mapVisibility];
   if (changes.homeVisibility) row.home_visibility = changes.homeVisibility;

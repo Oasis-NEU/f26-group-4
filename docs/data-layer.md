@@ -226,9 +226,11 @@ What exists, on Supabase. Functions about the signed-in user don't take their id
 | | `addCloseFriend(id)`, `removeCloseFriend(id)`, `blockUser(id)`, `unblockUser(id)` | |
 | `interests.ts` | `getInterestsByIds(ids)`, `searchInterests(query)`, `getPopularInterests(limit)`, `suggestInterestsFromPosts()`, `addInterest(name)` | |
 | `cities.ts` | `getCities(filters)`, `getCity(id)`, `getCityPlaces(id)` | the `city_stats` view. Nothing calls them since Explore merged into the feed; delete once the team has merged |
-| `profile-cities.ts` | `getProfileCity(id)`, `searchProfileCities(query)` | the `cities` table |
+| `profile-cities.ts` | `getProfileCity(id)`, `searchProfileCities(query)`, `getCityIdByName(name, country)` | the `cities` table |
 | | `addProfileCity(name, country)` | adds a row when the picker's search comes up empty; same `cities: add` RLS policy posting a review in a new city already uses |
+| `destination-photos.ts` | `getDestinationPhotos(cityId): string[]` | the `destination-photo` Edge Function -- Pixabay, key held server-side only ([Dream trip cover](#dream-trip-cover)) |
 | `media.ts` | `uploadMedia(localUri, folder)`, `getMediaUrl(path)`, `deleteMedia(paths)` | photos in the `media` bucket |
+| `badges.ts` | `getBadgesForProfile(userId)`, `getUserBadges()`, `getUnseenBadges()`, `markBadgeSeen(badgeId)`, `checkBadges()` | `BADGE_DEFINITIONS` and the rules live here too ([Badges](#badges)) |
 | `place-rows.ts` | `PLACE_SELECT`, `toPlace`, `toReview` | shared by the services that return places. Nothing per-user: "saved?" and "liked?" are their own queries (rule 6) |
 | `mock-backend.ts` | `mockRequest(data)` | only `template-service.ts` uses it now |
 
@@ -252,15 +254,19 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | `use-reviews.ts` | `useReviewsByUser(userId)`, `useIsLiked(reviewId)`, `useToggleLike()` | `getReviewsByAuthor`, `getLikedReviewIds`, `likeReview` / `unlikeReview` | Profile, `PlaceCard` |
 | | `useReviewComments(reviewId)`, `useAddReviewComment(reviewId)` | `getReviewComments`, `addReviewComment` | Comments modal |
 | | `useCreatePost()` | `createPost` | Upload |
-| `use-profiles.ts` | `useProfile(id)`, `useProfilesByIds(ids)`, `useUpdateProfile()` | `getProfile`, `getProfilesByIds`, `updateProfile` | Profile, Edit profile, Settings |
+| `use-profiles.ts` | `useProfile(id)`, `useProfilesByIds(ids)`, `useUpdateProfile()` | `getProfile`, `getProfilesByIds`, `updateProfile` | Profile, Edit profile, Settings, connections/[id] |
 | | `useCheckUsername()` returns `(username) => Promise<boolean>` | `isUsernameAvailable` | Create account, Edit profile |
-| `use-follows.ts` | `useFollowerIds(userId)`, `useFollowingIds(userId)`, `useFollowRequests()`, `useSuggestedFriends()`, `useFriendUsernames()` | `follows.ts`, `getSuggestedFriends`, `getFriendUsernames` | Profile, Map, Privacy, Close friends |
+| `use-follows.ts` | `useFollowerIds(userId)`, `useFollowingIds(userId)`, `useFollowRequests()`, `useSuggestedFriends()`, `useFriendUsernames()` | `follows.ts`, `getSuggestedFriends`, `getFriendUsernames` | Profile, Map, Privacy, Close friends, connections/[id] |
 | | `useFollow()`, `useUnfollow()`, `useAcceptFollowRequest()`, `useDeclineFollowRequest()` | `followUser`, `unfollowUser`, `acceptFollowRequest`, `declineFollowRequest` | Profile |
 | | `useFollowStatus(userId)`, `useSetNotifyPrefs()` | `getFollowStatus`, `setNotifyPrefs` | user/[id] |
 | `use-settings.ts` | `useSettings()`, `useUpdateSettings()`, `useToggleCloseFriend()`, `useBlockUser()`, `useUnblockUser()` | `settings.ts` | Settings screens |
 | `use-interests.ts` | `useInterestsByIds(ids)`, `usePopularInterests(limit, enabled?)`, `useSearchInterests(query)`, `useSuggestedInterests(enabled?)`, `useAddInterest()` | `interests.ts` | Profile, Edit profile |
 | `use-cities.ts` | `useCities(filters)`, `useCity(id)`, `useCityPlaces(id)` | `cities.ts` | nothing now (they were for the Explore and City pages) |
 | | `useProfileCity(id)`, `useCitySearch(query)`, `useAddProfileCity()` | `profile-cities.ts` | Profile, Edit profile; `useCitySearch('')` for Upload's and New collection's city pickers |
+| | `useDestinationPhotos(id, enabled)` | `destination-photos.ts` | `EditCoverPanel`'s "Dream trip" option, `ProfileCover`'s Auto-mode photo |
+| | `useCityIdByName(name, country)` | `profile-cities.ts` | `ProfileCover`, to resolve the status city's id (it has no id of its own) for the Auto-mode photo |
+| `use-badges.ts` | `useBadgesForProfile(userId)`, `useUserBadges()`, `useUnseenBadges()`; re-exports `BADGE_DEFINITIONS` | `badges.ts` | Profile Badges tab, `BadgeCelebrationHost` |
+| | `useCheckBadges()`, `useMarkBadgeSeen()` | `checkBadges`, `markBadgeSeen` | `BadgeCelebrationHost`; `checkBadges` is also called from `useCreatePost`, `useUpdateProfile`, `useCreateCollection` |
 
 ### Mutations and what they refresh
 
@@ -270,9 +276,9 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | `useToggleLike` | yes, `reviews.likedIds` | `reviews.likedIds` |
 | `useAddReviewComment` | no | `reviews.all`, `places.all` |
 | `useRemoveFromCollection` | no | `collections.all`, `saves.all` |
-| `useCreateCollection` | no | `collections.all`, `saves.all` (places put in straight away stop being loose) |
-| `useCreatePost` | no | `places.all`, `cities.all`, `reviews.all`, `collections.all`, `saves.all`, `interests.suggested` |
-| `useUpdateProfile` | no; stays pending until the fresh profile loads | `profiles.all`, `interests.all`, `follows.suggestions` |
+| `useCreateCollection` | no | `collections.all`, `saves.all` (places put in straight away stop being loose), `badges.all` (Curator) |
+| `useCreatePost` | no | `places.all`, `cities.all`, `reviews.all`, `collections.all`, `saves.all`, `interests.suggested`, `badges.all` (most badges) |
+| `useUpdateProfile` | no; stays pending until the fresh profile loads | `profiles.all`, `interests.all`, `follows.suggestions`, `badges.all` when goals changed (Goal Getter) |
 | `useFollow`, `useUnfollow`, `useAcceptFollowRequest`, `useDeclineFollowRequest` | no | `follows.all`, `profiles.all`, `places.all` (friends' ratings change) |
 | `useSetNotifyPrefs` | no | `follows.status(userId)` |
 | `useUpdateSettings` | yes, `settings.all` | `settings.all`, `follows.all` (friends-only off accepts requests), `profiles.all` |
@@ -281,6 +287,7 @@ Every hook that takes one id also accepts `undefined`, and waits until the id is
 | `useBlockUser` | no | `settings.all`, `follows.all` (blocking ends follows), `profiles.all` |
 | `useAddInterest` | no | `interests.all` |
 | `useAddProfileCity` | no | `cities.all` |
+| `useCheckBadges`, `useMarkBadgeSeen` | no | `badges.all` |
 | save sheet: `useAddToCollection`, `useRenameCollection`, `useDeleteCollection` | **add** | `collections.all`, and `saves.all` for add and delete |
 
 ## Collections and auto add
@@ -293,6 +300,27 @@ From Ruby's `collections-and-explore` branch, moved onto Supabase when it was me
 - **Taking a place out by hand** adds a row to `collection_exclusions` (only the owner can see it), so auto add skips that place. Putting it back in by hand clears the row (a database rule).
 - **The database half** is the `collection_rules` migration: the `rules` and `auto_add` columns, the exclusions table, and the three-level nesting check. Until it's pushed, plain collections still work (reads ask for `*`, and only a collection with rules writes the new columns). Making one with rules, or a third level, fails with the database's error. After pushing, regenerate `src/types/database.ts` and switch the `untypedSupabase` queries in `collections.ts` back to `supabase`.
 
+## Badges
+
+From the wireframe at `https://claude.ai/artifact/88movwt1s8KE6VCvvwvUrx` (badge list + the "you earned a badge" pop-up). First batch -- the starter badges, plus the rest that needed only data already in the app. Cut for now: Round Trip (the database only allows one review per place per person), four of the original "Taste" badges that named place types the app doesn't have (bakery, hike, viewpoint, street food -- replaced with Full Course/restaurant, Thrill Seeker/excursion, Game On/sport, Garden Variety/garden, which do exist), the combo/meta badges (Hot Streak, Whirlwind Tour, Grand Tour, Full Passport), Trailblazer, Tour Guide, Same Wavelength, Dreamer, Continental, and Plus One -- each needs either a cross-user query, a concept the app doesn't track yet (save attribution, continents, "trip taken"), or a whole invite feature (Plus One).
+
+- **Rules live in code, not the database.** `BADGE_DEFINITIONS` in `src/services/badges.ts`: each has a `levelReached(ctx)` that reads a `BadgeContext` (your reviews, home city, travel goal progress, collection count) and returns how many of its `levels` you've cleared, 0 if none. `public.user_badges` only stores which badge/level you've reached, when, and whether its pop-up has shown (`seen_at`) -- never the rule.
+- **`checkBadges()`** re-runs every rule and upserts anything newly earned or levelled up, with `seen_at` cleared so levelling up pops up again. Called from `onSettled` on the mutations that can earn something (`useCreatePost`, `useUpdateProfile`, `useCreateCollection`), and once whenever the app opens or comes back to the foreground (`BadgeCelebrationHost`) -- the foreground check is also the only way **Crowd Favorite** is ever noticed, since it's earned by someone else liking your posts, not by anything you do.
+- **The pop-up** (`BadgeCelebrationHost`, mounted once in the root layout next to the tab navigator, not inside Profile) shows `useUnseenBadges()` one at a time, oldest first; dismissing one marks it seen and the next one (if any) takes its place. Secret badges show "???" until a short reveal delay. Respects `AccessibilityInfo.isReduceMotionEnabled()` -- no confetti or stamp animation when it's on.
+- **`BadgeDetailCard`** is the shared modal body behind both that pop-up and tapping any badge on the grid (`EarnedBadges` in `profile-badges.tsx`, no confetti there): an earned badge reopens the same card with Share available again, for whoever missed it the first time; an unearned, non-secret badge opens the same card greyed out with its description as a hint; an unearned secret badge isn't tappable at all, so it stays a mystery.
+- **Badges are public**, same as reviews: anyone can read anyone's `user_badges` rows, except people the badge's owner has blocked (`user_badges: read, except by people who blocked you`, matching the reviews policy). Only the badge's owner can ever write it. On your own profile, the Badges tab grid (`EarnedBadges` in `profile-badges.tsx`) also shows what you haven't earned yet, greyed out, as a checklist; on someone else's it only shows what they've actually earned -- a wall of "???" for a stranger's unearned badges isn't useful the way it is for your own.
+- **No backfill job yet.** `backfilled` exists on `user_badges` for the wireframe's launch-day idea (compute everyone's badges once, retroactively, with one combined screen instead of a flood of pop-ups) but nothing sets it; every badge from here on is earned live.
+- **Starter badges sit alongside the Profile Checklist, not instead of it.** `ProfileChecklist` (the "Complete your profile" card) stays exactly as it was -- still the reminder of what's left, still hides itself once you've done all four. Passport Photo, First Stamp and Travel Buddies are each one of those same four steps, as their own badge/pop-up moment; Cleared for Takeoff is finishing all four.
+
+## Dream trip cover
+
+Two distinct things, both built on `supabase/functions/destination-photo` (Pixabay, key held server-side as the `PIXABAY_API_KEY` secret -- the app only ever gets back photo URLs, and the function only accepts a real `cityId` already in the app, so it can't be used as an open proxy onto Pixabay):
+
+1. **The "Dream trip" option in `EditCoverPanel`** (alongside Auto/My own/No cover) -- deliberately picking a specific photo as your permanent cover. This becomes a normal `custom` cover underneath, same as uploading your own; `Profile.coverIsDreamTrip` (a real column, not local state) is the only way to tell the two apart, for the radio dot in `EditCoverPanel` and for the next point. `useDestinationPhotos` only fetches once this row is actually opened (`enabled`), not eagerly.
+2. **Auto mode itself showing a real photo**, in `ProfileCover` -- for whichever city it would otherwise just print as text (your current traveling/planning city, or your dream trip when home). This is never saved and never converts away from `coverMode: 'auto'`: it re-resolves every time the featured city changes, so it keeps tracking wherever the person actually is (or their dream trip, if they go home). The photo is picked deterministically from the set (`pickPhoto`, a stable hash, not `Math.random()` -- the React Compiler won't allow an impure call during render, and a stable pick is better here anyway: it doesn't flicker between re-renders or look different to two people viewing the same profile). The status city never carries its own id (`TravelStatus` only ever has a name), so `useCityIdByName` resolves one by name + country first; the dream trip city's id is already known and passed straight through.
+
+**Changing your dream trip city in Edit profile** (`handleDreamTripSelect`) only has to handle the *deliberate* case: if your cover is currently a dream-trip `custom` photo (`coverIsDreamTrip`), it's now stale (a photo of the old city), so this takes you straight into the cover picker to choose a fresh one, rather than silently swapping a photo you deliberately chose. It does nothing when the cover is Auto (point 2 already keeps that current on its own) or an uploaded photo (never touched automatically).
+
 ## Type changes
 
 | Type | Change | When |
@@ -304,6 +332,7 @@ From Ruby's `collections-and-explore` branch, moved onto Supabase when it was me
 | `Review` | Remove `likedByMe`. Use `useIsLiked(review.id)` instead. | Done |
 | `Profile` | Remove `friendIds` and `postIds`. Use `useFollowerIds(id)`, `useFollowingIds(id)` and `useReviewsByUser(id)`. | Done |
 | `Collection` | Add `parentId`, `rules` and `autoAdd`. Services build `places` and `subCollections` from the database. | Done |
+| `StatusDetail` | Removed. Replaced by `StatusSharing` (`{ country, city, dates }`, three independent booleans instead of one hidden/country/city/full ladder -- `dates` only has an effect when `country` is also on). `trimStatusForLevel` is now `trimStatus(status, sharing)`. `settings` and `profile_locations` each split their one sharing column into six booleans (`..._country`/`..._city`/`..._dates` per audience); the `SharingToggles` component (three checkboxes) replaces the old single-select pills in Privacy and Edit profile's status panel. | Done |
 | `src/types/database.ts` | Generated from the database. Never edit it by hand. | Done |
 
 ## Phase 0: Foundation

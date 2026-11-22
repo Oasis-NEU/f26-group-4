@@ -4,28 +4,22 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { EditCityPanel } from '@/components/edit-city-panel';
 import { EditPanelSheet } from '@/components/edit-panel-sheet';
+import { SharingToggles } from '@/components/sharing-toggles';
 import type { ProfileCity } from '@/services/profile-cities';
-import { formatStatusText, trimStatusForLevel } from '@/utils/status-text';
-import type { OwnTravelStatus, StatusDetail, TravelStatus } from '@/types/profile';
+import { formatStatusText, trimStatus } from '@/utils/status-text';
+import type { OwnTravelStatus, StatusSharing, TravelStatus } from '@/types/profile';
 
 // Status panel, styled like a boarding pass: the top part sets Home/
 // Traveling/Planning + city + date, the "torn-off" bottom part always shows
 // what Close friends and Everyone else currently see, using the same
-// trimStatusForLevel the real profile page trims with.
+// trimStatus the real profile page trims with.
 //
 // Dates are plain text (YYYY-MM-DD / YYYY-MM) rather than a calendar picker --
 // no date-picker library is installed, and this keeps scope to what's needed
 // for the mock data.
 
 type StatusKind = TravelStatus['kind'];
-type Sharing = { closeFriends: StatusDetail; everyone: StatusDetail };
-
-const SHARING_OPTIONS: { level: StatusDetail; label: string }[] = [
-  { level: 'hidden', label: 'Off' },
-  { level: 'country', label: 'Country' },
-  { level: 'city', label: 'City' },
-  { level: 'full', label: '+ Dates' },
-];
+type Sharing = OwnTravelStatus['sharing'];
 
 type EditStatusPanelProps = {
   visible: boolean;
@@ -88,8 +82,8 @@ export function EditStatusPanel({ visible, onClose, status, onChange }: EditStat
     }
   }
 
-  function handleSharingChange(audience: 'closeFriends' | 'everyone', level: StatusDetail) {
-    const nextSharing = { ...sharing, [audience]: level };
+  function handleSharingChange(audience: 'closeFriends' | 'everyone', value: StatusSharing) {
+    const nextSharing = { ...sharing, [audience]: value };
     setSharing(nextSharing);
     commit({ kind, city, country, until, month, sharing: nextSharing });
   }
@@ -103,8 +97,8 @@ export function EditStatusPanel({ visible, onClose, status, onChange }: EditStat
         ? { kind: 'traveling', city: city ?? '', country: country ?? '', until: until || undefined }
         : { kind: 'planning', city: city ?? '', country: country ?? '', month: month || undefined };
 
-  const closeFriendsPreview = formatStatusText(trimStatusForLevel(previewStatus, sharing.closeFriends));
-  const everyonePreview = formatStatusText(trimStatusForLevel(previewStatus, sharing.everyone));
+  const closeFriendsPreview = formatStatusText(trimStatus(previewStatus, sharing.closeFriends));
+  const everyonePreview = formatStatusText(trimStatus(previewStatus, sharing.everyone));
 
   return (
     <EditPanelSheet visible={visible} title="Status" onClose={onClose}>
@@ -167,19 +161,7 @@ export function EditStatusPanel({ visible, onClose, status, onChange }: EditStat
       {(['closeFriends', 'everyone'] as const).map((audience) => (
         <View key={audience} style={styles.sharingGroup}>
           <Text style={styles.sharingGroupLabel}>{audience === 'closeFriends' ? 'Close friends' : 'Everyone else'}</Text>
-          <View style={styles.sharingOptionsRow}>
-            {SHARING_OPTIONS.map((option) => (
-              <Pressable
-                key={option.level}
-                style={[styles.sharingOption, sharing[audience] === option.level && styles.sharingOptionActive]}
-                onPress={() => handleSharingChange(audience, option.level)}
-              >
-                <Text style={[styles.sharingOptionLabel, sharing[audience] === option.level && styles.sharingOptionLabelActive]}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <SharingToggles value={sharing[audience]} onChange={(value) => handleSharingChange(audience, value)} />
           <Text style={styles.sharingPreview}>
             They see: {audience === 'closeFriends' ? (closeFriendsPreview ?? 'Nothing') : (everyonePreview ?? 'Nothing')}
           </Text>
@@ -296,29 +278,6 @@ const styles = StyleSheet.create({
   sharingGroupLabel: {
     fontSize: 14,
     marginBottom: 6,
-  },
-  sharingOptionsRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  sharingOption: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    alignItems: 'center',
-  },
-  sharingOptionActive: {
-    backgroundColor: '#2A9D8F',
-    borderColor: '#2A9D8F',
-  },
-  sharingOptionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  sharingOptionLabelActive: {
-    color: '#fff',
   },
   sharingPreview: {
     marginTop: 6,
