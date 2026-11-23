@@ -17,7 +17,7 @@ import { ProfilePosts, type ProfilePostSummary } from '@/components/profile-post
 import { ProfileSkeleton } from '@/components/profile-skeleton';
 import { ProfileStats } from '@/components/profile-stats';
 // THEME CODE -- design system. See profile-header.tsx for the convention.
-import { colors, radius, spacing, type } from '@/theme';
+import { colors, radius, spacing, TOP_BUFFER, type } from '@/theme';
 import { useProfileCity } from '@/hooks/use-cities';
 import { useCollectionsForProfile } from '@/hooks/use-collections';
 import {
@@ -263,6 +263,7 @@ export default function ProfilePage() {
 
 const styles = StyleSheet.create({
   screen: {
+    paddingTop: TOP_BUFFER,
     flex: 1,
   },
   scrollContent: {

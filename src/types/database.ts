@@ -77,6 +77,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"collection_exclusions": {
+                  Row: {
+                    "collection_id": string,"created_at": string,"place_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "collection_id": string,"created_at"?: string,"place_id": string
+                  }
+                  Update: {
+                    "collection_id"?: string,"created_at"?: string,"place_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "collection_exclusions_collection_id_fkey"
+      columns: ["collection_id"]
+isOneToOne: false
+      referencedRelation: "collections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "collection_exclusions_place_id_fkey"
+      columns: ["place_id"]
+isOneToOne: false
+      referencedRelation: "places"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"collection_places": {
                   Row: {
                     "added_at": string,"collection_id": string,"place_id": string
@@ -105,14 +131,14 @@ isOneToOne: false
                   ]
                 },"collections": {
                   Row: {
-                    "cover_path": string | null,"created_at": string,"emoji": string | null,"id": string,"is_private": boolean | null,"name": string,"owner_id": string,"parent_id": string | null,"updated_at": string
+                    "auto_add": boolean,"cover_path": string | null,"created_at": string,"emoji": string | null,"id": string,"is_private": boolean | null,"name": string,"owner_id": string,"parent_id": string | null,"rules": Json | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cover_path"?: string | null,"created_at"?: string,"emoji"?: string | null,"id"?: string,"is_private"?: boolean | null,"name": string,"owner_id"?: string,"parent_id"?: string | null,"updated_at"?: string
+                    "auto_add"?: boolean,"cover_path"?: string | null,"created_at"?: string,"emoji"?: string | null,"id"?: string,"is_private"?: boolean | null,"name": string,"owner_id"?: string,"parent_id"?: string | null,"rules"?: Json | null,"updated_at"?: string
                   }
                   Update: {
-                    "cover_path"?: string | null,"created_at"?: string,"emoji"?: string | null,"id"?: string,"is_private"?: boolean | null,"name"?: string,"owner_id"?: string,"parent_id"?: string | null,"updated_at"?: string
+                    "auto_add"?: boolean,"cover_path"?: string | null,"created_at"?: string,"emoji"?: string | null,"id"?: string,"is_private"?: boolean | null,"name"?: string,"owner_id"?: string,"parent_id"?: string | null,"rules"?: Json | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -495,17 +521,23 @@ isOneToOne: true
                   ]
                 },"suited_for_tags": {
                   Row: {
-                    "created_at": string,"label": string,"slug": string,"sort_order": number
+                    "created_at": string,"created_by": string | null,"is_starter": boolean,"label": string,"slug": string,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"label": string,"slug": string,"sort_order"?: number
+                    "created_at"?: string,"created_by"?: string | null,"is_starter"?: boolean,"label": string,"slug": string,"sort_order"?: number
                   }
                   Update: {
-                    "created_at"?: string,"label"?: string,"slug"?: string,"sort_order"?: number
+                    "created_at"?: string,"created_by"?: string | null,"is_starter"?: boolean,"label"?: string,"slug"?: string,"sort_order"?: number
                   }
                   Relationships: [
-                    
+                    {
+      foreignKeyName: "suited_for_tags_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"travel_goals": {
                   Row: {
@@ -576,6 +608,21 @@ isOneToOne: false
                           SetofOptions: {
         from: "*"
         to: "interests"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"add_suited_for_tag":
+{ Args: { "tag_name": string }; Returns: {
+              "created_at": string,
+"created_by": string | null,
+"is_starter": boolean,
+"label": string,
+"slug": string,
+"sort_order": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "suited_for_tags"
         isOneToOne: true
         isSetofReturn: false
       } },

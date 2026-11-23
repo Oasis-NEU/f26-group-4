@@ -16,6 +16,9 @@ type SearchFilterBarProps = {
   onChangeSuitedFor: (values: string[]) => void;
   placeTypeOptions: string[]; // every place type to choose from
   suitedForOptions: string[]; // every suited-for tag to choose from
+  // Optional 'My posts' switch. Only screens that pass onChangeOnlyMine show the Posts section (the Map).
+  onlyMine?: boolean;
+  onChangeOnlyMine?: (value: boolean) => void;
   right?: ReactNode; // optional extra button after ▽, e.g. the Upload `+`
 };
 
@@ -33,10 +36,12 @@ export function SearchFilterBar({
   onChangeSuitedFor,
   placeTypeOptions,
   suitedForOptions,
+  onlyMine,
+  onChangeOnlyMine,
   right,
 }: SearchFilterBarProps) {
   const [open, setOpen] = useState(false);
-  const activeCount = placeTypes.length + suitedFor.length;
+  const activeCount = placeTypes.length + suitedFor.length + (onlyMine ? 1 : 0);
 
   return (
     <View style={styles.bar}>
@@ -51,6 +56,15 @@ export function SearchFilterBar({
       <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
         <View style={styles.sheet}>
           <Text style={styles.sheetTitle}>Filters</Text>
+
+          {onChangeOnlyMine && (
+            <>
+              <Text style={styles.sectionTitle}>Posts</Text>
+              <View style={styles.chips}>
+                <FilterChip label="My posts" selected={!!onlyMine} onPress={() => onChangeOnlyMine(!onlyMine)} />
+              </View>
+            </>
+          )}
 
           <Text style={styles.sectionTitle}>Place type</Text>
           <View style={styles.chips}>
@@ -81,6 +95,7 @@ export function SearchFilterBar({
               onPress={() => {
                 onChangePlaceTypes([]);
                 onChangeSuitedFor([]);
+                onChangeOnlyMine?.(false);
               }}
               accessibilityRole="button"
             >

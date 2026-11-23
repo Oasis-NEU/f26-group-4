@@ -1,7 +1,7 @@
 import { router, Stack } from 'expo-router';
 import { Pressable, Text } from 'react-native';
 
-import { colors } from '@/theme';
+import { colors, spacing, TOP_BUFFER } from '@/theme';
 
 // Settings' own Stack, so each page gets a native back button + title without
 // the root layout needing to know about every settings screen individually.
@@ -29,7 +29,9 @@ function backToProfile() {
 
 export default function SettingsLayout() {
   return (
-    <Stack>
+    // contentStyle adds a buffer under the header on every settings page, so the
+    // first row (e.g. the profile card) is never tucked against or under it.
+    <Stack screenOptions={{ contentStyle: { paddingTop: spacing.lg + TOP_BUFFER } }}>
       <Stack.Screen
         name="index"
         options={{
