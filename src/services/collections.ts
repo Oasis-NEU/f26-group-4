@@ -31,8 +31,6 @@
 // collections still work: reads ask for `*`, and only a collection with rules
 // writes the new columns.
 
-import type { SupabaseClient } from '@supabase/supabase-js';
-
 import { isEmptyRules } from '@/lib/collection-rules';
 import { flattenCollections, matchesWithAncestors, rulesOf } from '@/lib/collection-tree';
 import { currentUserId, supabase } from '@/lib/supabase';
@@ -66,14 +64,6 @@ type CollectionRow = {
   // Missing when a query only asks for the collection's own columns.
   collection_places?: { added_at: string; place: PlaceRow | null }[];
 };
-
-// src/types/database.ts doesn't know the auto add columns or the
-// collection_exclusions table until it's regenerated from the local stack after
-// the collection_rules migration, and the typed client refuses columns it
-// doesn't know. So the few queries that write them go through this untyped
-// view of the same client. Swap them back to `supabase` once the types are
-// regenerated.
-const untypedSupabase = supabase as unknown as SupabaseClient;
 
 type CollectionInsert = {
   name: string;
@@ -223,12 +213,12 @@ async function addToAutoAddCollections(placeId: string): Promise<SavedTo[]> {
 
   // Asked only when something matched, so a database without the
   // collection_exclusions table yet never gets here.
-  const exclusions = await untypedSupabase
+  const exclusions = await supabase
     .from('collection_exclusions')
     .select('collection_id')
     .eq('place_id', placeId);
   if (exclusions.error) throw exclusions.error;
-  const excludedIds = new Set((exclusions.data as { collection_id: string }[]).map((row) => row.collection_id));
+  const excludedIds = new Set(exclusions.data.map((row) => row.collection_id));
 
   const wanted = candidates.filter(({ collection }) => !excludedIds.has(collection.id));
   if (wanted.length === 0) return [];
@@ -289,9 +279,9 @@ export async function removeFromCollection(collectionId: string, placeId: string
 
   const { data, error: readError } = await supabase.from('collections').select('*').eq('id', collectionId).maybeSingle();
   if (readError) throw readError;
-  if ((data as unknown as CollectionRow | null)?.auto_add !== true) return;
+  if (data?.auto_add !== true) return;
 
-  const { error: excludeError } = await untypedSupabase
+  const { error: excludeError } = await supabase
     .from('collection_exclusions')
     .upsert({ collection_id: collectionId, place_id: placeId }, { onConflict: 'collection_id,place_id', ignoreDuplicates: true });
   if (excludeError) throw excludeError;
@@ -347,9 +337,9 @@ export async function createCollection(fields: NewCollectionFields): Promise<str
     row.auto_add = fields.autoAdd === true;
   }
 
-  const { data, error } = await untypedSupabase.from('collections').insert(row).select('id').single();
+  const { data, error } = await supabase.from('collections').insert(row).select('id').single();
   if (error) throw error;
-  const id = (data as { id: string }).id;
+  const id = data.id;
 
   const placeIds = [...new Set(fields.placeIds ?? [])];
   if (placeIds.length > 0) {

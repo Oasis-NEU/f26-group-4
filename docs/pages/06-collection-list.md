@@ -6,14 +6,14 @@
 | - | - |
 | **Route** | `/collection/[id]`, for example `/collection/col_ski` |
 | **File** | `src/app/(tabs)/(profile,map,explore,saved)/collection/[id].tsx`. Every tab's stack has it, so it opens inside the tab you're in. |
-| **Navigator** | Root stack, pushed on top of the tabs, with a back button to Saved |
+| **Navigator** | The current tab's stack, so the tab bar stays. The screen draws its own back arrow: back, or to Saved when there's nothing to go back to. |
 | **Status** | New |
 
 ## Where it sits in navigation
 
-- **Reached from:** a card on [Saved collections](05-saved-collections.md).
-- **Goes to:** Place details when you tap a row.
-- **Header:** the collection's name as the title. A "⋯" button on the right for rename and delete, later.
+- **Reached from:** a card on [Saved collections](05-saved-collections.md), or a sub-collection's heading inside its parent.
+- **Goes to:** Place details when you tap a row, a sub-collection when you tap its heading, and New collection (with this one as the parent) from the + in the header.
+- **Header:** the collection's name as the title, and a + on the right while it can still hold a sub-collection (three levels deep is the limit). Rename and delete, later.
 
 ## Sketch → what we build
 
